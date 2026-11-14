@@ -1,0 +1,559 @@
+// main.mjs: the game. Screens (title, straight-ahead check, courses, race, results, pause, settings, test card), the frame loop
+// (fixed 120 Hz simulation, picture interpolated between steps), the race display, sounds, saving, and the frame-rate governor.
+// The simulation is sim/race-sim.mjs, the picture view/stage.mjs. Written 2026-11-13 by the yacht project session; revised the
+// same day after review round r3 (<local>): the ids P1-P20 and T-01-T-15 in comments name its findings.
+import { Stage, CAMS } from './view/stage.mjs?v=f12e6f3c';
+import { LIVERIES, LIVERY_KEYS } from './view/boats.mjs?v=f12e6f3c';
+import { WORLDS } from './view/sky.mjs?v=f12e6f3c';
+import { getCourse, COURSE_DEFS, COURSE_KEYS, pointInto, wrapA, wrapS } from './sim/courses.mjs?v=f12e6f3c';
+import { Race, defaultSettings, DT, TUNES, TUNE_KEYS, BOOST, SIM_VERSION, encodeInputs, decodeInputs } from './sim/race-sim.mjs?v=f12e6f3c';
+import { Governor, RefreshWatch, measureRefresh } from './sim/governor.mjs?v=f12e6f3c';
+import * as PR from './sim/progress.mjs?v=f12e6f3c';
+import { Controls } from './ui/controls.mjs?v=f12e6f3c';
+import { Sound } from './ui/sound.mjs?v=f12e6f3c';
+import * as PF from './ui/platform.mjs?v=f12e6f3c';
+
+export const VERSION = 'crest-run 0.2.1', BUILD = '2026-11-14 #f12e6f3c';
+const $ = (id) => document.getElementById(id);
+const Q = new URLSearchParams(location.search);
+const clamp = (v, lo, hi) => (v < lo ? lo : v > hi ? hi : v);
+const ORD = ['', 'st', 'nd', 'rd', 'th', 'th', 'th', 'th'];
+const GAP_M = 10;          // the time gap to another boat is read at marks every 10 m of the course
+const RESUME_S = 1.8;      // the count before a paused race goes on
+const canvas = $('c');
+const stage = new Stage(canvas), controls = new Controls(), sound = new Sound();
+const gov = new Governor({ tier: 'mid', auto: true }), watch = new RefreshWatch();
+const G = window.__game = { version: VERSION, build: BUILD, stage, controls, sound, gov, watch, save: PR.migrate(PF.loadJSON(PR.SAVE_KEY)), screen: 'boot', mode: 'demo', race: null, ghost: null, run: null,
+  sel: null, paused: false, pausedBy: null, timeScale: 1, slowLeft: 0, slowArmed: false, auto: Q.get('auto') === '1', film: Q.get('film') === '1', frames: 0, errors: [], refresh: null,
+  probe: { n: 0, deltas: [] }, probes: 0, lastRuns: [], storage: true, calT: 0, calTry: 0, calDone: 0, resultsAt: null, hudOn: Q.get('hud') !== '0', resumeLeft: 0, resumeShown: '', afterCal: null, dirty: true, filmT: 0 };
+const settings = () => G.save.settings;
+G.sel = { mode: G.save.last.mode === 'trial' ? 'trial' : 'race', course: COURSE_KEYS.includes(G.save.last.course) ? G.save.last.course : COURSE_KEYS[0],
+  tune: G.save.unlocked.tunes.includes(G.save.last.tune) ? G.save.last.tune : 'cruise', livery: G.save.unlocked.liveries.includes(G.save.last.livery) ? G.save.last.livery : 'pearl', difficulty: settings().difficulty };
+window.addEventListener('error', (e) => { G.errors.push(String(e.message).slice(0, 200)); });
+window.addEventListener('unhandledrejection', (e) => { G.errors.push('rejection: ' + String(e.reason && e.reason.message || e.reason).slice(0, 200)); });
+// the elements the race display writes every frame, looked up once (T-10)
+const E = {};
+for (const [k, id] of Object.entries({ fill: 'h-boost-fill', boost: 'h-boost', btn: 'h-boostbtn', knob: 'h-knob', prog: 'h-prog', progMe: 'h-prog-me', count: 'h-count', msg: 'h-msg', warn: 'h-warn', arrow: 'h-arrow', place: 'h-place',
+  edge: 'h-edge', calWheel: 'cal-wheel', calNeedle: 'cal-needle', toast: 'toast', hud: 'hud', play: 'play', nextCourse: 'b-nextcourse', retry: 'b-retry' })) E[k] = $(id);
+
+// ---------- screens ----------
+const SCREENS = ['boot', 'title', 'cal', 'menu', 'results', 'pause', 'settings', 'card', 'resume', 'sensors', 'rotate'];
+function show(name) {
+  G.screen = name;
+  for (const s of SCREENS) $('s-' + s).classList.toggle('show', s === name);
+  const racing = name === 'race';
+  E.hud.classList.toggle('hidden', !(racing && G.hudOn)); E.play.classList.toggle('hidden', !racing);
+  E.toast.classList.toggle('race', racing);       // in a race notes sit under the clock, clear of speed and boost (P4)
+}
+let toastT = null;
+function toast(text, ms = 2600) { const t = E.toast; t.textContent = text; t.classList.add('show'); clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('show'), ms); }
+function saveNow() { const ok = PF.saveJSON(PR.SAVE_KEY, G.save); if (!ok && G.storage) toast('This browser does not let the game save: best times last until the page closes.', 5000); G.storage = ok; }
+function tap(id, fn) { $(id).addEventListener('click', (e) => { e.preventDefault(); sound.resume(); sound.sfx('click'); fn(e); }); }
+// restart a one-shot CSS animation on an element (a gate tick, a bump flash, a place change)
+function pulse(el, cls) { el.classList.remove(cls); void el.offsetWidth; el.classList.add(cls); }
+
+function applySettings() {
+  const s = settings();
+  stage.setCamera(s.camera, s.motion === 'full' ? 1 : 0.4);
+  controls.setOptions({ maxDeg: s.maxDeg, invert: !!s.invert }); controls.prefer = s.steering;
+  sound.setLevels({ sound: !!s.sound, music: !!s.music, volume: s.volume });
+  gov.auto = s.quality === 'auto'; if (!gov.auto) gov.tier = s.quality;
+  if (G.refresh) applyGov();
+  $('h-unit').textContent = s.units === 'kn' ? 'kn' : 'km/h';
+}
+// what the governor decided, shown: a tier change only when the tier really changed (T-13)
+function applyGov() { if (gov.tier !== stage.tierKey && !Q.get('tier')) stage.setTier(gov.tier); stage.setScale(gov.scale); }
+// the screen lock: asked inside taps and at every race start; where the browser refuses, the player is told once (T-08)
+function keepAwake() { PF.requestWake().then((ok) => { if (!ok && !G.wakeTold && G.mode === 'race' && !G.film) { G.wakeTold = true; toast('This browser does not keep the screen on: touch the screen now and then during a race.', 5000); } }); }
+
+// ---------- the demo behind the menus: a race with every boat computer-steered, the camera circling the leader ----------
+function startDemo(courseKey = G.sel.course) {
+  const c = getCourse(courseKey), def = COURSE_DEFS[courseKey];
+  stage.setWorld(Q.get('world') || def.world); stage.setCourse(c);
+  const race = new Race({ ...defaultSettings(c, { rivals: 3, tune: G.sel.tune }), player: -1 }, c);
+  G.race = race; G.ghost = null; G.mode = 'demo'; G.run = null; G.demoCourse = courseKey; G.timeScale = 1; G.acc = 0; G.paused = false; G.pausedBy = null; G.resumeLeft = 0;
+  stage.setGhost(null); stage.setRace(race, [G.sel.livery, ...LIVERY_KEYS.filter((k) => k !== G.sel.livery)].slice(0, 4).reverse(), 3);
+  stage.setCameraMode('orbit');
+  for (let i = 0; i < Math.round(5 / DT); i++) { race.step(0, 0, 0); race.events.length = 0; }   // past the countdown: boats already moving
+}
+
+// ---------- a race the player steers ----------
+function startRace() {
+  const { mode, course: key, tune, livery, difficulty } = G.sel, c = getCourse(key), def = COURSE_DEFS[key];
+  stage.setWorld(Q.get('world') || def.world); stage.setCourse(c);
+  const set = defaultSettings(c, { tune, rivals: mode === 'race' ? 3 : 0, difficulty });
+  if (Q.get('seed')) set.sea.seed = +Q.get('seed');
+  const race = new Race(set, c), n = race.boats.length;
+  const others = LIVERY_KEYS.filter((k) => k !== livery), liveries = race.boats.map((b, i) => (i === race.player ? livery : others[i % others.length]));
+  G.race = race; G.mode = 'race'; G.acc = 0; G.timeScale = 1; G.slowLeft = 0; G.slowArmed = false; G.paused = false; G.pausedBy = null; G.resultsAt = null; G.resumeLeft = 0;
+  // the ghost of the best time trial on this course: the recorded inputs through the same simulation, one boat, no contact
+  G.ghost = null;
+  const best = G.save.best[`${key}:trial`];
+  if (mode === 'trial' && best && best.ghost && best.ghost.sim === SIM_VERSION && best.ghost.tune === tune) { const d = decodeInputs(best.ghost.inputs); G.ghost = { race: new Race(set, c), steer: d.steer, flags: d.flags }; }
+  const nm = Math.ceil(set.laps * c.len / GAP_M) + 2;
+  G.run = { mode, course: key, tune, livery, difficulty, at: new Date().toISOString(), frames: 0, late: 0, worst: 0, sumMs: 0, mot0: controls.tilt.counts.mot, th0: performance.now(), steerMode: controls.mode, recentres0: controls.recentres,
+    lastHud: 0, countShown: '', wrongT: 0, place0: n, placeT: -9, dots: [], trackW: 1,
+    marks: race.boats.map(() => new Float32Array(nm).fill(-1)), markN: new Int32Array(n), gmarks: G.ghost ? new Float32Array(nm).fill(-1) : null, gmarkN: 0,
+    coach: G.save.stats.races < 2 && !G.film && !G.auto, coachRamp: false, coachBoost: false };   // the first two races explain gates, ramps and the boost (P20)
+  stage.setRace(race, liveries, race.player); stage.setGhost(G.ghost ? G.ghost.race : null);
+  stage.setCameraMode('chase'); controls.releaseAll();
+  E.hud.classList.toggle('final', false); $('h-of').textContent = mode === 'race' ? '/' + n : ''; E.place.textContent = mode === 'race' ? n : ''; E.count.textContent = ''; E.warn.style.display = 'none';
+  for (const k of Object.keys(H)) H[k] = null;
+  clearTimeout(msgT); E.msg.className = ''; msgPri = 0; msgUntil = 0;      // no message of the last race lingers into this one
+  E.prog.querySelectorAll('i.rv').forEach((e) => e.remove());
+  for (let i = 0; i < n; i++) if (i !== race.player) { const d = document.createElement('i'); d.className = 'rv'; d.style.background = '#' + LIVERIES[liveries[i]].accent.toString(16).padStart(6, '0'); E.prog.appendChild(d); G.run.dots.push({ el: d, i, x: null }); }
+  paintControlsHint(); show('race'); G.run.trackW = E.prog.clientWidth || 1; sound.music('race'); keepAwake();
+}
+function paintControlsHint() {
+  const m = controls.mode;
+  $('h-steer').classList.toggle('hidden', m !== 'touch'); $('h-left').classList.toggle('hidden', m === 'keys' || m === 'none');
+  $('h-left-label').textContent = m === 'tilt' ? 'HOLD: DRIFT' : 'SLIDE TO STEER'; $('h-recentre').classList.toggle('hidden', m !== 'tilt');
+}
+function endRace() {
+  const race = G.race, run = G.run, me = race.boats[race.player], sm = race.summary(), st = race.standings(), key = run.course;
+  const result = { mode: run.mode, course: key, tune: run.tune, livery: run.livery, finished: me.finished, place: sm.place, time: sm.time, sim: SIM_VERSION, summary: sm,
+    inputs: run.mode === 'trial' && me.finished ? encodeInputs(race.rec.steer, race.rec.flags) : null };
+  const old = G.save.best[`${key}:${run.mode}`], r = PR.applyResult(G.save, result, COURSE_KEYS, COURSE_DEFS[key].medals || null);
+  G.save = r.save; saveNow();
+  const dur = Math.max(0.001, (performance.now() - run.th0) / 1000);
+  G.lastRuns.push({ at: run.at, course: key, mode: run.mode, tune: run.tune, steer: run.steerMode, place: sm.place, boats: sm.boats, time: sm.time, passed: sm.passed, gates: sm.gates, perfects: sm.perfects, clean: sm.clean, rough: sm.rough,
+    contacts: sm.contacts, topKmh: sm.topKmh, boostS: sm.boostS, why: sm.why, frames: run.frames, latePct: run.frames ? +(100 * run.late / run.frames).toFixed(1) : null, meanMs: run.frames ? +(run.sumMs / run.frames).toFixed(1) : null, worstMs: Math.round(run.worst),
+    motPerS: +((controls.tilt.counts.mot - run.mot0) / dur).toFixed(0), recentres: controls.recentres - run.recentres0, tier: stage.tierKey, scale: stage.scale, render: stage.renderSize() });
+  if (G.lastRuns.length > 6) G.lastRuns.shift();
+  // the result screen, staged: the place, then the medal, then the news one by one (P12)
+  const medal = PR.medalFor(result, COURSE_DEFS[key].medals || null), c = getCourse(key);
+  $('r-place').innerHTML = run.mode === 'race' ? (me.finished ? `${sm.place}<small>${ORD[sm.place] || 'th'}</small>` : '-') : '';
+  $('r-title').textContent = `${c.name}: ${run.mode === 'race' ? 'race' : 'time trial'}`;
+  $('r-time').textContent = me.finished ? PR.fmtTime(sm.time) : 'Not finished';
+  $('r-best').textContent = me.finished ? (old && old.time <= sm.time ? `Best ${PR.fmtTime(old.time)} (+${(sm.time - old.time).toFixed(2)} s)` : old ? `New best: ${(old.time - sm.time).toFixed(2)} s faster` : 'First time on the board') : 'The race was not finished';
+  $('r-medal').innerHTML = medal ? `<span class="medal-dot ${medal}"></span><span class="name">${medal}</span>` : '';
+  const NEWS = { best: () => 'New best time', medal: (n) => `${n.medal[0].toUpperCase() + n.medal.slice(1)} medal`,
+    unlock: (n) => (n.kind === 'tunes' ? `New tune: ${TUNES[n.key].label}` : n.kind === 'liveries' ? `New colour: ${LIVERIES[n.key].label}` : `New course: ${COURSE_DEFS[n.key].name}`) };
+  $('r-news').innerHTML = r.news.map((n, i) => `<li style="animation-delay:${(0.9 + 0.4 * i).toFixed(1)}s">${NEWS[n.type](n)}</li>`).join('');
+  r.news.forEach((n, i) => setTimeout(() => { if (G.screen === 'results' && G.race === race) sound.sfx('chip', i); }, 900 + 400 * i));
+  // times of boats that were still racing when the player finished are estimates: marked with ~
+  $('r-table').innerHTML = run.mode === 'race' ? st.map((x) => `<span class="${x.player ? 'me' : ''}">${x.place}</span><span class="${x.player ? 'me' : ''}">${x.name}</span><span class="${x.player ? 'me' : ''}">${x.time === null ? '-' : (x.finished ? '' : '~') + PR.fmtTime(x.time)}</span>`).join('') : '';
+  $('r-stats').textContent = `Gates ${sm.passed}/${sm.gates} (${sm.perfects} perfect), longest row ${sm.bestChain} | landings ${sm.clean} clean, ${sm.rough} rough | top ${fmtSpeed(sm.topKmh / 3.6)} ${settings().units === 'kn' ? 'kn' : 'km/h'} | boost ${sm.boostS.toFixed(1)} s`;
+  // one line of advice where the result asks for it: last on Normal or Hard, or an easy win (tools/balance.mjs: a first-time
+  // player reaches the podium on Easy, a practised one wins there every time)
+  $('r-tip').textContent = run.mode !== 'race' || !me.finished ? '' : sm.place === sm.boats && run.difficulty !== 'easy' ? 'Tip: on the course screen you can set the rivals to Easy.'
+    : sm.place === 1 && run.difficulty === 'easy' ? 'Tip: you won on Easy. The rivals on Normal put up more of a fight.' : sm.place === 1 && run.difficulty === 'normal' && G.save.stats.wins >= 3 ? 'Tip: three wins. Try the rivals on Hard.' : '';
+  // a course that this race opened becomes the main button; racing again the second
+  const opened = r.news.find((n) => n.type === 'unlock' && n.kind === 'courses');
+  G.nextCourse = opened ? opened.key : null;
+  E.nextCourse.classList.toggle('hidden', !opened); if (opened) E.nextCourse.textContent = `NEXT: ${COURSE_DEFS[opened.key].name.toUpperCase()}`;
+  E.retry.textContent = run.mode === 'race' ? 'RACE AGAIN' : 'GO AGAIN'; E.retry.className = opened ? 'ghost' : 'cta';
+  if (medal && r.news.some((n) => n.type === 'medal')) setTimeout(() => { if (G.screen === 'results' && G.race === race) sound.sfx('medal'); }, 450);
+  race.afterglow = true;       // the boats sail on behind the result screen: the sea and the picture stay alive (T-07)
+  G.mode = 'after'; G.acc = 0; stage.setCameraMode('orbit'); sound.music('menu'); show('results');
+}
+const fmtSpeed = (ms) => String(Math.round(settings().units === 'kn' ? ms * 1.94384 : ms * 3.6));
+
+// ---------- the race display ----------
+// One message slot: a more important message is not wiped by a lesser one within 0.8 s (P17). pri: finish 5, lap 4, landing and
+// missed gate 3, perfect gate and tips 2, slipstream 1. long: a tip that stays 2.6 s.
+let msgT = null, msgPri = 0, msgUntil = 0;
+function hudMsg(text, cls = '', pri = 1, long = false) {
+  const nowT = performance.now(); if (nowT < msgUntil && pri < msgPri) return;
+  msgPri = pri; msgUntil = nowT + 800;
+  const m = E.msg; m.className = ''; void m.offsetWidth; m.textContent = text; m.className = `show ${cls}${long ? ' long' : ''}`;
+  clearTimeout(msgT); msgT = setTimeout(() => { m.className = ''; }, long ? 2650 : 1150);
+}
+const H = { time: null, place: null, lap: null, gap: null, kmh: null, chain: null, warn: null, fill: null, bs: null, knob: null, me: null, arrow: null, arrowOn: null };
+function setText(id, key, v) { if (H[key] !== v) { H[key] = v; $(id).textContent = v; } }
+// the time gap between two boats: how much later a passed the last 10 m mark that both have passed (null before the first one)
+function gapS(aMarks, aN, bMarks, bN) { const k = Math.min(aN, bN) - 1; return k < 0 ? null : aMarks[k] - bMarks[k]; }
+const fmtGap = (g, name) => (g === null ? '' : `${Math.min(99.9, Math.abs(g)).toFixed(1)} s ${g >= 0 ? 'behind' : 'ahead of'} ${name}`);
+function paintHud(race, run, dt) {
+  const me = race.boats[race.player], c = race.c, laps = race.settings.laps;
+  // every frame, written only when the shown value changes: the boost bar, the button, the steering knob, the progress dots
+  const fill = Math.round(500 * me.boostE / BOOST.max);
+  if (fill !== H.fill) { H.fill = fill; E.fill.style.transform = `scaleX(${fill / 500})`; }
+  const ready = me.boostE >= BOOST.minStart || me.boosting, bs = me.boosting ? 2 : ready ? 1 : 0;
+  if (bs !== H.bs) { H.bs = bs; E.boost.classList.toggle('ready', bs === 1); E.boost.classList.toggle('on', bs === 2); E.btn.classList.toggle('ready', bs >= 1); E.btn.classList.toggle('on', bs === 2); }
+  if (controls.mode === 'touch') { const kx = Math.round(78 * controls.steer); if (kx !== H.knob) { H.knob = kx; E.knob.style.transform = `translateX(${kx}px)`; } }
+  const total = laps * c.len, tw = run.trackW, px = Math.round(tw * clamp(me.prog / total, 0, 1));
+  if (px !== H.me) { H.me = px; E.progMe.style.transform = `translateX(${px}px)`; }
+  for (let k = 0; k < run.dots.length; k++) { const d = run.dots[k], x = Math.round(tw * clamp(race.boats[d.i].prog / total, 0, 1)); if (x !== d.x) { d.x = x; d.el.style.transform = `translateX(${x}px)`; } }
+  // the countdown
+  const left = race.go - race.t, ct = left > 0 ? String(Math.ceil(left)) : left > -0.8 ? 'GO' : '';
+  if (ct !== run.countShown) { run.countShown = ct; E.count.textContent = ct; if (ct && ct !== 'GO') sound.sfx('count'); }
+  // a few times a second: the numbers
+  run.lastHud += dt; if (run.lastHud < 0.09) return; run.lastHud = 0;
+  const t = race.lapT; setText('h-time', 'time', `${Math.floor(t / 60)}:${(t % 60).toFixed(1).padStart(4, '0')}`);
+  if (run.mode === 'race') {
+    // a place won or lost shows and sounds (P6); side-by-side flicker is held back for 0.8 s
+    if (me.place !== run.place0 && race.racing && !me.finished) { if (race.t - run.placeT > 0.8) { const up = me.place < run.place0; pulse(E.place, up ? 'up' : 'down'); E.place.classList.remove(up ? 'down' : 'up'); sound.sfx(up ? 'placeUp' : 'placeDown'); run.placeT = race.t; } run.place0 = me.place; }
+    setText('h-place', 'place', String(me.place));
+    const o = race.order, k = o.indexOf(race.player), oi = k > 0 ? o[k - 1] : o.length > 1 ? o[1] : -1;
+    const g = oi < 0 || !race.racing ? null : k > 0 ? gapS(run.marks[race.player], run.markN[race.player], run.marks[oi], run.markN[oi]) : -gapS(run.marks[oi], run.markN[oi], run.marks[race.player], run.markN[race.player]);
+    setText('h-gap', 'gap', oi < 0 || g === null || Number.isNaN(g) ? '' : fmtGap(g, race.boats[oi].name));
+  } else {
+    const g = G.ghost && race.racing ? gapS(run.marks[race.player], run.markN[race.player], run.gmarks, run.gmarkN) : null;
+    setText('h-gap', 'gap', !G.ghost ? 'no ghost yet' : g === null ? '' : fmtGap(g, 'your ghost'));
+  }
+  setText('h-lap', 'lap', `LAP ${Math.min(laps, me.laps.length + 1)}/${laps}`);
+  setText('h-kmh', 'kmh', fmtSpeed(Math.max(0, me.u)));
+  setText('h-chain', 'chain', me.chain > 1 ? `x${me.chain} in a row` : '');
+  // the arrow to the next gate when it is not ahead; warnings
+  const gt = c.gates[me.nextGate], o3 = [0, 0, 0]; pointInto(c, gt.s, (gt.lo + gt.hi) / 2, o3);
+  const ang = wrapA(Math.atan2(-(o3[0] - me.x), o3[1] - me.z) - me.h), far = Math.abs(ang) > 0.5 && !me.finished && race.racing;
+  if (far !== H.arrowOn) { H.arrowOn = far; E.arrow.style.opacity = far ? '1' : '0'; }
+  if (far) { const a = Math.round(ang * 180 / Math.PI / 3) * 3; if (a !== H.arrow) { H.arrow = a; E.arrow.style.transform = `rotate(${a}deg)`; } }
+  run.wrongT = race.racing && !me.finished && me.u > 3 && Math.abs(wrapA(Math.atan2(-me.vx, me.vz) - c.H[Math.floor(me.s / c.step) % c.N])) > 2 ? run.wrongT + 0.09 : 0;
+  const warn = controls.mode === 'tilt' && controls.flat ? 'Tip the screen up towards you' : run.wrongT > 1.2 ? 'Wrong way' : Math.abs(me.lat) > c.halfWidth ? 'Back to the course' : '';
+  if (warn !== H.warn) { H.warn = warn; E.warn.textContent = warn; E.warn.style.display = warn ? 'block' : 'none'; }
+  // the first races: what a ramp and the boost are, said once each when they matter
+  if (run.coach && race.racing && !me.finished) {
+    if (!run.coachRamp) for (const r of c.ramps) { const d = wrapS(c, r.s - me.s); if (d > 35 && d < 85) { run.coachRamp = true; hudMsg('RAMP AHEAD: LAND IT STRAIGHT', 'tip', 2, true); break; } }
+    if (!run.coachBoost && ready && !me.boosting && race.lapT > 4) { run.coachBoost = true; hudMsg(controls.mode === 'keys' ? 'BOOST READY: HOLD SPACE' : 'BOOST READY: HOLD YOUR RIGHT THUMB', 'tip', 2, true); }
+  }
+}
+function onRaceEvent(e, race, run) {
+  stage.onEvent(e);
+  const mine = e.i === race.player || e.j === race.player, me = race.boats[race.player], laps = race.settings.laps;
+  if (e.type === 'go') { sound.sfx('go'); if (run.coach) hudMsg('PASS BETWEEN THE LIT BUOYS', 'tip', 2, true); }
+  if (!mine) return;
+  switch (e.type) {
+    case 'gate': sound.sfx(e.perfect ? 'perfect' : 'gate', Math.min(7, e.chain - 1)); pulse(E.boost, 'tick'); if (e.perfect) hudMsg('PERFECT', 'good', 2); break;   // every gate ticks the boost bar (P6)
+    case 'miss': sound.sfx('miss'); hudMsg('MISSED GATE', 'bad', 3); pulse(E.boost, 'drop'); pulse(E.edge, 'hit'); break;
+    case 'launch': sound.sfx('launch'); G.slowArmed = settings().motion === 'full'; break;
+    case 'land': if (e.ramp) { sound.sfx(e.clean ? 'land' : 'rough'); hudMsg(e.clean ? 'CLEAN LANDING' : 'ROUGH LANDING', e.clean ? 'good' : 'bad', 3); if (e.clean) pulse(E.boost, 'tick'); } else sound.sfx('hop', e.impact / 8); break;
+    case 'boostOn': sound.sfx('boost'); break;
+    case 'contact': sound.sfx('bump', e.v); if (e.v > 1.5) pulse(E.edge, 'hit'); break;   // a rub sounds softly; a real hit also flashes the screen edge (P6)
+    case 'draft': sound.sfx('draft'); hudMsg('SLIPSTREAM', 'cool', 1); break;
+    case 'lap': if (e.i === race.player && e.lap < laps) { const fin = e.lap === laps - 1; sound.sfx(fin ? 'final' : 'lap'); hudMsg(fin ? 'FINAL LAP' : `LAP ${e.lap + 1}`, 'cool', 4); E.hud.classList.toggle('final', fin); } break;
+    case 'finish': if (e.i === race.player) { sound.sfx('finish'); hudMsg(run.mode === 'race' ? `${me.place}${ORD[me.place] || 'th'} PLACE` : 'FINISH', 'good', 5); G.resultsAt = performance.now() + 2600; stage.setCameraMode('orbit'); } break;
+    default: break;
+  }
+}
+// the boost was asked for with too little in the bar: say so (P6)
+function boostPressed() { const r = G.race; if (G.mode !== 'race' || G.paused || !r || !r.racing) return; const me = r.boats[r.player]; if (!me.boosting && !me.finished && me.boostE < BOOST.minStart) { sound.sfx('empty'); pulse(E.btn, 'no'); } }
+
+// ---------- pause, background, rotation ----------
+// by: 'button', 'hidden' (the page went to the background), 'rotate' (the phone was turned upright), 'sensors' (motion data stopped)
+function pause(by = 'button') {
+  if (G.mode !== 'race' || !G.race || G.race.over) return;
+  if (G.paused && !(G.resumeLeft > 0)) return;                       // already on a pause screen
+  G.paused = true; G.pausedBy = by; G.resumeLeft = 0; G.dirty = true; E.count.textContent = ''; if (G.run) G.run.countShown = null;
+  controls.releaseAll(); sound.frame({ active: false });
+  show(by === 'hidden' ? 'resume' : by === 'rotate' ? 'rotate' : by === 'sensors' ? 'sensors' : 'pause');
+}
+// RESUME shows the frozen race with a short count, so the hands are back on the phone before the boat moves (P8)
+function resume() {
+  if (!G.paused || G.resumeLeft > 0 || G.mode !== 'race') return;
+  sound.resume(); keepAwake(); controls.releaseAll();
+  G.resumeLeft = RESUME_S; G.resumeShown = ''; show('race');
+  if (controls.mode === 'tilt') hudMsg('HOLD IT STRAIGHT', 'tip', 6, true);
+}
+function stepResume(dt) {
+  G.resumeLeft -= dt;
+  const txt = G.resumeLeft > 0 ? String(Math.ceil(G.resumeLeft / (RESUME_S / 3))) : '';
+  if (txt !== G.resumeShown) { G.resumeShown = txt; E.count.textContent = txt; if (txt) sound.sfx('count'); }
+  if (G.resumeLeft > 0) return;
+  G.resumeLeft = 0; G.paused = false; G.pausedBy = null; if (G.run) G.run.countShown = null;
+  if (controls.mode === 'tilt') controls.recentre();   // the phone was put down or turned: the pose held now is straight ahead
+}
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'hidden') { pause('hidden'); sound.frame({ active: false }); }
+  else { sound.resume(); if (G.started) { PF.requestWake(); reprobe(); } last = null; }   // back: the display's rate may have changed (Low Power Mode, T-02)
+});
+function checkRotation() {
+  const portrait = PF.env.touch && !PF.landscape();
+  if (portrait && G.screen !== 'rotate') { G.before = G.screen; if (G.mode === 'race' && (!G.paused || G.resumeLeft > 0) && G.race && !G.race.over) pause('rotate'); else show('rotate'); }
+  else if (!portrait && G.screen === 'rotate') {
+    if (G.before === 'cal') beginCal();                    // the straight-ahead check was up: start it again (it keeps where it must return to)
+    else if (G.paused) show(G.pausedBy === 'sensors' ? 'sensors' : 'pause');
+    else show(G.before && G.before !== 'rotate' ? G.before : 'title');
+  }
+}
+function size() { stage.resize(window.innerWidth, window.innerHeight, window.devicePixelRatio || 1); G.dirty = true; if (G.run) G.run.trackW = E.prog.clientWidth || G.run.trackW; checkRotation(); }
+window.addEventListener('resize', size); window.addEventListener('orientationchange', () => setTimeout(size, 250));
+
+// ---------- start, straight-ahead check ----------
+async function onStart() {
+  if (G.starting) return; G.starting = true;
+  PF.initHaptic(); PF.haptic();
+  const audio = sound.start(); PF.requestWake();           // all inside the tap: motion access, sound, screen lock
+  const p = controls.start();
+  sound.music('menu'); if (audio) setTimeout(() => sound.sfx('check'), 250);
+  await p; G.started = true; G.starting = false; G.afterCal = null;
+  beginCal();
+}
+// The check takes at least 1.5 s while a ring fills (time to bring the phone into the steering pose), needs the phone still for
+// the last 0.6 s, and shows that it worked for a beat before the next screen (P15).
+const CAL_HOLD_MS = 1500, CAL_DONE_MS = 800;
+function beginCal() {
+  G.calT = performance.now(); G.calTry = 0; G.calDone = 0; G.calP = '';
+  $('b-cal-anyway').classList.add('hidden'); E.calWheel.classList.remove('ok'); E.calWheel.style.setProperty('--p', '0');
+  $('cal-title').textContent = 'Hold your phone like a steering wheel'; $('cal-msg').textContent = 'Looking for the motion sensors...';
+  show('cal');
+}
+// back to where the check was asked for: the pause menu of a running race (P1, T-06), otherwise the courses
+function finishCal(mode, note) {
+  controls.setMode(mode);
+  const back = G.afterCal; G.afterCal = null;
+  if (back === 'pause' && G.mode === 'race' && G.paused) { paintControlsHint(); show('pause'); }
+  else { paintMenu(); show('menu'); }
+  if (note) toast(note, 4200);
+}
+function stepCal(th) {
+  if (G.calDone) { if (th - G.calDone > CAL_DONE_MS) { G.calDone = 0; finishCal('tilt', 'Straight ahead is set. Tilt to steer.'); } return; }
+  const st = controls.sensorState();
+  if (st === 'touch') { finishCal('touch', controls.perm && [controls.perm.motion, controls.perm.orientation].includes('denied') ? 'Motion access was refused, so steering is by touch: slide your left thumb, boost with your right.' : 'No motion sensor here: slide your left thumb to steer, or use the arrow keys.'); return; }
+  if (st !== 'tilt') { if (th - G.calT > 2500 && controls.mode !== 'keys') finishCal('touch', 'No motion data: slide your left thumb to steer.'); return; }
+  const g = controls.tilt.gEma;
+  if (g) E.calNeedle.style.transform = `rotate(${clamp(Math.atan2(g[1], Math.abs(g[0]) + 1e-6) * 180 / Math.PI, -60, 60).toFixed(1)}deg)`;
+  const p = clamp((th - G.calT) / CAL_HOLD_MS, 0, 1), ps = p.toFixed(2);
+  if (ps !== G.calP) { G.calP = ps; E.calWheel.style.setProperty('--p', ps); }
+  if (p < 1) { $('cal-msg').textContent = 'Hold it the way you want to steer straight.'; return; }
+  if (th - G.calTry < 250) return;
+  G.calTry = th;
+  const r = controls.calibrate();
+  if (r.ok) { E.calWheel.classList.add('ok'); $('cal-title').textContent = 'Straight ahead is set'; $('cal-msg').textContent = 'Tilt left and right to steer.'; G.calDone = th; return; }
+  $('cal-msg').textContent = r.why === 'moved' ? 'Keep it still for a moment...' : 'Waiting for the sensors...';
+  if (th - G.calT > 5000) $('b-cal-anyway').classList.remove('hidden');
+}
+
+// ---------- menu ----------
+function paintMenu() {
+  const s = G.save, sel = G.sel, lock = '<i class="lock"></i>';
+  $('m-modes').querySelectorAll('button').forEach((b) => b.classList.toggle('on', b.dataset.mode === sel.mode));
+  $('m-courses').innerHTML = COURSE_KEYS.map((k, i) => {
+    const d = COURSE_DEFS[k], open = PR.courseOpen(s, COURSE_KEYS, k), best = s.best[`${k}:${sel.mode}`], medal = s.medals[`${k}:${sel.mode}`], w = WORLDS[d.world] || WORLDS.sunset;
+    const rgb = (a) => `rgb(${a.map((v) => Math.round(255 * Math.min(1, Math.sqrt(v)))).join(',')})`;
+    return `<button class="card ${k === sel.course ? 'on' : ''} ${open ? '' : 'locked'}" data-course="${k}"><span class="sw" style="background:linear-gradient(180deg, ${rgb(w.zenith)} 0%, ${rgb(w.horizon)} 78%, ${rgb(w.scatter)} 100%)"></span>`
+      + `<span class="medal"><span class="medal-dot ${medal || 'none'}"></span></span><b>${d.name}</b><small>${open ? `${w.label}, ${d.laps} laps` : `Finish in the top 3 on ${COURSE_DEFS[COURSE_KEYS[i - 1]].name}`}</small><small>${open ? (best ? 'Best ' + PR.fmtTime(best.time) : 'No time yet') : lock + 'Locked'}</small></button>`;
+  }).join('');
+  $('m-tunes').innerHTML = TUNE_KEYS.map((k) => { const open = s.unlocked.tunes.includes(k); return `<button data-tune="${k}" class="${k === sel.tune ? 'on' : ''} ${open ? '' : 'locked'}">${open ? '' : lock}${TUNES[k].label}</button>`; }).join('');
+  $('m-liveries').innerHTML = LIVERY_KEYS.map((k) => { const L = LIVERIES[k], col = L.amount ? `rgb(${L.color.map((v) => Math.round(255 * Math.sqrt(v))).join(',')})` : '#f6f6f2', open = s.unlocked.liveries.includes(k);
+    return `<button data-livery="${k}" aria-label="${L.label}" class="${k === sel.livery ? 'on' : ''} ${open ? '' : 'locked'}"><i style="background:${col}"></i>${open ? '' : '<span class="lock"></span>'}</button>`; }).join('');
+  $('m-diff').querySelectorAll('button').forEach((b) => b.classList.toggle('on', b.dataset.diff === sel.difficulty));
+  $('m-diff-wrap').classList.toggle('hidden', sel.mode !== 'race');
+  $('b-go').textContent = sel.mode === 'race' ? 'RACE' : 'GO';
+  const T = TUNES[sel.tune];
+  $('m-hint').textContent = `${T.label}: top ${fmtSpeed(T.top)} ${settings().units === 'kn' ? 'kn' : 'km/h'}, ${T.turnRate >= 62 ? 'quick turns' : T.grip < 2.5 ? 'slides wide' : 'steady'}. `
+    + (sel.mode === 'race' ? 'Gates and clean landings fill the boost; clip a gate\'s inside buoy for PERFECT.' : 'Alone against the clock and your own ghost.');
+}
+function menuClick(e) {
+  const b = e.target.closest('button'); if (!b) return; const s = G.save, sel = G.sel; sound.resume(); sound.sfx('click');
+  if (b.dataset.mode) sel.mode = b.dataset.mode;
+  else if (b.dataset.course) { if (!PR.courseOpen(s, COURSE_KEYS, b.dataset.course)) return toast(`Finish in the top 3 on ${COURSE_DEFS[COURSE_KEYS[COURSE_KEYS.indexOf(b.dataset.course) - 1]].name} to open this course.`); sel.course = b.dataset.course; if (G.demoCourse !== sel.course) startDemo(sel.course); }
+  else if (b.dataset.tune) { if (!s.unlocked.tunes.includes(b.dataset.tune)) return toast(`${TUNES[b.dataset.tune].label} tune: ${PR.UNLOCKS.tunes[b.dataset.tune]}.`); sel.tune = b.dataset.tune; }
+  else if (b.dataset.livery) { if (!s.unlocked.liveries.includes(b.dataset.livery)) return toast(`${LIVERIES[b.dataset.livery].label}: ${PR.UNLOCKS.liveries[b.dataset.livery]}.`); sel.livery = b.dataset.livery; stage.boats[3] && stage.boats[3].vis.setLivery(sel.livery); }
+  else if (b.dataset.diff) { sel.difficulty = b.dataset.diff; settings().difficulty = sel.difficulty; saveNow(); }
+  paintMenu();
+}
+
+// ---------- settings and the test card ----------
+function paintSettings() {
+  const s = settings();
+  document.querySelectorAll('#set-grid [data-set]').forEach((box) => box.querySelectorAll('button').forEach((b) => b.classList.toggle('on', String(s[box.dataset.set]) === b.dataset.v)));
+  $('set-maxdeg').value = s.maxDeg; $('set-maxdeg-v').textContent = s.maxDeg;
+}
+function settingsClick(e) {
+  const b = e.target.closest('button'), box = b && b.closest('[data-set]'); if (!box) return; sound.resume(); sound.sfx('click');
+  const k = box.dataset.set, v = b.dataset.v; settings()[k] = v === 'true' ? true : v === 'false' ? false : v;
+  if (k === 'steering') { if (v === 'touch') controls.setMode('touch'); else if (controls.tiltAvailable() && controls.tilt.cal) controls.setMode('tilt'); else if (v === 'tilt') toast(controls.tiltAvailable() ? 'Press "Set straight ahead again".' : 'No motion data on this device: touch steering stays on.'); }
+  applySettings(); saveNow(); paintSettings(); paintControlsHint();
+}
+function cardText() {
+  const s = settings(), I = controls.info(), gl = stage.renderer.getContext(), dbg = gl.getExtension('WEBGL_debug_renderer_info'), L = [], mem = stage.renderer.info.memory;
+  L.push(`Crest Run test card | ${VERSION} built ${BUILD}, sim ${SIM_VERSION} | device clock ${new Date().toISOString()} | ${location.host}`);
+  L.push(`Device: ${PF.shortUA()} (may be frozen) | GPU ${dbg ? gl.getParameter(dbg.UNMASKED_RENDERER_WEBGL) : gl.getParameter(gl.RENDERER)} | DPR ${window.devicePixelRatio} | screen ${screen.width}x${screen.height} | window ${window.innerWidth}x${window.innerHeight} | Home Screen app ${PF.env.standalone ? 'yes' : 'no'} | https ${PF.env.secure ? 'yes' : 'no'}`);
+  L.push(`Picture: tier ${stage.tierKey} (${s.quality}), render ${stage.renderSize()} at scale ${stage.scale}, bloom pipeline ${stage.post.enabled ? 'on' : 'off'} (half-float targets ${stage.post.hdr ? 'yes' : 'no'}) | refresh seen ${G.refresh ? (1000 / G.refresh.interval).toFixed(1) + ' Hz' + (G.refresh.snapped ? '' : ' (not a usual rate)') + (G.refresh.interval > 30 ? ': 30 Hz, Low Power Mode or a slow frame' : '') : '?'}, measured ${G.probes}x | draw calls ${stage.stats.calls}, triangles ${stage.stats.triangles} | GPU objects: ${mem.geometries} geometries, ${mem.textures} textures, ${stage.renderer.info.programs ? stage.renderer.info.programs.length : '?'} programs`);
+  L.push(`Governor changes [s, scale, tier, why]: ${gov.changes.length ? gov.changes.map((c) => c.join(' ')).join('; ') : 'none'}`);
+  L.push(`Steering: ${I.mode} (setting ${s.steering}) | permission ${I.perm ? `${I.perm.motion}/${I.perm.orientation}` : 'not asked'} | gyro ${I.tilt.gyro} | events/s motion ${I.rates.mot.toFixed(0)}, orientation ${I.rates.ori.toFixed(0)} | interval ${I.tilt.interval || '?'} | calibrations ${I.tilt.calOk} ok, ${I.tilt.calRejected} refused${I.tilt.cal ? ` (last: moved ${I.tilt.cal.spread} deg, tilted back ${I.tilt.cal.tiltBack} deg)` : ''} | recentres ${I.recentres} | full lock ${I.maxDeg} deg, reverse ${I.invert ? 'on' : 'off'}`);
+  L.push(`Sound: ${s.sound ? 'on' : 'off'}, music ${s.music ? 'on' : 'off'}, engine ${sound.state}, audio session ${sound.session}, effects played ${sound.tones} | wake lock ${PF.wake.state} (released ${PF.wake.releases}x)${G.wakeTold ? ', the player was told to touch the screen' : ''} | storage ${G.storage ? 'ok' : 'FAILED'} | camera ${s.camera}, motion ${s.motion}`);
+  if (!G.lastRuns.length) L.push('Runs: none yet');
+  G.lastRuns.forEach((r, i) => L.push(`Run ${i + 1} ${r.course} ${r.mode} ${r.tune} (${r.steer}): ${r.why}, place ${r.place}/${r.boats}, time ${r.time ?? '-'} s, gates ${r.passed}/${r.gates} (${r.perfects} perfect), landings ${r.clean} clean ${r.rough} rough, contacts ${r.contacts}, top ${r.topKmh} km/h, boost ${r.boostS} s`
+    + ` | frames ${r.frames}, late ${r.latePct} %, mean ${r.meanMs} ms, worst ${r.worstMs} ms | motion events ${r.motPerS}/s | recentres ${r.recentres} | tier ${r.tier}, scale ${r.scale}, render ${r.render}`));
+  L.push(`Progress: races ${G.save.stats.races}, finished ${G.save.stats.finished}, wins ${G.save.stats.wins} | page errors ${G.errors.length}${G.errors.length ? ': ' + G.errors.slice(-3).join(' / ') : ''}`);
+  return L.join('\n').replace(/[^\x20-\x7e\n]/g, '?');
+}
+
+// ---------- the frame loop ----------
+let last = null;
+const AUTO = { steer: 0, brake: 0, boost: 0 };
+// one physics step of the player's race: the player's inputs (or the computer's, for tests and film), the ghost in step, events
+function stepRace(race, run) {
+  if (G.auto) { race.drive(race.boats[race.player], AUTO); race.step(AUTO.steer, AUTO.brake, AUTO.boost); }
+  else race.step(controls.steer, controls.brake, controls.boost);
+  if (G.ghost && !G.ghost.race.done) { const gh = G.ghost, k = gh.race.step_; if (k < gh.steer.length) gh.race.step(gh.steer[k] / 100, gh.flags[k] & 1, (gh.flags[k] >> 1) & 1); gh.race.events.length = 0; }
+  // when each boat passes each 10 m mark, for the time gaps of the display (P13)
+  const B = race.boats, mk = run.marks, mn = run.markN;
+  for (let i = 0; i < B.length; i++) { const p = B[i].prog, m = mk[i]; while (mn[i] < m.length && p >= mn[i] * GAP_M) m[mn[i]++] = race.t; }
+  if (run.gmarks) { const p = G.ghost.race.boats[0].prog, m = run.gmarks; while (run.gmarkN < m.length && p >= run.gmarkN * GAP_M) m[run.gmarkN++] = G.ghost.race.t; }
+  for (const e of race.events) onRaceEvent(e, race, run);
+  race.events.length = 0;
+}
+function simulate(dt) {
+  const race = G.race, run = G.run;
+  if (G.mode === 'race' && !G.paused) {
+    const me = race.boats[race.player];
+    // a beat of slow motion at the top of a ramp jump (sim time slows, the simulation itself is unchanged)
+    if (G.slowArmed && me.air && me.rampAir && me.vy <= 0.6) { G.slowArmed = false; G.slowLeft = 0.26; }
+    G.slowLeft = Math.max(0, G.slowLeft - dt);
+    G.timeScale += ((G.slowLeft > 0 ? 0.3 : 1) - G.timeScale) * (1 - Math.exp(-dt / 0.06));
+    controls.sample(performance.now(), dt);
+    if (G.paused) return;                                  // the sensors stopped in this very frame: the race is paused now (P5)
+    G.acc += dt * G.timeScale;
+    while (G.acc >= DT) { stepRace(race, run); G.acc -= DT; if (race.done) break; }
+    if (G.resultsAt !== null && (performance.now() >= G.resultsAt || race.done) || race.done) { endRace(); return; }
+    paintHud(race, run, dt);
+    sound.frame({ speed: me.u / me.P.top, boost: me.boostLv, air: me.air, active: !me.finished });
+  } else if (G.mode === 'demo' || G.mode === 'after') {
+    // behind the menus and the result screen every boat sails under the computer; a finished demo starts again, a finished race
+    // of the player's sails on (afterglow) so the sea never stands still (T-07)
+    G.acc += dt;
+    while (G.acc >= DT) {
+      race.step(0, 0, 0); for (const e of race.events) stage.onEvent(e); race.events.length = 0; G.acc -= DT;
+      if (race.done && G.mode === 'demo') { startDemo(G.demoCourse); break; }
+    }
+    sound.frame({ active: false });
+  }
+}
+// ---- the display's own rate: measured with a small, light picture at the start, and again when it seems to have changed ----
+function endProbe(P) {
+  const m = measureRefresh(P.deltas), was = gov.interval; G.refresh = m; G.probes++;
+  if (!P.again) { gov.setInterval(m.interval); watch.setInterval(m.interval); if (m.interval > 30 && gov.auto) gov.tier = 'low'; stage.setTier(Q.get('tier') || gov.tier); }
+  else if (Math.abs(m.interval - was) / was > 0.2) { gov.setInterval(m.interval); watch.setInterval(m.interval); gov.set(1, gov.tier, `display now ${(1000 / m.interval).toFixed(0)} Hz`); }
+  stage.setScale(gov.scale);
+}
+function reprobe() { if (G.film || !G.refresh) return; G.refresh = null; G.probe = { n: 0, deltas: [], again: true }; stage.setScale(0.5); }
+function frame(ts) {
+  if (!G.film) requestAnimationFrame(frame);
+  const d = last === null ? 16.7 : ts - last, dt = Math.min(0.1, d / 1000); last = ts; G.frames++;
+  if (!G.refresh) { const P = G.probe; if (P.n++ > 4 && d > 0) P.deltas.push(d); if (P.deltas.length >= 36) endProbe(P); }
+  else if (!G.paused) {
+    const w = watch.feed(d);
+    if (w === 'probe') reprobe();                                                           // steadily slower: Low Power Mode, or an overloaded phone? Measure.
+    else if (w) { G.refresh = { interval: w.interval, snapped: true, n: 0 }; G.probes++; gov.setInterval(w.interval); watch.setInterval(w.interval); }   // faster frames than the interval: a faster display
+    else if (gov.frame(d)) applyGov();
+  }
+  if (G.run && G.mode === 'race' && !G.paused && G.refresh) { const r = G.run; r.frames++; r.sumMs += d; if (d > r.worst) r.worst = d; if (Math.round(d / G.refresh.interval) > 1) r.late++; }
+  if (G.screen === 'cal') stepCal(performance.now());
+  if (G.resumeLeft > 0) stepResume(dt);
+  if (G.testBusyMs > 0) { const e = performance.now() + G.testBusyMs; while (performance.now() < e) { /* test hook: a planted slow frame */ } }
+  if (G.race) {
+    simulate(dt);
+    // a paused race is a still picture: nothing moves, and it is drawn only now and then (T-12)
+    const still = G.paused;
+    stage.update(G.acc / DT, still ? 0 : dt * (G.mode === 'race' ? G.timeScale : 1), G.race.t - (1 - G.acc / DT) * DT);
+    if (!still || G.dirty || G.frames % 6 === 0) { stage.render(); G.dirty = false; }
+  }
+  // test hook: play a display with this frame time (ms), whatever the frame itself cost: wait out the rest of the interval
+  // (measured on the page's own clock from the end of the last frame: the time stamp a frame is given can be milliseconds old)
+  if (G.testPaceMs > 0) { const e = (G.paceLast || performance.now()) + G.testPaceMs; while (performance.now() < e) { /* a capped display */ } G.paceLast = performance.now(); } else G.paceLast = 0;
+}
+
+// ---------- wiring ----------
+function wire() {
+  tap('b-start', onStart);
+  tap('b-title-settings', () => { G.back = 'title'; paintSettings(); show('settings'); });
+  tap('b-menu-settings', () => { G.back = 'menu'; paintSettings(); show('settings'); });
+  tap('b-pause-settings', () => { G.back = 'pause'; paintSettings(); show('settings'); });
+  tap('b-set-done', () => { if (G.back === 'menu') paintMenu(); show(G.back || 'menu'); });
+  tap('b-recal', () => { if (!G.started) return toast('Press START first.'); if (!controls.tiltAvailable()) return toast('No motion data on this device.'); G.afterCal = G.back; controls.mode = 'none'; beginCal(); });
+  tap('b-card', () => { $('card-text').textContent = cardText(); show('card'); });
+  tap('b-card-done', () => { paintSettings(); show('settings'); });
+  tap('b-card-copy', async () => { const t = cardText(); $('card-text').textContent = t; try { await navigator.clipboard.writeText(t); toast('Card copied: paste it in the chat.'); } catch (e) { toast('Copy failed: select the text and copy it by hand.'); } });
+  tap('b-card-reset', () => { if (!confirm('Erase every best time, medal and unlock on this device?')) return; const keep = settings(); G.save = PR.freshSave(); G.save.settings = keep; saveNow(); toast('Progress erased.'); });
+  tap('b-cal-touch', () => finishCal('touch', 'Touch steering: slide your left thumb, boost with your right.'));
+  tap('b-cal-anyway', () => { const r = controls.calibrate(true); if (r.ok) finishCal('tilt', 'Straight ahead is set.'); else toast('Still moving too much: rest your elbows, or steer by touch.'); });
+  $('s-menu').addEventListener('click', menuClick);
+  $('set-grid').addEventListener('click', settingsClick);
+  $('set-maxdeg').addEventListener('input', (e) => { settings().maxDeg = +e.target.value; $('set-maxdeg-v').textContent = e.target.value; controls.setOptions({ maxDeg: settings().maxDeg, invert: !!settings().invert }); });
+  $('set-maxdeg').addEventListener('change', saveNow);
+  tap('b-go', () => { if (!PR.courseOpen(G.save, COURSE_KEYS, G.sel.course)) return; startRace(); });
+  tap('b-retry', startRace);
+  tap('b-nextcourse', () => { if (G.nextCourse && PR.courseOpen(G.save, COURSE_KEYS, G.nextCourse)) G.sel.course = G.nextCourse; startRace(); });
+  tap('b-next', () => { startDemo(G.sel.course); paintMenu(); show('menu'); });
+  tap('h-pause', () => pause('button'));
+  tap('h-recentre', () => { const r = controls.recentre(); toast(r.ok ? 'Straight ahead set again.' : 'Hold the phone still to recentre.', 1500); });
+  tap('b-resume', resume); tap('b-resume2', resume); tap('b-resume3', resume);
+  tap('b-sensors-tilt', () => { if (controls.tiltFresh()) { controls.setMode('tilt'); paintControlsHint(); resume(); } else toast('Still no motion data: steering stays on touch.'); });
+  tap('b-restart', () => { G.paused = false; startRace(); });
+  tap('b-quit', () => { G.paused = false; sound.music('menu'); startDemo(G.sel.course); paintMenu(); show('menu'); });
+  // the play layer: thumbs
+  const play = E.play;
+  play.addEventListener('pointerdown', (e) => { e.preventDefault(); try { play.setPointerCapture(e.pointerId); } catch (x) { /* older browsers */ } const k = controls.down(e.pointerId, e.clientX, window.innerWidth); if (k === 'boost') { PF.haptic(); boostPressed(); } });
+  play.addEventListener('pointermove', (e) => controls.move(e.pointerId, e.clientX));
+  for (const ev of ['pointerup', 'pointercancel', 'lostpointercapture']) play.addEventListener(ev, (e) => controls.up(e.pointerId));
+  window.addEventListener('keydown', (e) => {
+    if (e.repeat) return;
+    if (e.code === 'Escape' || e.code === 'KeyP') { if (['pause', 'resume', 'sensors'].includes(G.screen)) resume(); else if (G.screen === 'race') pause('button'); return; }
+    if (controls.key(e.code, true)) { e.preventDefault(); if (controls.k.boost && (e.code === 'Space' || e.code === 'ArrowUp' || e.code === 'KeyW')) boostPressed(); }
+  });
+  window.addEventListener('keyup', (e) => { controls.key(e.code, false); });
+  for (const ev of ['contextmenu', 'gesturestart', 'dblclick']) document.addEventListener(ev, (e) => e.preventDefault());
+  // a sound engine that was interrupted starts again only inside a tap: every tap and key press tries (T-09)
+  for (const ev of ['pointerup', 'touchend', 'click', 'keydown']) document.addEventListener(ev, () => sound.resume(), { capture: true, passive: true });
+  // motion data stopped in the middle of a race: pause and say so, instead of changing the steering under the player's hands (P5)
+  controls.onChange = (what) => {
+    paintControlsHint();
+    if (what !== 'touch-lost') return;
+    if (G.mode === 'race' && !G.paused && G.race && !G.race.over) pause('sensors'); else toast('The motion sensors stopped: steering is by touch now.', 4000);
+  };
+  canvas.addEventListener('webglcontextlost', (e) => { e.preventDefault(); G.errors.push('graphics context lost'); if (G.mode === 'race') pause('button'); toast('The phone took the graphics away. Reloading...', 4000); setTimeout(() => location.reload(), 1800); });
+}
+
+// ---------- test and film hooks ----------
+G.platform = PF; G.startRace = startRace; G.startDemo = startDemo; G.endRace = endRace; G.show = show; G.cardText = cardText; G.pause = pause; G.resume = resume; G.onStart = onStart; G.paintMenu = paintMenu; G.reprobe = reprobe;
+// test hook: run the simulation forward without drawing (a player's race is steered by the computer while skipping)
+G.skip = (seconds) => { const n = Math.round(seconds / DT), race = G.race, was = G.auto; if (G.mode === 'race') G.auto = true;
+  for (let i = 0; i < n && !race.done; i++) { if (G.mode === 'race') stepRace(race, G.run); else { race.step(0, 0, 0); for (const e of race.events) stage.onEvent(e); race.events.length = 0; } }
+  G.auto = was; return race.lapT; };
+// film: the caller owns the clock. step(ms) advances the game by exactly that much and draws one frame.
+G.filmStep = (ms) => { G.filmT += ms / 1000; frame((last === null ? 0 : last) + ms); return { t: G.race ? G.race.lapT : 0, mode: G.mode, screen: G.screen }; };
+// the pixels of the frame just drawn (call it right after filmStep, before the browser presents). framePixels: base64 of RGBA
+// rows from the bottom; frameHash: FNV-1a over them. Two film runs give the same picture; a single pixel can differ by one step
+// of 255 on some frames (measured 2026-11-13 on this PC's GPU), so compare pixels with a tolerance, not hashes.
+function readFrame() { const gl = stage.renderer.getContext(), w = gl.drawingBufferWidth, h = gl.drawingBufferHeight, px = new Uint8Array(w * h * 4); stage.renderer.setRenderTarget(null); gl.readPixels(0, 0, w, h, gl.RGBA, gl.UNSIGNED_BYTE, px); return { w, h, px }; }
+G.frameHash = () => { const { w, h, px } = readFrame(); let x = 0x811c9dc5; for (let i = 0; i < px.length; i++) { x ^= px[i]; x = Math.imul(x, 0x01000193); } return `${w}x${h}:${(x >>> 0).toString(16).padStart(8, '0')}`; };
+G.framePixels = () => { const { w, h, px } = readFrame(); let s = ''; for (let i = 0; i < px.length; i += 8192) s += String.fromCharCode.apply(null, px.subarray(i, i + 8192)); return { w, h, b64: btoa(s) }; };
+// The film's sound track: in film mode every call to the sound engine is logged with the film clock (the page itself is silent:
+// no tap started its sound). renderSound plays that log into an offline context, the same engine and the same calls, and returns
+// the seconds from..to as a 16-bit mono WAV in base64, with its levels. Offline rendering: it takes a second or two.
+G.renderSound = async (from, to, rate = 44100, mute = []) => {
+  const log = G.soundLog || [], ctx = new OfflineAudioContext(1, Math.ceil(to * rate), rate), s = settings();
+  const snd = Sound.forRender(ctx, { sound: true, music: true, volume: s.volume });
+  // mute: parts to leave out ('engine', 'water', 'jet', 'music', 'sfx'), to hear or measure one part alone
+  const cut = { engine: () => snd.engGain.disconnect(), water: () => snd.water.g.disconnect(), jet: () => snd.jet.g.disconnect(), music: () => snd.musBus.disconnect(), sfx: () => snd.sfxBus.disconnect() };
+  for (const m of mute) if (cut[m]) cut[m]();
+  let k = 0; const run = (until) => { for (; k < log.length && log[k][0] <= until + 1e-9; k++) { const [, fn, ...a] = log[k]; snd[fn](...a); } snd.schedule(); };
+  const times = [...new Set(log.map((e) => e[0]).filter((t) => t > 0 && t < to))].sort((a, b) => a - b);
+  run(0);
+  for (const t of times) ctx.suspend(t).then(() => { run(t); ctx.resume(); });
+  const buf = await ctx.startRendering(), all = buf.getChannelData(0), i0 = Math.floor(from * rate), x = all.subarray(i0);
+  let peak = 0, sum = 0, clipped = 0, dc = 0; for (let i = 0; i < x.length; i++) { const v = x[i], a = Math.abs(v); if (a > peak) peak = a; if (a >= 0.999) clipped++; sum += v * v; dc += v; }
+  const perS = []; for (let sec = 0; sec * rate < x.length; sec++) { let q = 0, n = 0; for (let i = sec * rate; i < Math.min(x.length, (sec + 1) * rate); i++) { q += x[i] * x[i]; n++; } perS.push(+(10 * Math.log10(q / n + 1e-12)).toFixed(1)); }
+  const pcm = new Int16Array(x.length); for (let i = 0; i < x.length; i++) pcm[i] = Math.max(-32768, Math.min(32767, Math.round(x[i] * 32767)));
+  const head = new DataView(new ArrayBuffer(44)), W4 = (o, t) => { for (let i = 0; i < 4; i++) head.setUint8(o + i, t.charCodeAt(i)); };
+  W4(0, 'RIFF'); head.setUint32(4, 36 + pcm.length * 2, true); W4(8, 'WAVE'); W4(12, 'fmt '); head.setUint32(16, 16, true); head.setUint16(20, 1, true); head.setUint16(22, 1, true); head.setUint32(24, rate, true); head.setUint32(28, rate * 2, true); head.setUint16(32, 2, true); head.setUint16(34, 16, true); W4(36, 'data'); head.setUint32(40, pcm.length * 2, true);
+  const bytes = new Uint8Array(44 + pcm.length * 2); bytes.set(new Uint8Array(head.buffer), 0); bytes.set(new Uint8Array(pcm.buffer), 44);
+  let bin = ''; for (let i = 0; i < bytes.length; i += 8192) bin += String.fromCharCode.apply(null, bytes.subarray(i, i + 8192));
+  return { rate, seconds: x.length / rate, events: log.length, peak: +peak.toFixed(4), clipped, rmsDb: +(10 * Math.log10(sum / x.length + 1e-12)).toFixed(1), dc: +(dc / x.length).toFixed(5), perSecondDb: perS, wav: btoa(bin) };
+};
+
+// ---------- boot ----------
+try {
+  wire(); applySettings(); size();
+  $('boot-bar').style.width = '30%';
+  const loaded = await stage.load(); G.loaded = loaded;
+  $('boot-bar').style.width = '100%';
+  stage.setTier('low'); stage.setScale(0.5);              // light and small while the screen's frame rate is measured
+  if (G.film) {
+    const w = +(Q.get('w') || 1920), h = +(Q.get('h') || 1080); canvas.style.width = w + 'px'; canvas.style.height = h + 'px'; stage.resize(w, h, 1); G.refresh = { interval: 16.67, snapped: true }; gov.auto = false; stage.setTier(Q.get('tier') || 'high'); stage.setScale(1);
+    const log = G.soundLog = []; for (const fn of ['frame', 'sfx', 'music']) { const f = sound[fn].bind(sound); sound[fn] = (...a) => { log.push([G.filmT, fn, ...a]); return f(...a); }; }
+  }
+  startDemo(Q.get('course') && COURSE_KEYS.includes(Q.get('course')) ? Q.get('course') : G.sel.course);
+  $('title-note').textContent = !PF.env.touch ? 'Keys: A and D or the arrows steer, space boosts, S brakes.'
+    : (PF.env.secure ? 'Hold the phone sideways. START asks for motion access and turns the sound on.' : 'This page is not on https, so the phone gives it no motion data: you steer by touch.') + (PF.env.ios && !PF.env.standalone ? ' Tip: Share, Add to Home Screen gives full screen.' : '');
+  $('title-build').textContent = `${VERSION}, built ${BUILD}`;
+  show('title'); checkRotation();
+  // film: no menus; the race starts at once with the computer at the wheel and the caller owns the clock (G.filmStep)
+  if (G.film) { G.started = true; G.auto = true; controls.mode = 'keys'; if (Q.get('course') && COURSE_KEYS.includes(Q.get('course'))) G.sel.course = Q.get('course'); if (Q.get('mode') === 'trial') G.sel.mode = 'trial'; startRace(); }
+  if (!G.film) requestAnimationFrame(frame);
+  window.__ready = true;
+} catch (e) { window.__error = String((e && e.stack) || e); $('boot-msg').textContent = 'The game could not start: ' + String((e && e.message) || e); }

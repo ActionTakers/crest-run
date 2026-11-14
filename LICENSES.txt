@@ -1,0 +1,5 @@
+crest-run 0.2.1 (a working title), build 2026-11-14 #f12e6f3c.
+
+three.js 0.186.1: MIT licence, see vendor/three-0.186.1/LICENSE.
+Scenery models (assets/models/kit.glb): from the Watercraft Kit, Pirate Kit and Nature Kit by Kenney (www.kenney.nl), Creative Commons Zero (CC0 1.0).
+The yacht (assets/models/yacht-b04.glb), the code, the pictures drawn in the page, the sounds and the icons were made for this game.
