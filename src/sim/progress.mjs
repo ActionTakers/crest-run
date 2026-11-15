@@ -73,5 +73,22 @@ export function applyResult(save, result, courseKeys, medalTimes = null) {
   if (s.stats.perfects >= CORAL_PERFECTS) add('liveries', 'coral');
   return { save: s, news };
 }
+// Books a rescue mission (sim/rescue.mjs). result: { mode: 'rescue', course (the level), tune, livery, difficulty, finished, saved,
+// total, time, medal }. The best mission is the one with the most llamas safe; with as many, the quicker one.
+export function applyRescue(save, result) {
+  const s = JSON.parse(JSON.stringify(save)), news = [];
+  s.stats.rescues = (s.stats.rescues || 0) + 1;
+  s.last = { ...s.last, tune: result.tune, livery: result.livery || s.last.livery, mode: 'rescue' };
+  if (!result.finished) return { save: s, news };
+  s.stats.llamas = (s.stats.llamas || 0) + result.saved;
+  const key = `${result.course}:rescue`, old = s.best[key];
+  if (!old || result.saved > old.saved || (result.saved === old.saved && result.time < old.time)) {
+    s.best[key] = { saved: result.saved, total: result.total, time: result.time, tune: result.tune, difficulty: result.difficulty };
+    news.push({ type: 'best', saved: result.saved, was: old ? old.saved : null });
+  }
+  const had = s.medals[key] || null, now = better(result.medal || null, had);
+  if (now !== had) { s.medals[key] = now; news.push({ type: 'medal', medal: now }); }
+  return { save: s, news };
+}
 export const courseOpen = (save, courseKeys, key) => courseKeys.indexOf(key) === 0 || save.unlocked.courses.includes(key);
 export function fmtTime(t) { if (typeof t !== 'number' || !(t >= 0)) return '-:--.--'; const m = Math.floor(t / 60), s = t - 60 * m; return `${m}:${s.toFixed(2).padStart(5, '0')}`; }

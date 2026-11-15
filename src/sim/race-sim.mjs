@@ -3,16 +3,17 @@
 // so the same inputs give the same race: a recorded run replays exactly on the same browser engine (another engine may differ in
 // the last bits of Math.sin and friends).
 // The boat physics (steering, drag, carving, the hull on six wave points, ramps, heave, pitch and roll) is ported from
-// shared/boat-sim.mjs of <local> (commit 26df76d, written 2026-11-08 by session g-50; original in
+// shared/boat-sim.mjs of <local> (commit 26df76d, written 2026-11-08 by an earlier session; original in
 // vendor/spikes/boat-sim.mjs). New here, 2026-11-13, yacht project session: any number of boats, each with full physics and its
 // own driver; two-way contact; a boost the driver controls; landings judged by steering; drafting; places; no per-step garbage.
 // World: metres; x and z on the water, y up. Heading h: forward f = (-sin h, cos h), right r = (-cos h, -sin h). Positive steer,
 // positive h and positive lateral offsets all mean right. Tests: tests/race-sim.test.mjs.
-import * as W from './waves.mjs?v=f12e6f3c';
-import { wrapA, wrapS, projectInto, pointInto, lineOffAt, speedProfile } from './courses.mjs?v=f12e6f3c';
+import * as W from './waves.mjs?v=09ccd5d2';
+import { wrapA, wrapS, projectInto, pointInto, lineOffAt, speedProfile } from './courses.mjs?v=09ccd5d2';
 
 export const DT = 1 / 120;                 // physics step, s
 export const COUNTDOWN_S = 3;
+export const LAST_IN_S = 45;               // once every rival has finished, the player has this long to finish too
 export const SIM_VERSION = 'crest-1';      // stamped on recordings: a ghost made by another version is not replayed
 const AIR = 0.3;                           // m above the water before the hull counts as airborne
 const DEG = Math.PI / 180;
@@ -75,7 +76,11 @@ export class Race {
     this.order = this.boats.map((b) => b.i);          // boat indices by place, the leader first
     this.rec = { steer: [], flags: [] };             // the player's inputs per step (steer in hundredths; bit 0 brake, bit 1 boost)
     this.events = [];                                // what happened this step, for sound and effects; the caller empties it
-    this.capS = this.settings.laps * course.len / 6 + 30;
+    // free: no laps, no gates and no time cap: the boat roams the course's lane and another module decides when it ends
+    // (sim/rescue.mjs, 2026-11-15)
+    this.free = !!this.settings.free;
+    this.capS = this.free ? Infinity : this.settings.laps * course.len / 6 + 30;
+    this.lastInT = null;                             // the race time at which the last rival finished with the player still out
     this._o = [0, 0, 0]; this._h = new Float64Array(6); this._in = { steer: 0, brake: 0, boost: 0 };
     this._contact = new Uint8Array(n * n); this._contactT = new Float64Array(n * n).fill(-1e9);
     this.n = n;
@@ -107,8 +112,18 @@ export class Race {
     if (racing) { this.contacts(); this.drafts(); this.places(); }
     this.t += DT; this.step_++;
     if (this.over && this.t - this.overAt > 6) this.finish('finished');
+    // Every rival is in and the player is still out: the race ends LAST_IN_S later. Without this a player who cannot finish
+    // waited out the long cap alone, five minutes and more (the outside critic's finding 5, 2026-11-14; the slowest stand-in of
+    // tools/balance.mjs finishes at most 17.5 s behind the winner).
+    // (a race without a player, the demo behind the menus, is over at its last finish and never comes here with every boat in)
+    if (B.length > 1 && !this.over) {
+      if (this.lastInT === null) { let all = true; for (let i = 0; i < B.length; i++) if (i !== this.player && !B[i].finished) { all = false; break; } if (all) { this.lastInT = this.lapT; this.events.push({ type: 'lastIn', left: LAST_IN_S }); } }
+      else if (this.lapT - this.lastInT > LAST_IN_S) this.finish('time limit');
+    }
     if (this.lapT > this.capS) this.finish('time limit');
   }
+  // seconds left to finish once every rival is in; null while a rival still races or after the player's own finish
+  get endsIn() { return this.lastInT === null || this.over ? null : Math.max(0, LAST_IN_S - (this.lapT - this.lastInT)); }
   // ---------- the computer's driver: the racing line's curvature a little ahead as feed-forward, plus feedback on the heading of
   // travel and the sideways distance to the line; it brakes for corners from its speed profile, steps aside for a boat ahead and
   // burns its boost on straights. The same rules and the same boat as the player's. ----------
@@ -253,9 +268,9 @@ export class Race {
       if (u > b.topU) b.topU = u;
       b.sumU += u; b.nU++;
       if (off) b.offS += dt;
-      this.scoreGates(b, prevProg, b.prog);
+      if (!this.free) this.scoreGates(b, prevProg, b.prog);
       const lapsDone = b.laps.length;
-      if (b.prog >= (lapsDone + 1) * c.len) {
+      if (!this.free && b.prog >= (lapsDone + 1) * c.len) {
         const frac = ds > 1e-9 ? ((lapsDone + 1) * c.len - prevProg) / ds : 0, tx = this.t + frac * dt - this.go;
         b.laps.push(tx - (lapsDone ? b.laps.reduce((a, x) => a + x, 0) : 0));
         this.events.push({ type: 'lap', i: b.i, lap: b.laps.length, t: tx });

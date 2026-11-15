@@ -3,14 +3,15 @@
 // shows it, interpolated between the last two physics steps so the picture is smooth at any frame rate.
 // Written 2026-11-13 by the yacht project session.
 import * as THREE from 'three';
-import * as W from '../sim/waves.mjs?v=f12e6f3c';
-import { pointInto, wrapA } from '../sim/courses.mjs?v=f12e6f3c';
-import { Sky, WORLDS, makeNoiseTexture } from './sky.mjs?v=f12e6f3c';
-import { Sea } from './sea.mjs?v=f12e6f3c';
-import { Post } from './post.mjs?v=f12e6f3c';
-import { Wake, Spray } from './fx.mjs?v=f12e6f3c';
-import { loadYacht, BoatVisual } from './boats.mjs?v=f12e6f3c';
-import { Scenery } from './scenery.mjs?v=f12e6f3c';
+import * as W from '../sim/waves.mjs?v=09ccd5d2';
+import { pointInto, wrapA } from '../sim/courses.mjs?v=09ccd5d2';
+import { Sky, WORLDS, makeNoiseTexture } from './sky.mjs?v=09ccd5d2';
+import { Sea } from './sea.mjs?v=09ccd5d2';
+import { Post } from './post.mjs?v=09ccd5d2';
+import { Wake, Spray } from './fx.mjs?v=09ccd5d2';
+import { loadYacht, BoatVisual } from './boats.mjs?v=09ccd5d2';
+import { Scenery } from './scenery.mjs?v=09ccd5d2';
+import { RescueView } from './rescue-view.mjs?v=09ccd5d2';
 
 const clamp = (v, lo, hi) => (v < lo ? lo : v > hi ? hi : v);
 const smooth = (e0, e1, x) => { const t = clamp((x - e0) / (e1 - e0), 0, 1); return t * t * (3 - 2 * t); };
@@ -48,6 +49,7 @@ export class Stage {
     this.sun = new THREE.DirectionalLight(0xffffff, 2); this.scene.add(this.sun); this.scene.add(this.sun.target);
     this.scene.fog = new THREE.FogExp2(0xffffff, 0.002);
     this.scenery = new Scenery(this.scene, this.sea);
+    this.rescueView = new RescueView(this.scene, this.sea, this.spray, this.scenery); this.rescue = null; this.rescueLoad = null;
     this.boats = [];           // { vis, wake, y, pitch, roll, x, z, h } per race boat
     this.yacht = null; this.world = null; this.worldKey = null; this.course = null; this.race = null;
     this.tierKey = 'mid'; this.tier = TIERS.mid; this.dpr = 1; this.cssW = 2; this.cssH = 2; this.scale = 1;
@@ -60,6 +62,8 @@ export class Stage {
   async load(base = './assets/') {
     this.yacht = await loadYacht(base + 'models/yacht-b04.glb');
     await this.scenery.load(base + 'models/kit.glb');
+    // the rescue level's models load behind the title screen; a start of that level waits for them (main.mjs)
+    this.rescueLoad = this.rescueView.load(base).catch((e) => { console.warn('rescue models not loaded: ' + (e && e.message)); return false; });
     return { yacht: { triangles: this.yacht.triangles, ms: this.yacht.ms } };
   }
   // ---------- settings ----------
@@ -70,7 +74,11 @@ export class Stage {
     this.applySize();
     for (let i = 0; i < this.boats.length; i++) this.boats[i].wake.mesh.visible = i === this.focus || T.rivalWakes;
   }
-  resize(cssW, cssH, dpr) { this.cssW = Math.max(2, cssW); this.cssH = Math.max(2, cssH); this.dpr = dpr || 1; this.applySize(); }
+  resize(cssW, cssH, dpr) {
+    const w = Math.max(2, cssW), h = Math.max(2, cssH), d = dpr || 1;
+    if (w === this.cssW && h === this.cssH && d === this.dpr) return;      // the same size again: no buffer is rebuilt
+    this.cssW = w; this.cssH = h; this.dpr = d; this.applySize();
+  }
   // scale: the render scale the frame-rate governor chose (1 = full resolution of this tier)
   setScale(s) { const v = clamp(s, 0.4, 1); if (v === this.scale) return; this.scale = v; this.applySize(); }
   applySize() {
@@ -116,11 +124,14 @@ export class Stage {
     if (race && !this.ghostVis) { this.ghostVis = new BoatVisual(this.yacht, 'mint'); this.ghostVis.setOpacity(0.36); this.scene.add(this.ghostVis.group); }
     if (this.ghostVis) this.ghostVis.group.visible = !!race;
   }
+  // the rescue level's creatures (sim/rescue.mjs), or null for a race
+  setRescue(rescue) { this.rescue = rescue || null; this.rescueView.setRescue(this.rescue); }
   setCamera(key, motion = 1) { if (CAMS[key]) this.cam.key = key; this.cam.motion = motion; }
   setCameraMode(mode) { if (this.cam.mode !== mode) { this.cam.mode = mode; this.cam.t = 0; } }
   // ---------- events from the simulation: flashes, bursts, gate colours ----------
   onEvent(e) {
     const race = this.race, me = e.i === this.focus;
+    if (this.rescue) this.rescueView.onEvent(e, this);
     if (e.type === 'gate' || e.type === 'miss') { if (me) this.scenery.markGate(e.gate, e.type === 'gate'); }
     if (e.type === 'lap' && me) this.scenery.resetGates();
     if (e.type === 'land') {
@@ -165,6 +176,7 @@ export class Stage {
     }
     this.spray.update(dt, this.camera, this.bufferH || 600);
     this.scenery.update(race, tSim, this.camera, me, dt);
+    if (this.rescue) this.rescueView.update(dt, tSim, this.camera, M);
     // picture effects
     const fx = this.post.fx, F = this.fx, top = me.P.top, k = clamp(me.u / top, 0, 1.4), mo = this.cam.motion;
     F.flash = Math.max(0, F.flash - dt * 1.6); F.bloomPulse = Math.max(0, F.bloomPulse - dt * 1.4);
@@ -177,6 +189,8 @@ export class Stage {
   placeCamera(b, B, dt) {
     const cam = this.camera, C = CAMS[this.cam.key] || CAMS.chase, S = this.cam, P = b.P, mo = S.motion;
     S.t += dt;
+    // test and film hook: a fixed camera { pos: [x, y, z], look: [x, y, z], fov }
+    if (this.debugCam) { const D = this.debugCam; cam.position.fromArray(D.pos); this.look.fromArray(D.look); cam.up.set(0, 1, 0); cam.lookAt(this.look); if (cam.fov !== (D.fov || 50)) { cam.fov = D.fov || 50; cam.updateProjectionMatrix(); } S.h = null; return; }
     if (S.mode === 'orbit') {   // title and results: a slow circle around the boat
       S.orbit += dt * 0.16;
       const rad = 19, hgt = 4.2 + Math.sin(S.orbit * 0.7) * 1.2;

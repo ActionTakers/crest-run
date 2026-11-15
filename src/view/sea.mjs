@@ -1,11 +1,11 @@
 // sea.mjs: the water of the game. A camera-centred grid with Gerstner waves (the same waves the boats float on, sim/waves.mjs),
 // detail normals, foam where crests pinch, light scattered through crests, sun glitter, a reflection of the sky's environment cube
-// and haze toward the horizon. Based on shared/water-view.mjs of <local> (commit 26df76d, session g-50); rewritten
+// and haze toward the horizon. Based on shared/water-view.mjs of <local> (commit 26df76d, an earlier session); rewritten
 // 2026-11-13 by the yacht project session: environment reflection instead of a sky formula per pixel, world colours, no per-frame
 // allocation. Browser only (imports 'three' through the page's import map).
 import * as THREE from 'three';
-import * as W from '../sim/waves.mjs?v=f12e6f3c';
-import { SKY_GLSL, makeNoiseTexture } from './sky.mjs?v=f12e6f3c';
+import * as W from '../sim/waves.mjs?v=09ccd5d2';
+import { SKY_GLSL, makeNoiseTexture } from './sky.mjs?v=09ccd5d2';
 
 function mulberry(seed) { let s = seed >>> 0; return () => { s = (s + 0x6d2b79f5) >>> 0; let t = s; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
 function makeNormalTexture(N = 256) {   // a tileable normal map from whole-number sine waves (repeats without a seam)

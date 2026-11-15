@@ -2,32 +2,49 @@
 // (fixed 120 Hz simulation, picture interpolated between steps), the race display, sounds, saving, and the frame-rate governor.
 // The simulation is sim/race-sim.mjs, the picture view/stage.mjs. Written 2026-11-13 by the yacht project session; revised the
 // same day after review round r3 (<local>): the ids P1-P20 and T-01-T-15 in comments name its findings.
-import { Stage, CAMS } from './view/stage.mjs?v=f12e6f3c';
-import { LIVERIES, LIVERY_KEYS } from './view/boats.mjs?v=f12e6f3c';
-import { WORLDS } from './view/sky.mjs?v=f12e6f3c';
-import { getCourse, COURSE_DEFS, COURSE_KEYS, pointInto, wrapA, wrapS } from './sim/courses.mjs?v=f12e6f3c';
-import { Race, defaultSettings, DT, TUNES, TUNE_KEYS, BOOST, SIM_VERSION, encodeInputs, decodeInputs } from './sim/race-sim.mjs?v=f12e6f3c';
-import { Governor, RefreshWatch, measureRefresh } from './sim/governor.mjs?v=f12e6f3c';
-import * as PR from './sim/progress.mjs?v=f12e6f3c';
-import { Controls } from './ui/controls.mjs?v=f12e6f3c';
-import { Sound } from './ui/sound.mjs?v=f12e6f3c';
-import * as PF from './ui/platform.mjs?v=f12e6f3c';
+// 0.2.2 (2026-11-14): the findings of the outside critic's test of the published 0.2.1 (the other yacht session's read of the
+// live page): "finding N" in comments names them; the triage is review/r4-critic/TRIAGE.md of the project.
+// 0.3.0 (2026-11-15): the rescue level (sim/rescue.mjs, view/rescue-view.mjs): a third mode beside the race and the time trial.
+// 0.3.1 (the same day): the llamas of that level are animated (idle, hop, paddle, walk), from the model of his Friendly Fighters site.
+import { Stage, CAMS } from './view/stage.mjs?v=09ccd5d2';
+import { LIVERIES, LIVERY_KEYS } from './view/boats.mjs?v=09ccd5d2';
+import { WORLDS } from './view/sky.mjs?v=09ccd5d2';
+import { getCourse, COURSE_DEFS, COURSE_KEYS, pointInto, wrapA, wrapS } from './sim/courses.mjs?v=09ccd5d2';
+import { Race, defaultSettings, DT, TUNES, TUNE_KEYS, BOOST, SIM_VERSION, encodeInputs, decodeInputs } from './sim/race-sim.mjs?v=09ccd5d2';
+import { Rescue, arenaCourse, rescueSettings, ARENA, RESCUE, S as SHARK } from './sim/rescue.mjs?v=09ccd5d2';
+import { Governor, RefreshWatch, measureRefresh } from './sim/governor.mjs?v=09ccd5d2';
+import * as PR from './sim/progress.mjs?v=09ccd5d2';
+import { Controls } from './ui/controls.mjs?v=09ccd5d2';
+import { Sound } from './ui/sound.mjs?v=09ccd5d2';
+import * as PF from './ui/platform.mjs?v=09ccd5d2';
 
-export const VERSION = 'crest-run 0.2.1', BUILD = '2026-11-14 #f12e6f3c';
+export const VERSION = 'crest-run 0.3.1', BUILD = '2026-11-15 #09ccd5d2';
 const $ = (id) => document.getElementById(id);
 const Q = new URLSearchParams(location.search);
+// on a desk (a local address) the page takes two test switches from its address that a published page ignores: the computer at
+// the wheel (auto=1) and another sea (seed=), which would book results the player did not drive (finding 11)
+const DEV = ['localhost', '127.0.0.1', '[::1]'].includes(location.hostname);
 const clamp = (v, lo, hi) => (v < lo ? lo : v > hi ? hi : v);
 const ORD = ['', 'st', 'nd', 'rd', 'th', 'th', 'th', 'th'];
 const GAP_M = 10;          // the time gap to another boat is read at marks every 10 m of the course
 const RESUME_S = 1.8;      // the count before a paused race goes on
+const IDLE_MS = 20000;     // a menu nobody touched for this long draws its sea at half the rate
 const canvas = $('c');
-const stage = new Stage(canvas), controls = new Controls(), sound = new Sound();
+// the 3D picture: where the browser gives none (WebGL 2 off, for example in Lockdown Mode) or the start fails, the page says so
+// and offers a reload instead of "Loading the sea..." for ever (finding 7)
+function bootFail(e, text) {
+  window.__error = String((e && e.stack) || e);
+  for (const s of document.querySelectorAll('#screens .screen')) s.classList.toggle('show', s.id === 's-boot');
+  $('boot-msg').textContent = text; const b = $('b-reload'); b.classList.remove('hidden'); b.onclick = () => location.reload();
+}
+function makeStage() { try { return new Stage(canvas); } catch (e) { bootFail(e, 'This browser gave the game no 3D picture (WebGL 2). Close other tabs, or allow WebGL for this page (Lockdown Mode switches it off), then reload.'); throw e; } }
+const stage = makeStage(), controls = new Controls(), sound = new Sound();
 const gov = new Governor({ tier: 'mid', auto: true }), watch = new RefreshWatch();
 const G = window.__game = { version: VERSION, build: BUILD, stage, controls, sound, gov, watch, save: PR.migrate(PF.loadJSON(PR.SAVE_KEY)), screen: 'boot', mode: 'demo', race: null, ghost: null, run: null,
-  sel: null, paused: false, pausedBy: null, timeScale: 1, slowLeft: 0, slowArmed: false, auto: Q.get('auto') === '1', film: Q.get('film') === '1', frames: 0, errors: [], refresh: null,
-  probe: { n: 0, deltas: [] }, probes: 0, lastRuns: [], storage: true, calT: 0, calTry: 0, calDone: 0, resultsAt: null, hudOn: Q.get('hud') !== '0', resumeLeft: 0, resumeShown: '', afterCal: null, dirty: true, filmT: 0 };
+  sel: null, paused: false, pausedBy: null, timeScale: 1, slowLeft: 0, slowArmed: false, auto: DEV && Q.get('auto') === '1', film: Q.get('film') === '1', frames: 0, errors: [], refresh: null,
+  probe: { n: 0, deltas: [] }, probes: 0, lastRuns: [], storage: true, calT: 0, calTry: 0, calDone: 0, resultsAt: null, hudOn: Q.get('hud') !== '0', resumeLeft: 0, resumeShown: '', afterCal: null, dirty: true, filmT: 0, inputAt: performance.now(), draws: 0 };
 const settings = () => G.save.settings;
-G.sel = { mode: G.save.last.mode === 'trial' ? 'trial' : 'race', course: COURSE_KEYS.includes(G.save.last.course) ? G.save.last.course : COURSE_KEYS[0],
+G.sel = { mode: ['trial', 'rescue'].includes(G.save.last.mode) ? G.save.last.mode : 'race', course: COURSE_KEYS.includes(G.save.last.course) ? G.save.last.course : COURSE_KEYS[0],
   tune: G.save.unlocked.tunes.includes(G.save.last.tune) ? G.save.last.tune : 'cruise', livery: G.save.unlocked.liveries.includes(G.save.last.livery) ? G.save.last.livery : 'pearl', difficulty: settings().difficulty };
 window.addEventListener('error', (e) => { G.errors.push(String(e.message).slice(0, 200)); });
 window.addEventListener('unhandledrejection', (e) => { G.errors.push('rejection: ' + String(e.reason && e.reason.message || e.reason).slice(0, 200)); });
@@ -63,7 +80,8 @@ function applySettings() {
 }
 // what the governor decided, shown: a tier change only when the tier really changed (T-13)
 function applyGov() { if (gov.tier !== stage.tierKey && !Q.get('tier')) stage.setTier(gov.tier); stage.setScale(gov.scale); }
-// the screen lock: asked inside taps and at every race start; where the browser refuses, the player is told once (T-08)
+// the screen stays on while a race runs: asked at every race start and resume, inside the tap, and let go on a pause, on the
+// result and on the menus (PF.releaseWake; finding 4). Where the browser refuses, the player is told once (T-08)
 function keepAwake() { PF.requestWake().then((ok) => { if (!ok && !G.wakeTold && G.mode === 'race' && !G.film) { G.wakeTold = true; toast('This browser does not keep the screen on: touch the screen now and then during a race.', 5000); } }); }
 
 // ---------- the demo behind the menus: a race with every boat computer-steered, the camera circling the leader ----------
@@ -71,18 +89,20 @@ function startDemo(courseKey = G.sel.course) {
   const c = getCourse(courseKey), def = COURSE_DEFS[courseKey];
   stage.setWorld(Q.get('world') || def.world); stage.setCourse(c);
   const race = new Race({ ...defaultSettings(c, { rivals: 3, tune: G.sel.tune }), player: -1 }, c);
-  G.race = race; G.ghost = null; G.mode = 'demo'; G.run = null; G.demoCourse = courseKey; G.timeScale = 1; G.acc = 0; G.paused = false; G.pausedBy = null; G.resumeLeft = 0;
-  stage.setGhost(null); stage.setRace(race, [G.sel.livery, ...LIVERY_KEYS.filter((k) => k !== G.sel.livery)].slice(0, 4).reverse(), 3);
+  G.race = race; G.rescue = null; G.ghost = null; G.mode = 'demo'; G.run = null; G.demoCourse = courseKey; G.timeScale = 1; G.acc = 0; G.paused = false; G.pausedBy = null; G.resumeLeft = 0;
+  stage.setRescue(null); stage.setGhost(null); stage.setRace(race, [G.sel.livery, ...LIVERY_KEYS.filter((k) => k !== G.sel.livery)].slice(0, 4).reverse(), 3);
   stage.setCameraMode('orbit');
   for (let i = 0; i < Math.round(5 / DT); i++) { race.step(0, 0, 0); race.events.length = 0; }   // past the countdown: boats already moving
 }
 
 // ---------- a race the player steers ----------
 function startRace() {
+  if (G.sel.mode === 'rescue') return startRescue();
   const { mode, course: key, tune, livery, difficulty } = G.sel, c = getCourse(key), def = COURSE_DEFS[key];
+  G.rescue = null; stage.setRescue(null); E.hud.classList.remove('rescue');
   stage.setWorld(Q.get('world') || def.world); stage.setCourse(c);
   const set = defaultSettings(c, { tune, rivals: mode === 'race' ? 3 : 0, difficulty });
-  if (Q.get('seed')) set.sea.seed = +Q.get('seed');
+  if (DEV && Q.get('seed')) set.sea.seed = +Q.get('seed');
   const race = new Race(set, c), n = race.boats.length;
   const others = LIVERY_KEYS.filter((k) => k !== livery), liveries = race.boats.map((b, i) => (i === race.player ? livery : others[i % others.length]));
   G.race = race; G.mode = 'race'; G.acc = 0; G.timeScale = 1; G.slowLeft = 0; G.slowArmed = false; G.paused = false; G.pausedBy = null; G.resultsAt = null; G.resumeLeft = 0;
@@ -92,7 +112,7 @@ function startRace() {
   if (mode === 'trial' && best && best.ghost && best.ghost.sim === SIM_VERSION && best.ghost.tune === tune) { const d = decodeInputs(best.ghost.inputs); G.ghost = { race: new Race(set, c), steer: d.steer, flags: d.flags }; }
   const nm = Math.ceil(set.laps * c.len / GAP_M) + 2;
   G.run = { mode, course: key, tune, livery, difficulty, at: new Date().toISOString(), frames: 0, late: 0, worst: 0, sumMs: 0, mot0: controls.tilt.counts.mot, th0: performance.now(), steerMode: controls.mode, recentres0: controls.recentres,
-    lastHud: 0, countShown: '', wrongT: 0, place0: n, placeT: -9, dots: [], trackW: 1,
+    lastHud: 0, countShown: '', wrongT: 0, place0: n, placeT: -9, dots: [], trackW: 1, wake0: PF.wake.releases,
     marks: race.boats.map(() => new Float32Array(nm).fill(-1)), markN: new Int32Array(n), gmarks: G.ghost ? new Float32Array(nm).fill(-1) : null, gmarkN: 0,
     coach: G.save.stats.races < 2 && !G.film && !G.auto, coachRamp: false, coachBoost: false };   // the first two races explain gates, ramps and the boost (P20)
   stage.setRace(race, liveries, race.player); stage.setGhost(G.ghost ? G.ghost.race : null);
@@ -102,7 +122,60 @@ function startRace() {
   clearTimeout(msgT); E.msg.className = ''; msgPri = 0; msgUntil = 0;      // no message of the last race lingers into this one
   E.prog.querySelectorAll('i.rv').forEach((e) => e.remove());
   for (let i = 0; i < n; i++) if (i !== race.player) { const d = document.createElement('i'); d.className = 'rv'; d.style.background = '#' + LIVERIES[liveries[i]].accent.toString(16).padStart(6, '0'); E.prog.appendChild(d); G.run.dots.push({ el: d, i, x: null }); }
+  clearTimeout(toastT); E.toast.classList.remove('show');       // a note of the menu does not hang over the start (finding 9)
   paintControlsHint(); show('race'); G.run.trackW = E.prog.clientWidth || 1; sound.music('race'); keepAwake();
+}
+// ---------- the rescue level: the yacht roams around the island, llamas swim from the ship to the shore, sharks come for them
+// (sim/rescue.mjs). The same boat, controls, camera and display frame as a race; no laps, no rivals. ----------
+async function startRescue() {
+  if (G.rescueStarting) return; G.rescueStarting = true;
+  try {
+    if (!stage.rescueView.ready) { toast('Loading the island...', 6000); await stage.rescueLoad; }
+    if (!stage.rescueView.ready) return toast('The island did not load. Check the connection, then try again.', 5000);
+    const { tune, livery, difficulty } = G.sel, c = arenaCourse(), seed = DEV && Q.get('seed') ? +Q.get('seed') : 5;
+    stage.setWorld(Q.get('world') || ARENA.world); stage.setCourse(c);
+    const race = new Race(rescueSettings(c, { tune }), c), rescue = new Rescue(race, { difficulty, seed });
+    G.race = race; G.rescue = rescue; G.ghost = null; G.mode = 'race'; G.acc = 0; G.timeScale = 1; G.slowLeft = 0; G.slowArmed = false; G.paused = false; G.pausedBy = null; G.resultsAt = null; G.resumeLeft = 0;
+    G.run = { mode: 'rescue', course: ARENA.key, tune, livery, difficulty, at: new Date().toISOString(), frames: 0, late: 0, worst: 0, sumMs: 0, mot0: controls.tilt.counts.mot, th0: performance.now(), steerMode: controls.mode, recentres0: controls.recentres,
+      lastHud: 0, countShown: '', dots: [], trackW: 1, wake0: PF.wake.releases, marks: [new Float32Array(1)], markN: new Int32Array(1), gmarks: null, gmarkN: 0,
+      coach: !(G.save.stats.rescues > 0) && !G.film && !G.auto, coachAim: false, coachFollow: false, coachBoost: false };
+    stage.setRace(race, [livery], 0); stage.setGhost(null); stage.setRescue(rescue);
+    stage.setCameraMode('chase'); controls.releaseAll();
+    E.hud.classList.toggle('final', false); E.hud.classList.add('rescue'); $('h-of').textContent = '/' + rescue.total; E.place.textContent = '0'; E.count.textContent = ''; E.warn.style.display = 'none';
+    for (const k of Object.keys(H)) H[k] = null;
+    clearTimeout(msgT); E.msg.className = ''; msgPri = 0; msgUntil = 0;
+    E.prog.querySelectorAll('i.rv').forEach((e) => e.remove());
+    clearTimeout(toastT); E.toast.classList.remove('show');
+    paintControlsHint(); show('race'); sound.music('race'); keepAwake();
+  } finally { G.rescueStarting = false; }
+}
+function endRescue() {
+  const race = G.race, run = G.run, R = G.rescue, sm = R.summary(), rs = race.summary();
+  const result = { mode: 'rescue', course: ARENA.key, tune: run.tune, livery: run.livery, difficulty: run.difficulty, finished: sm.finished, saved: sm.saved, total: sm.total, time: sm.time, medal: sm.medal };
+  const old = G.save.best[`${ARENA.key}:rescue`], r = PR.applyRescue(G.save, result);
+  G.save = r.save; saveNow();
+  const dur = Math.max(0.001, (performance.now() - run.th0) / 1000);
+  G.lastRuns.push({ at: run.at, course: ARENA.key, mode: 'rescue', tune: run.tune, steer: run.steerMode, difficulty: run.difficulty, saved: sm.saved, total: sm.total, time: sm.time, sunk: sm.sunk, rams: sm.rams, shots: sm.shots, hits: sm.hits,
+    topKmh: rs.topKmh, boostS: rs.boostS, why: sm.finished ? 'mission over' : 'left early', frames: run.frames, latePct: run.frames ? +(100 * run.late / run.frames).toFixed(1) : null, meanMs: run.frames ? +(run.sumMs / run.frames).toFixed(1) : null, worstMs: Math.round(run.worst),
+    motPerS: +((controls.tilt.counts.mot - run.mot0) / dur).toFixed(0), recentres: controls.recentres - run.recentres0, tier: stage.tierKey, scale: stage.scale, render: stage.renderSize(), wake: PF.wake.state, wakeLost: PF.wake.releases - run.wake0 });
+  if (G.lastRuns.length > 6) G.lastRuns.shift();
+  const lvl = run.difficulty[0].toUpperCase() + run.difficulty.slice(1);
+  $('r-place').innerHTML = `${sm.saved}<small>/${sm.total}</small>`;
+  $('r-title').textContent = `${ARENA.name}: rescue, sharks on ${lvl}`;
+  $('r-time').textContent = sm.finished ? (sm.saved === sm.total ? 'Every llama safe' : sm.saved === 0 ? 'No llama made it' : `${sm.saved} llamas safe`) : 'Left before the end';
+  $('r-best').textContent = !sm.finished ? '' : old ? (sm.saved > old.saved ? `New best: ${sm.saved - old.saved} more than before` : `Best so far: ${old.saved} of ${old.total}`) : 'First rescue on the board';
+  $('r-medal').innerHTML = sm.medal ? `<span class="medal-dot ${sm.medal}"></span><span class="name">${sm.medal}</span>` : '';
+  const NEWS = { best: () => 'New best rescue', medal: (n) => `${n.medal[0].toUpperCase() + n.medal.slice(1)} medal` };
+  $('r-news').innerHTML = r.news.map((n, i) => `<li style="animation-delay:${(0.9 + 0.4 * i).toFixed(1)}s">${NEWS[n.type](n)}</li>`).join('');
+  r.news.forEach((n, i) => setTimeout(() => { if (G.screen === 'results' && G.race === race) sound.sfx('chip', i); }, 900 + 400 * i));
+  $('r-table').innerHTML = [['Sharks sunk', sm.sunk], ['by ramming', sm.rams], ['Cannon hits', `${sm.hits}/${sm.shots}`], ['Llamas lost', sm.lost]].map(([k, v]) => `<span></span><span>${k}</span><span>${v}</span>`).join('');
+  $('r-stats').innerHTML = [`time ${sm.time === null ? '-' : PR.fmtTime(sm.time)}`, `top ${fmtSpeed(rs.topKmh / 3.6)} ${settings().units === 'kn' ? 'kn' : 'km/h'}`, `boost ${rs.boostS.toFixed(1)} s`].map((t) => `<span>${t}</span>`).join('');
+  $('r-tip').textContent = !sm.finished ? '' : sm.saved < RESCUE.medals.bronze ? (run.difficulty !== 'easy' ? 'Tip: on the course screen you can set the sharks to Easy.' : 'Tip: stay near the swimmers; they follow your wake to the shore.')
+    : sm.saved === sm.total && run.difficulty !== 'hard' ? 'Tip: every llama safe. Try the sharks one level up.' : '';
+  G.nextCourse = null; E.nextCourse.classList.add('hidden'); E.retry.textContent = 'RESCUE AGAIN'; E.retry.className = 'cta';
+  if (sm.medal && r.news.some((n) => n.type === 'medal')) setTimeout(() => { if (G.screen === 'results' && G.race === race) sound.sfx('medal'); }, 450);
+  race.afterglow = true;
+  G.mode = 'after'; G.acc = 0; stage.setCameraMode('orbit'); sound.music('menu'); show('results'); PF.releaseWake();
 }
 function paintControlsHint() {
   const m = controls.mode;
@@ -110,6 +183,7 @@ function paintControlsHint() {
   $('h-left-label').textContent = m === 'tilt' ? 'HOLD: DRIFT' : 'SLIDE TO STEER'; $('h-recentre').classList.toggle('hidden', m !== 'tilt');
 }
 function endRace() {
+  if (G.rescue) return endRescue();
   const race = G.race, run = G.run, me = race.boats[race.player], sm = race.summary(), st = race.standings(), key = run.course;
   const result = { mode: run.mode, course: key, tune: run.tune, livery: run.livery, finished: me.finished, place: sm.place, time: sm.time, sim: SIM_VERSION, summary: sm,
     inputs: run.mode === 'trial' && me.finished ? encodeInputs(race.rec.steer, race.rec.flags) : null };
@@ -118,7 +192,8 @@ function endRace() {
   const dur = Math.max(0.001, (performance.now() - run.th0) / 1000);
   G.lastRuns.push({ at: run.at, course: key, mode: run.mode, tune: run.tune, steer: run.steerMode, place: sm.place, boats: sm.boats, time: sm.time, passed: sm.passed, gates: sm.gates, perfects: sm.perfects, clean: sm.clean, rough: sm.rough,
     contacts: sm.contacts, topKmh: sm.topKmh, boostS: sm.boostS, why: sm.why, frames: run.frames, latePct: run.frames ? +(100 * run.late / run.frames).toFixed(1) : null, meanMs: run.frames ? +(run.sumMs / run.frames).toFixed(1) : null, worstMs: Math.round(run.worst),
-    motPerS: +((controls.tilt.counts.mot - run.mot0) / dur).toFixed(0), recentres: controls.recentres - run.recentres0, tier: stage.tierKey, scale: stage.scale, render: stage.renderSize() });
+    motPerS: +((controls.tilt.counts.mot - run.mot0) / dur).toFixed(0), recentres: controls.recentres - run.recentres0, tier: stage.tierKey, scale: stage.scale, render: stage.renderSize(),
+    wake: PF.wake.state, wakeLost: PF.wake.releases - run.wake0 });
   if (G.lastRuns.length > 6) G.lastRuns.shift();
   // the result screen, staged: the place, then the medal, then the news one by one (P12)
   const medal = PR.medalFor(result, COURSE_DEFS[key].medals || null), c = getCourse(key);
@@ -133,10 +208,14 @@ function endRace() {
   r.news.forEach((n, i) => setTimeout(() => { if (G.screen === 'results' && G.race === race) sound.sfx('chip', i); }, 900 + 400 * i));
   // times of boats that were still racing when the player finished are estimates: marked with ~
   $('r-table').innerHTML = run.mode === 'race' ? st.map((x) => `<span class="${x.player ? 'me' : ''}">${x.place}</span><span class="${x.player ? 'me' : ''}">${x.name}</span><span class="${x.player ? 'me' : ''}">${x.time === null ? '-' : (x.finished ? '' : '~') + PR.fmtTime(x.time)}</span>`).join('') : '';
-  $('r-stats').textContent = `Gates ${sm.passed}/${sm.gates} (${sm.perfects} perfect), longest row ${sm.bestChain} | landings ${sm.clean} clean, ${sm.rough} rough | top ${fmtSpeed(sm.topKmh / 3.6)} ${settings().units === 'kn' ? 'kn' : 'km/h'} | boost ${sm.boostS.toFixed(1)} s`;
+  // the numbers of the race as short pieces: a narrow column wraps between them, never inside one (finding 2)
+  $('r-stats').innerHTML = [`Gates ${sm.passed}/${sm.gates}`, `${sm.perfects} perfect`, `longest row ${sm.bestChain}`, `landings ${sm.clean} clean, ${sm.rough} rough`, `top ${fmtSpeed(sm.topKmh / 3.6)} ${settings().units === 'kn' ? 'kn' : 'km/h'}`, `boost ${sm.boostS.toFixed(1)} s`]
+    .map((t) => `<span>${t}</span>`).join('');
   // one line of advice where the result asks for it: last on Normal or Hard, or an easy win (tools/balance.mjs: a first-time
   // player reaches the podium on Easy, a practised one wins there every time)
-  $('r-tip').textContent = run.mode !== 'race' || !me.finished ? '' : sm.place === sm.boats && run.difficulty !== 'easy' ? 'Tip: on the course screen you can set the rivals to Easy.'
+  $('r-tip').textContent = run.mode !== 'race' ? ''
+    : !me.finished ? (run.difficulty !== 'easy' ? 'The race ended before your finish. Tip: on the course screen you can set the rivals to Easy.' : 'The race ended before your finish. Tip: a time trial lets you learn the course alone.')
+    : sm.place === sm.boats && run.difficulty !== 'easy' ? 'Tip: on the course screen you can set the rivals to Easy.'
     : sm.place === 1 && run.difficulty === 'easy' ? 'Tip: you won on Easy. The rivals on Normal put up more of a fight.' : sm.place === 1 && run.difficulty === 'normal' && G.save.stats.wins >= 3 ? 'Tip: three wins. Try the rivals on Hard.' : '';
   // a course that this race opened becomes the main button; racing again the second
   const opened = r.news.find((n) => n.type === 'unlock' && n.kind === 'courses');
@@ -145,7 +224,7 @@ function endRace() {
   E.retry.textContent = run.mode === 'race' ? 'RACE AGAIN' : 'GO AGAIN'; E.retry.className = opened ? 'ghost' : 'cta';
   if (medal && r.news.some((n) => n.type === 'medal')) setTimeout(() => { if (G.screen === 'results' && G.race === race) sound.sfx('medal'); }, 450);
   race.afterglow = true;       // the boats sail on behind the result screen: the sea and the picture stay alive (T-07)
-  G.mode = 'after'; G.acc = 0; stage.setCameraMode('orbit'); sound.music('menu'); show('results');
+  G.mode = 'after'; G.acc = 0; stage.setCameraMode('orbit'); sound.music('menu'); show('results'); PF.releaseWake();
 }
 const fmtSpeed = (ms) => String(Math.round(settings().units === 'kn' ? ms * 1.94384 : ms * 3.6));
 
@@ -172,6 +251,7 @@ function paintHud(race, run, dt) {
   const ready = me.boostE >= BOOST.minStart || me.boosting, bs = me.boosting ? 2 : ready ? 1 : 0;
   if (bs !== H.bs) { H.bs = bs; E.boost.classList.toggle('ready', bs === 1); E.boost.classList.toggle('on', bs === 2); E.btn.classList.toggle('ready', bs >= 1); E.btn.classList.toggle('on', bs === 2); }
   if (controls.mode === 'touch') { const kx = Math.round(78 * controls.steer); if (kx !== H.knob) { H.knob = kx; E.knob.style.transform = `translateX(${kx}px)`; } }
+  if (G.rescue) return paintRescue(race, run, dt, me, ready);
   const total = laps * c.len, tw = run.trackW, px = Math.round(tw * clamp(me.prog / total, 0, 1));
   if (px !== H.me) { H.me = px; E.progMe.style.transform = `translateX(${px}px)`; }
   for (let k = 0; k < run.dots.length; k++) { const d = run.dots[k], x = Math.round(tw * clamp(race.boats[d.i].prog / total, 0, 1)); if (x !== d.x) { d.x = x; d.el.style.transform = `translateX(${x}px)`; } }
@@ -187,7 +267,8 @@ function paintHud(race, run, dt) {
     setText('h-place', 'place', String(me.place));
     const o = race.order, k = o.indexOf(race.player), oi = k > 0 ? o[k - 1] : o.length > 1 ? o[1] : -1;
     const g = oi < 0 || !race.racing ? null : k > 0 ? gapS(run.marks[race.player], run.markN[race.player], run.marks[oi], run.markN[oi]) : -gapS(run.marks[oi], run.markN[oi], run.marks[race.player], run.markN[race.player]);
-    setText('h-gap', 'gap', oi < 0 || g === null || Number.isNaN(g) ? '' : fmtGap(g, race.boats[oi].name));
+    const ends = race.endsIn;        // every rival is in: the time left to finish takes the place of the gap (finding 5)
+    setText('h-gap', 'gap', ends !== null ? `race ends in ${Math.ceil(ends)} s` : oi < 0 || g === null || Number.isNaN(g) ? '' : fmtGap(g, race.boats[oi].name));
   } else {
     const g = G.ghost && race.racing ? gapS(run.marks[race.player], run.markN[race.player], run.gmarks, run.gmarkN) : null;
     setText('h-gap', 'gap', !G.ghost ? 'no ghost yet' : g === null ? '' : fmtGap(g, 'your ghost'));
@@ -209,10 +290,63 @@ function paintHud(race, run, dt) {
     if (!run.coachBoost && ready && !me.boosting && race.lapT > 4) { run.coachBoost = true; hudMsg(controls.mode === 'keys' ? 'BOOST READY: HOLD SPACE' : 'BOOST READY: HOLD YOUR RIGHT THUMB', 'tip', 2, true); }
   }
 }
+// the rescue level's display: llamas safe in place of the race position, the state of the sea under the clock, an arrow to the
+// shark that matters most when it is not ahead
+function paintRescue(race, run, dt, me, ready) {
+  const R = G.rescue;
+  const left = race.go - race.t, ct = left > 0 ? String(Math.ceil(left)) : left > -0.8 ? 'GO' : '';
+  if (ct !== run.countShown) { run.countShown = ct; E.count.textContent = ct; if (ct && ct !== 'GO') sound.sfx('count'); }
+  run.lastHud += dt; if (run.lastHud < 0.09) return; run.lastHud = 0;
+  const t = race.lapT; setText('h-time', 'time', `${Math.floor(t / 60)}:${(t % 60).toFixed(1).padStart(4, '0')}`);
+  setText('h-place', 'place', String(R.saved)); setText('h-lap', 'lap', 'SAFE');
+  setText('h-gap', 'gap', R.over || R.wave < 0 ? '' : `group ${R.wave + 1}/${R.level.waves.length}: ${R.inWater} in the sea, ${R.onDeck} on the ship`);
+  setText('h-kmh', 'kmh', fmtSpeed(Math.max(0, me.u)));
+  setText('h-chain', 'chain', R.lost ? `${R.lost} lost` : '');
+  // the shark that matters most: one with a llama in its jaws, then one about to bite, then the one nearest to its llama
+  let urgent = null, us = 1e9;
+  for (const s of R.sharks) { if (s.st < SHARK.hunt || s.st > SHARK.stun) continue; const a = s.target >= 0 ? R.llamas[s.target] : null;
+    const sc = s.st === SHARK.bite ? -2 : s.st === SHARK.lunge ? -1 : a ? Math.hypot(a.x - s.x, a.z - s.z) : 900; if (sc < us) { us = sc; urgent = s; } }
+  const ang = urgent ? wrapA(Math.atan2(-(urgent.x - me.x), urgent.z - me.z) - me.h) : 0, far = !!urgent && Math.abs(ang) > 0.42 && race.racing && !R.over;
+  if (far !== H.arrowOn) { H.arrowOn = far; E.arrow.style.opacity = far ? '1' : '0'; }
+  if (far) { const a = Math.round(ang * 180 / Math.PI / 3) * 3; if (a !== H.arrow) { H.arrow = a; E.arrow.style.transform = `rotate(${a}deg)`; } }
+  const warn = controls.mode === 'tilt' && controls.flat ? 'Tip the screen up towards you' : Math.abs(me.lat) > race.c.halfWidth && Math.hypot(me.x - ARENA.island.x, me.z - ARENA.island.z) > ARENA.R ? 'Open sea: turn back' : urgent && urgent.st === SHARK.bite ? 'A shark has a llama: hit it' : '';
+  if (warn !== H.warn) { H.warn = warn; E.warn.textContent = warn; E.warn.style.display = warn ? 'block' : 'none'; }
+  // the first mission: what the cannon, the wake and the boost do, said once each when they matter
+  if (run.coach && race.racing && !R.over) {
+    if (!run.coachAim && urgent && R.lock < 0 && race.lapT > 11) { run.coachAim = true; hudMsg('POINT YOUR BOW AT A SHARK: THE CANNON FIRES', 'tip', 2, true); }
+    else if (!run.coachFollow && R.llamas.some((a) => a.follow)) { run.coachFollow = true; hudMsg('THEY FOLLOW YOUR WAKE: LEAD THEM TO THE SHORE', 'tip', 2, true); }
+    else if (!run.coachBoost && run.coachAim && ready && !me.boosting && race.lapT > 25) { run.coachBoost = true; hudMsg(controls.mode === 'keys' ? 'FAR AWAY? HOLD SPACE TO BOOST' : 'FAR AWAY? BOOST WITH YOUR RIGHT THUMB', 'tip', 2, true); }
+  }
+}
+// what the rescue level reports; true when the event was one of its own
+function onRescueEvent(e) {
+  switch (e.type) {
+    case 'go': sound.sfx('go'); break;
+    case 'wave': sound.sfx('lap'); hudMsg(e.n === 1 ? 'THE SHIP OPENS: GUARD THE LLAMAS' : e.n === e.of ? 'LAST GROUP' : `GROUP ${e.n} OF ${e.of}`, 'cool', 4, e.n === 1); break;
+    case 'jump': sound.sfx('jump', e.a); break;
+    case 'splashIn': sound.sfx('splash'); break;
+    case 'shark': sound.sfx('shark'); hudMsg('SHARK', 'bad', 2); break;
+    case 'lunge': sound.sfx('alarm'); break;
+    case 'grab': sound.sfx('grab'); hudMsg('A SHARK HAS A LLAMA: HIT IT', 'bad', 4); pulse(E.edge, 'hit'); break;
+    case 'freed': sound.sfx('perfect', 2); hudMsg('FREED', 'good', 4); break;
+    case 'lostA': sound.sfx('miss'); hudMsg('LLAMA LOST', 'bad', 4); pulse(E.edge, 'hit'); break;
+    case 'saved': sound.sfx('gate', Math.min(7, e.saved - 1)); pulse(E.place, 'up'); pulse(E.boost, 'tick'); hudMsg(`${e.saved} SAFE`, 'good', 3); break;
+    case 'shot': sound.sfx('shot'); break;
+    case 'hit': sound.sfx(e.dead ? 'sunk' : 'hit'); if (e.dead) { hudMsg('SHARK DOWN', 'good', 2); pulse(E.boost, 'tick'); } break;
+    case 'ram': sound.sfx('ram'); hudMsg('RAMMED', 'good', 3); pulse(E.boost, 'tick'); break;
+    case 'splash': break;
+    case 'aground': sound.sfx('bump', e.v); break;
+    case 'missionEnd': sound.sfx('finish'); hudMsg(`${e.saved} OF ${e.total} SAFE`, e.saved >= RESCUE.medals.bronze ? 'good' : 'bad', 5, true); G.resultsAt = performance.now() + 3000; stage.setCameraMode('orbit'); break;
+    default: return false;
+  }
+  return true;
+}
 function onRaceEvent(e, race, run) {
   stage.onEvent(e);
+  if (G.rescue && onRescueEvent(e)) return;
   const mine = e.i === race.player || e.j === race.player, me = race.boats[race.player], laps = race.settings.laps;
   if (e.type === 'go') { sound.sfx('go'); if (run.coach) hudMsg('PASS BETWEEN THE LIT BUOYS', 'tip', 2, true); }
+  if (e.type === 'lastIn') { sound.sfx('final'); hudMsg(`LAST RIVAL IS IN: ${e.left} S TO FINISH`, 'bad', 4, true); }
   if (!mine) return;
   switch (e.type) {
     case 'gate': sound.sfx(e.perfect ? 'perfect' : 'gate', Math.min(7, e.chain - 1)); pulse(E.boost, 'tick'); if (e.perfect) hudMsg('PERFECT', 'good', 2); break;   // every gate ticks the boost bar (P6)
@@ -231,12 +365,13 @@ function onRaceEvent(e, race, run) {
 function boostPressed() { const r = G.race; if (G.mode !== 'race' || G.paused || !r || !r.racing) return; const me = r.boats[r.player]; if (!me.boosting && !me.finished && me.boostE < BOOST.minStart) { sound.sfx('empty'); pulse(E.btn, 'no'); } }
 
 // ---------- pause, background, rotation ----------
-// by: 'button', 'hidden' (the page went to the background), 'rotate' (the phone was turned upright), 'sensors' (motion data stopped)
+// by: 'button', 'hidden' (the page went to the background), 'away' (the window lost the focus: a system panel over the game,
+// another window in front), 'rotate' (the phone was turned upright), 'sensors' (motion data stopped)
 function pause(by = 'button') {
   if (G.mode !== 'race' || !G.race || G.race.over) return;
   if (G.paused && !(G.resumeLeft > 0)) return;                       // already on a pause screen
   G.paused = true; G.pausedBy = by; G.resumeLeft = 0; G.dirty = true; E.count.textContent = ''; if (G.run) G.run.countShown = null;
-  controls.releaseAll(); sound.frame({ active: false });
+  controls.releaseAll(); sound.frame({ active: false }); PF.releaseWake();
   show(by === 'hidden' ? 'resume' : by === 'rotate' ? 'rotate' : by === 'sensors' ? 'sensors' : 'pause');
 }
 // RESUME shows the frozen race with a short count, so the hands are back on the phone before the boat moves (P8)
@@ -256,8 +391,12 @@ function stepResume(dt) {
 }
 document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'hidden') { pause('hidden'); sound.frame({ active: false }); }
-  else { sound.resume(); if (G.started) { PF.requestWake(); reprobe(); } last = null; }   // back: the display's rate may have changed (Low Power Mode, T-02)
+  else { sound.resume(); if (G.started) reprobe(); last = null; }   // back: the display's rate may have changed (Low Power Mode, T-02); the screen lock comes back with RESUME
 });
+// A system panel pulled over the game, or another window in front, does not hide the page but takes the hands off it: pause
+// (finding 8). Whether an iPhone reports Control Centre this way is a question for the phone (PHONE-TEST.md).
+window.addEventListener('blur', () => { if (document.visibilityState !== 'hidden') pause('away'); });
+window.addEventListener('pagehide', () => pause('hidden'));
 function checkRotation() {
   const portrait = PF.env.touch && !PF.landscape();
   if (portrait && G.screen !== 'rotate') { G.before = G.screen; if (G.mode === 'race' && (!G.paused || G.resumeLeft > 0) && G.race && !G.race.over) pause('rotate'); else show('rotate'); }
@@ -268,17 +407,24 @@ function checkRotation() {
   }
 }
 function size() { stage.resize(window.innerWidth, window.innerHeight, window.devicePixelRatio || 1); G.dirty = true; if (G.run) G.run.trackW = E.prog.clientWidth || G.run.trackW; checkRotation(); }
-window.addEventListener('resize', size); window.addEventListener('orientationchange', () => setTimeout(size, 250));
+// a browser whose bars slide in and out sends a stream of resize events: the rotation check runs on each one, the picture's
+// buffers are rebuilt once the stream pauses (finding 11)
+let sizeT = 0;
+window.addEventListener('resize', () => { checkRotation(); clearTimeout(sizeT); sizeT = setTimeout(size, 120); });
+window.addEventListener('orientationchange', () => setTimeout(size, 250));
 
 // ---------- start, straight-ahead check ----------
-async function onStart() {
-  if (G.starting) return; G.starting = true;
+// START, all inside the tap: motion access and sound. The straight-ahead screen comes up at once and waits there for the answer
+// to the phone's motion question, however long the player takes over it (finding 1).
+function onStart() {
+  if (G.starting) return null; G.starting = true;
   PF.initHaptic(); PF.haptic();
-  const audio = sound.start(); PF.requestWake();           // all inside the tap: motion access, sound, screen lock
+  const audio = sound.start();
   const p = controls.start();
   sound.music('menu'); if (audio) setTimeout(() => sound.sfx('check'), 250);
-  await p; G.started = true; G.starting = false; G.afterCal = null;
+  G.started = true; G.afterCal = null;
   beginCal();
+  return p;
 }
 // The check takes at least 1.5 s while a ring fills (time to bring the phone into the steering pose), needs the phone still for
 // the last 0.6 s, and shows that it worked for a beat before the next screen (P15).
@@ -298,9 +444,13 @@ function finishCal(mode, note) {
   if (note) toast(note, 4200);
 }
 function stepCal(th) {
-  if (G.calDone) { if (th - G.calDone > CAL_DONE_MS) { G.calDone = 0; finishCal('tilt', 'Straight ahead is set. Tilt to steer.'); } return; }
+  if (G.calDone) { if (th - G.calDone > CAL_DONE_MS) { G.calDone = 0; finishCal('tilt'); } return; }   // this screen has just said that it is set: no note over the course cards (finding 9)
   const st = controls.sensorState();
-  if (st === 'touch') { finishCal('touch', controls.perm && [controls.perm.motion, controls.perm.orientation].includes('denied') ? 'Motion access was refused, so steering is by touch: slide your left thumb, boost with your right.' : 'No motion sensor here: slide your left thumb to steer, or use the arrow keys.'); return; }
+  // the phone's motion question is still open: the check starts when the answer is in, however long that takes (finding 1)
+  if (st === 'asking') { G.calT = th; if (G.calP !== 'ask') { G.calP = 'ask'; $('cal-msg').textContent = 'Waiting for your answer to the motion question: Allow lets you steer by tilting.'; } return; }
+  if (G.calP === 'ask') { G.calP = ''; $('cal-msg').textContent = 'Looking for the motion sensors...'; }
+  if (st === 'touch') { finishCal('touch', controls.perm && [controls.perm.motion, controls.perm.orientation].includes('denied') ? 'Motion access was refused, so steering is by touch: slide your left thumb, boost with your right.'
+    : PF.env.touch ? 'No motion data on this device, so steering is by touch: slide your left thumb, boost with your right.' : 'No motion sensor here: steer with the arrow keys or A and D, space boosts.'); return; }
   if (st !== 'tilt') { if (th - G.calT > 2500 && controls.mode !== 'keys') finishCal('touch', 'No motion data: slide your left thumb to steer.'); return; }
   const g = controls.tilt.gEma;
   if (g) E.calNeedle.style.transform = `rotate(${clamp(Math.atan2(g[1], Math.abs(g[0]) + 1e-6) * 180 / Math.PI, -60, 60).toFixed(1)}deg)`;
@@ -319,6 +469,12 @@ function stepCal(th) {
 function paintMenu() {
   const s = G.save, sel = G.sel, lock = '<i class="lock"></i>';
   $('m-modes').querySelectorAll('button').forEach((b) => b.classList.toggle('on', b.dataset.mode === sel.mode));
+  const rescue = sel.mode === 'rescue';
+  if (rescue) {
+    const best = s.best[`${ARENA.key}:rescue`], medal = s.medals[`${ARENA.key}:rescue`], w = WORLDS[ARENA.world] || WORLDS.sunset, rgb = (a) => `rgb(${a.map((v) => Math.round(255 * Math.min(1, Math.sqrt(v)))).join(',')})`;
+    $('m-courses').innerHTML = `<button class="card on" data-level="${ARENA.key}"><span class="sw" style="background:linear-gradient(180deg, ${rgb(w.zenith)} 0%, ${rgb(w.horizon)} 78%, ${rgb(w.scatter)} 100%)"></span>`
+      + `<span class="medal"><span class="medal-dot ${medal || 'none'}"></span></span><b>${ARENA.name}</b><small>12 llamas leave the ship in three groups</small><small>${best ? `Best: ${best.saved} of ${best.total} safe` : 'Not played yet'}</small></button>`;
+  } else
   $('m-courses').innerHTML = COURSE_KEYS.map((k, i) => {
     const d = COURSE_DEFS[k], open = PR.courseOpen(s, COURSE_KEYS, k), best = s.best[`${k}:${sel.mode}`], medal = s.medals[`${k}:${sel.mode}`], w = WORLDS[d.world] || WORLDS.sunset;
     const rgb = (a) => `rgb(${a.map((v) => Math.round(255 * Math.min(1, Math.sqrt(v)))).join(',')})`;
@@ -329,11 +485,13 @@ function paintMenu() {
   $('m-liveries').innerHTML = LIVERY_KEYS.map((k) => { const L = LIVERIES[k], col = L.amount ? `rgb(${L.color.map((v) => Math.round(255 * Math.sqrt(v))).join(',')})` : '#f6f6f2', open = s.unlocked.liveries.includes(k);
     return `<button data-livery="${k}" aria-label="${L.label}" class="${k === sel.livery ? 'on' : ''} ${open ? '' : 'locked'}"><i style="background:${col}"></i>${open ? '' : '<span class="lock"></span>'}</button>`; }).join('');
   $('m-diff').querySelectorAll('button').forEach((b) => b.classList.toggle('on', b.dataset.diff === sel.difficulty));
-  $('m-diff-wrap').classList.toggle('hidden', sel.mode !== 'race');
-  $('b-go').textContent = sel.mode === 'race' ? 'RACE' : 'GO';
+  $('m-diff-wrap').classList.toggle('hidden', sel.mode === 'trial'); $('m-diff-label').textContent = rescue ? 'Sharks' : 'Rivals';
+  $('b-go').textContent = sel.mode === 'race' ? 'RACE' : rescue ? 'RESCUE' : 'GO';
   const T = TUNES[sel.tune];
-  $('m-hint').textContent = `${T.label}: top ${fmtSpeed(T.top)} ${settings().units === 'kn' ? 'kn' : 'km/h'}, ${T.turnRate >= 62 ? 'quick turns' : T.grip < 2.5 ? 'slides wide' : 'steady'}. `
-    + (sel.mode === 'race' ? 'Gates and clean landings fill the boost; clip a gate\'s inside buoy for PERFECT.' : 'Alone against the clock and your own ghost.');
+  if (rescue) { $('m-hint').innerHTML = 'Point your bow at a shark and the cannon fires; ram one at speed.<span class="more"> Llamas near your yacht follow its wake to the shore.</span>'; return; }
+  // the second sentence makes way for the course cards on a small phone (css: .more; finding 9)
+  $('m-hint').innerHTML = `${T.label}: top ${fmtSpeed(T.top)} ${settings().units === 'kn' ? 'kn' : 'km/h'}, ${T.turnRate >= 62 ? 'quick turns' : T.grip < 2.5 ? 'slides wide' : 'steady'}.`
+    + `<span class="more"> ${sel.mode === 'race' ? 'Gates and clean landings fill the boost; clip a gate\'s inside buoy for PERFECT.' : 'Alone against the clock and your own ghost.'}</span>`;
 }
 function menuClick(e) {
   const b = e.target.closest('button'); if (!b) return; const s = G.save, sel = G.sel; sound.resume(); sound.sfx('click');
@@ -364,10 +522,11 @@ function cardText() {
   L.push(`Picture: tier ${stage.tierKey} (${s.quality}), render ${stage.renderSize()} at scale ${stage.scale}, bloom pipeline ${stage.post.enabled ? 'on' : 'off'} (half-float targets ${stage.post.hdr ? 'yes' : 'no'}) | refresh seen ${G.refresh ? (1000 / G.refresh.interval).toFixed(1) + ' Hz' + (G.refresh.snapped ? '' : ' (not a usual rate)') + (G.refresh.interval > 30 ? ': 30 Hz, Low Power Mode or a slow frame' : '') : '?'}, measured ${G.probes}x | draw calls ${stage.stats.calls}, triangles ${stage.stats.triangles} | GPU objects: ${mem.geometries} geometries, ${mem.textures} textures, ${stage.renderer.info.programs ? stage.renderer.info.programs.length : '?'} programs`);
   L.push(`Governor changes [s, scale, tier, why]: ${gov.changes.length ? gov.changes.map((c) => c.join(' ')).join('; ') : 'none'}`);
   L.push(`Steering: ${I.mode} (setting ${s.steering}) | permission ${I.perm ? `${I.perm.motion}/${I.perm.orientation}` : 'not asked'} | gyro ${I.tilt.gyro} | events/s motion ${I.rates.mot.toFixed(0)}, orientation ${I.rates.ori.toFixed(0)} | interval ${I.tilt.interval || '?'} | calibrations ${I.tilt.calOk} ok, ${I.tilt.calRejected} refused${I.tilt.cal ? ` (last: moved ${I.tilt.cal.spread} deg, tilted back ${I.tilt.cal.tiltBack} deg)` : ''} | recentres ${I.recentres} | full lock ${I.maxDeg} deg, reverse ${I.invert ? 'on' : 'off'}`);
-  L.push(`Sound: ${s.sound ? 'on' : 'off'}, music ${s.music ? 'on' : 'off'}, engine ${sound.state}, audio session ${sound.session}, effects played ${sound.tones} | wake lock ${PF.wake.state} (released ${PF.wake.releases}x)${G.wakeTold ? ', the player was told to touch the screen' : ''} | storage ${G.storage ? 'ok' : 'FAILED'} | camera ${s.camera}, motion ${s.motion}`);
+  L.push(`Sound: ${s.sound ? 'on' : 'off'}, music ${s.music ? 'on' : 'off'}, engine ${sound.state}, audio session ${sound.session}, effects played ${sound.tones} | screen lock ${PF.wake.state} (taken away by the phone ${PF.wake.releases}x, let go by the game ${PF.wake.given}x)${G.wakeTold ? ', the player was told to touch the screen' : ''} | storage ${G.storage ? 'ok' : 'FAILED'} | camera ${s.camera}, motion ${s.motion}`);
   if (!G.lastRuns.length) L.push('Runs: none yet');
-  G.lastRuns.forEach((r, i) => L.push(`Run ${i + 1} ${r.course} ${r.mode} ${r.tune} (${r.steer}): ${r.why}, place ${r.place}/${r.boats}, time ${r.time ?? '-'} s, gates ${r.passed}/${r.gates} (${r.perfects} perfect), landings ${r.clean} clean ${r.rough} rough, contacts ${r.contacts}, top ${r.topKmh} km/h, boost ${r.boostS} s`
-    + ` | frames ${r.frames}, late ${r.latePct} %, mean ${r.meanMs} ms, worst ${r.worstMs} ms | motion events ${r.motPerS}/s | recentres ${r.recentres} | tier ${r.tier}, scale ${r.scale}, render ${r.render}`));
+  G.lastRuns.forEach((r, i) => L.push((r.mode === 'rescue' ? `Run ${i + 1} ${r.course} rescue ${r.tune} (${r.steer}), sharks ${r.difficulty}: ${r.why}, llamas safe ${r.saved}/${r.total}, time ${r.time ?? '-'} s, sharks sunk ${r.sunk} (${r.rams} rammed), cannon hits ${r.hits}/${r.shots}, top ${r.topKmh} km/h, boost ${r.boostS} s`
+    : `Run ${i + 1} ${r.course} ${r.mode} ${r.tune} (${r.steer}): ${r.why}, place ${r.place}/${r.boats}, time ${r.time ?? '-'} s, gates ${r.passed}/${r.gates} (${r.perfects} perfect), landings ${r.clean} clean ${r.rough} rough, contacts ${r.contacts}, top ${r.topKmh} km/h, boost ${r.boostS} s`)
+    + ` | frames ${r.frames}, late ${r.latePct} %, mean ${r.meanMs} ms, worst ${r.worstMs} ms | motion events ${r.motPerS}/s | recentres ${r.recentres} | tier ${r.tier}, scale ${r.scale}, render ${r.render} | screen lock at the finish: ${r.wake}, taken away ${r.wakeLost}x`));
   L.push(`Progress: races ${G.save.stats.races}, finished ${G.save.stats.finished}, wins ${G.save.stats.wins} | page errors ${G.errors.length}${G.errors.length ? ': ' + G.errors.slice(-3).join(' / ') : ''}`);
   return L.join('\n').replace(/[^\x20-\x7e\n]/g, '?');
 }
@@ -377,8 +536,9 @@ let last = null;
 const AUTO = { steer: 0, brake: 0, boost: 0 };
 // one physics step of the player's race: the player's inputs (or the computer's, for tests and film), the ghost in step, events
 function stepRace(race, run) {
-  if (G.auto) { race.drive(race.boats[race.player], AUTO); race.step(AUTO.steer, AUTO.brake, AUTO.boost); }
+  if (G.auto) { if (G.rescue) G.rescue.pilot(AUTO); else race.drive(race.boats[race.player], AUTO); race.step(AUTO.steer, AUTO.brake, AUTO.boost); }
   else race.step(controls.steer, controls.brake, controls.boost);
+  if (G.rescue) G.rescue.step();
   if (G.ghost && !G.ghost.race.done) { const gh = G.ghost, k = gh.race.step_; if (k < gh.steer.length) gh.race.step(gh.steer[k] / 100, gh.flags[k] & 1, (gh.flags[k] >> 1) & 1); gh.race.events.length = 0; }
   // when each boat passes each 10 m mark, for the time gaps of the display (P13)
   const B = race.boats, mk = run.marks, mn = run.markN;
@@ -407,7 +567,7 @@ function simulate(dt) {
     // of the player's sails on (afterglow) so the sea never stands still (T-07)
     G.acc += dt;
     while (G.acc >= DT) {
-      race.step(0, 0, 0); for (const e of race.events) stage.onEvent(e); race.events.length = 0; G.acc -= DT;
+      race.step(0, 0, 0); if (G.rescue) G.rescue.step(); for (const e of race.events) stage.onEvent(e); race.events.length = 0; G.acc -= DT;
       if (race.done && G.mode === 'demo') { startDemo(G.demoCourse); break; }
     }
     sound.frame({ active: false });
@@ -440,7 +600,9 @@ function frame(ts) {
     // a paused race is a still picture: nothing moves, and it is drawn only now and then (T-12)
     const still = G.paused;
     stage.update(G.acc / DT, still ? 0 : dt * (G.mode === 'race' ? G.timeScale : 1), G.race.t - (1 - G.acc / DT) * DT);
-    if (!still || G.dirty || G.frames % 6 === 0) { stage.render(); G.dirty = false; }
+    // behind a menu or a result that nobody has touched for a while the sea is drawn every second frame: half the work (finding 4)
+    const every = still ? 6 : G.mode !== 'race' && !G.film && performance.now() - G.inputAt > IDLE_MS ? 2 : 1;
+    if (G.dirty || G.frames % every === 0) { stage.render(); G.dirty = false; G.draws++; }
   }
   // test hook: play a display with this frame time (ms), whatever the frame itself cost: wait out the rest of the interval
   // (measured on the page's own clock from the end of the last frame: the time stamp a frame is given can be milliseconds old)
@@ -458,7 +620,11 @@ function wire() {
   tap('b-card', () => { $('card-text').textContent = cardText(); show('card'); });
   tap('b-card-done', () => { paintSettings(); show('settings'); });
   tap('b-card-copy', async () => { const t = cardText(); $('card-text').textContent = t; try { await navigator.clipboard.writeText(t); toast('Card copied: paste it in the chat.'); } catch (e) { toast('Copy failed: select the text and copy it by hand.'); } });
-  tap('b-card-reset', () => { if (!confirm('Erase every best time, medal and unlock on this device?')) return; const keep = settings(); G.save = PR.freshSave(); G.save.settings = keep; saveNow(); toast('Progress erased.'); });
+  tap('b-card-reset', () => { if (!confirm('Erase every best time, medal and unlock on this device?')) return; const keep = settings(); G.save = PR.freshSave(); G.save.settings = keep; saveNow();
+    // what is locked again cannot stay chosen (finding 11)
+    const u = G.save.unlocked, sel = G.sel; if (!u.tunes.includes(sel.tune)) sel.tune = 'cruise'; if (!u.liveries.includes(sel.livery)) sel.livery = 'pearl'; if (!PR.courseOpen(G.save, COURSE_KEYS, sel.course)) sel.course = COURSE_KEYS[0];
+    if (G.mode === 'demo') { if (G.demoCourse !== sel.course) startDemo(sel.course); else if (stage.boats[3]) stage.boats[3].vis.setLivery(sel.livery); }
+    toast('Progress erased.'); });
   tap('b-cal-touch', () => finishCal('touch', 'Touch steering: slide your left thumb, boost with your right.'));
   tap('b-cal-anyway', () => { const r = controls.calibrate(true); if (r.ok) finishCal('tilt', 'Straight ahead is set.'); else toast('Still moving too much: rest your elbows, or steer by touch.'); });
   $('s-menu').addEventListener('click', menuClick);
@@ -489,6 +655,7 @@ function wire() {
   for (const ev of ['contextmenu', 'gesturestart', 'dblclick']) document.addEventListener(ev, (e) => e.preventDefault());
   // a sound engine that was interrupted starts again only inside a tap: every tap and key press tries (T-09)
   for (const ev of ['pointerup', 'touchend', 'click', 'keydown']) document.addEventListener(ev, () => sound.resume(), { capture: true, passive: true });
+  for (const ev of ['pointerdown', 'keydown']) document.addEventListener(ev, () => { G.inputAt = performance.now(); }, { capture: true, passive: true });
   // motion data stopped in the middle of a race: pause and say so, instead of changing the steering under the player's hands (P5)
   controls.onChange = (what) => {
     paintControlsHint();
@@ -522,7 +689,7 @@ G.renderSound = async (from, to, rate = 44100, mute = []) => {
   const cut = { engine: () => snd.engGain.disconnect(), water: () => snd.water.g.disconnect(), jet: () => snd.jet.g.disconnect(), music: () => snd.musBus.disconnect(), sfx: () => snd.sfxBus.disconnect() };
   for (const m of mute) if (cut[m]) cut[m]();
   let k = 0; const run = (until) => { for (; k < log.length && log[k][0] <= until + 1e-9; k++) { const [, fn, ...a] = log[k]; snd[fn](...a); } snd.schedule(); };
-  const times = [...new Set(log.map((e) => e[0]).filter((t) => t > 0 && t < to))].sort((a, b) => a - b);
+  const times = [...new Set(log.map((e) => e[0]).filter((t) => t > 0 && t < to - 2 / rate))].sort((a, b) => a - b);   // not at the very end: the context refuses a stop there
   run(0);
   for (const t of times) ctx.suspend(t).then(() => { run(t); ctx.resume(); });
   const buf = await ctx.startRendering(), all = buf.getChannelData(0), i0 = Math.floor(from * rate), x = all.subarray(i0);
@@ -553,7 +720,7 @@ try {
   $('title-build').textContent = `${VERSION}, built ${BUILD}`;
   show('title'); checkRotation();
   // film: no menus; the race starts at once with the computer at the wheel and the caller owns the clock (G.filmStep)
-  if (G.film) { G.started = true; G.auto = true; controls.mode = 'keys'; if (Q.get('course') && COURSE_KEYS.includes(Q.get('course'))) G.sel.course = Q.get('course'); if (Q.get('mode') === 'trial') G.sel.mode = 'trial'; startRace(); }
+  if (G.film) { G.started = true; G.auto = true; controls.mode = 'keys'; if (Q.get('course') && COURSE_KEYS.includes(Q.get('course'))) G.sel.course = Q.get('course'); if (Q.get('mode') === 'trial') G.sel.mode = 'trial'; if (Q.get('mode') === 'rescue') G.sel.mode = 'rescue'; await startRace(); }
   if (!G.film) requestAnimationFrame(frame);
   window.__ready = true;
-} catch (e) { window.__error = String((e && e.stack) || e); $('boot-msg').textContent = 'The game could not start: ' + String((e && e.message) || e); }
+} catch (e) { bootFail(e, 'The game could not start: ' + String((e && e.message) || e)); }

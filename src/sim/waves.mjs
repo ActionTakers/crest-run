@@ -1,4 +1,4 @@
-// The game's copy of shared/waves.mjs from <local> (commit 26df76d, written 2026-11-08 by session g-50; the
+// The game's copy of shared/waves.mjs from <local> (commit 26df76d, written 2026-11-08 by an earlier session; the
 // unchanged original is vendor/spikes/waves.mjs). Changes here, 2026-11-13: makeWaves returns [] for amp 0; heightFast() added.
 // waves.mjs: ONE Gerstner wave set for the water shader (S2) and the boat's buoyancy (S3), so the boat rides the waves you see.
 // Written 2026-11-08. Tests: `node --test tests/` (tests/waves.test.mjs); the smoke test

@@ -3,7 +3,7 @@
 // angle fused with the gyro's turn about the screen normal) is the default, the choice after the first phone test (2026-11-08);
 // C (the orientation's twist) is the fallback when no gyro data comes. The neutral is taken only when the phone is still. No DOM
 // needed: tests feed events directly. Written 2026-11-08. Tests: tests/tilt-input.test.mjs.
-import * as M from './tilt-math.mjs?v=f12e6f3c';
+import * as M from './tilt-math.mjs?v=09ccd5d2';
 
 const fin = (v) => typeof v === 'number' && Number.isFinite(v);
 const keep = (buf, th, ms) => { while (buf.length && th - buf[0][0] > ms) buf.shift(); };

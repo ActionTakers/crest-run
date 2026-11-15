@@ -1,6 +1,6 @@
 // courses.mjs: race courses as data plus the builder that turns a course definition into arrays the simulation and the view share.
 // Pure (no DOM, no three.js). The builder is the course part of shared/boat-sim.mjs from <local> (commit 26df76d,
-// written 2026-11-08 by session g-50; original in vendor/spikes/boat-sim.mjs), generalised 2026-11-13 by the yacht project session:
+// written 2026-11-08 by an earlier session; original in vendor/spikes/boat-sim.mjs), generalised 2026-11-13 by the yacht project session:
 // any control loop, several slalom sections, extra gates, ramps with a sideways offset, a racing line that also runs over ramps.
 // World: metres; x and z on the water, y up. Heading h: forward (-sin h, cos h), right (-cos h, -sin h). Lateral offsets: + = right.
 const clamp = (v, lo, hi) => (v < lo ? lo : v > hi ? hi : v);

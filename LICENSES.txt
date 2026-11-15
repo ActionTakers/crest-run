@@ -1,5 +1,7 @@
-crest-run 0.2.1 (a working title), build 2026-11-14 #f12e6f3c.
+crest-run 0.3.1 (a working title), build 2026-11-15 #09ccd5d2.
 
 three.js 0.186.1: MIT licence, see vendor/three-0.186.1/LICENSE.
 Scenery models (assets/models/kit.glb): from the Watercraft Kit, Pirate Kit and Nature Kit by Kenney (www.kenney.nl), Creative Commons Zero (CC0 1.0).
-The yacht (assets/models/yacht-b04.glb), the code, the pictures drawn in the page, the sounds and the icons were made for this game.
+The yacht (assets/models/yacht-b04.glb): generated with Tripo, an AI model service, from a picture that the owner of this game supplied, then reduced in Blender. The terms of that service for a published game have not been checked yet; the model is on this test page for a phone test.
+The llama and the emperor (assets/models/llama-anim.glb, emperor.glb): characters of the owner of this game, generated with Tripo from his own character sheets and reduced in Blender; the emperor shows the owner himself, with his consent. The terms of that service for a published game have not been checked yet.
+The code, the pictures drawn in the page, the sounds and the icons were made for this game.

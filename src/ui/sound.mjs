@@ -114,6 +114,16 @@ export class Sound {
       case 'placeDown': this.tone(NOTE(74), t, 0.1, 'triangle', 0.16); this.tone(NOTE(67), t + 0.08, 0.22, 'triangle', 0.16); break;
       case 'chip': this.tone(NOTE(84 + 2 * Math.min(6, v)), t, 0.16, 'triangle', 0.2); this.tone(NOTE(96 + 2 * Math.min(6, v)), t + 0.03, 0.2, 'sine', 0.1); break;
       case 'click': this.tone(700, t, 0.05, 'square', 0.08); break;
+      // the rescue level (2026-11-15; never heard on a phone)
+      case 'shot': this.tone(210, t, 0.09, 'square', 0.13, 70); this.burst(t, 0.07, 'bandpass', 2600, 900, 0.16, 0.8); break;
+      case 'hit': this.tone(520, t, 0.08, 'triangle', 0.2, 260); this.burst(t, 0.12, 'bandpass', 1400, 600, 0.14, 1); break;
+      case 'sunk': this.tone(300, t, 0.4, 'sawtooth', 0.2, 60); this.burst(t, 0.5, 'lowpass', 2200, 400, 0.26, 0.5); this.tone(NOTE(79), t + 0.08, 0.2, 'triangle', 0.16); this.tone(NOTE(86), t + 0.18, 0.3, 'triangle', 0.16); break;
+      case 'ram': this.tone(90, t, 0.4, 'sine', 0.55, 34); this.burst(t, 0.6, 'lowpass', 2400, 400, 0.34, 0.5); this.tone(NOTE(84), t + 0.1, 0.3, 'triangle', 0.16); break;
+      case 'shark': this.tone(98, t, 0.5, 'sawtooth', 0.2, 92); this.tone(104, t + 0.28, 0.5, 'sawtooth', 0.2, 98); break;
+      case 'alarm': this.tone(880, t, 0.1, 'square', 0.12); this.tone(880, t + 0.16, 0.1, 'square', 0.12); break;
+      case 'grab': this.tone(160, t, 0.5, 'sawtooth', 0.24, 60); this.burst(t, 0.4, 'lowpass', 1800, 300, 0.25, 0.5); break;
+      case 'splash': this.burst(t, 0.45, 'lowpass', 3000, 500, 0.2, 0.5); break;
+      case 'jump': this.tone(NOTE(74 + (v % 5) * 2), t, 0.16, 'triangle', 0.12, NOTE(86 + (v % 5) * 2)); break;
       case 'check': this.tone(NOTE(76), t, 0.25, 'triangle', 0.3); this.tone(NOTE(83), t + 0.22, 0.4, 'triangle', 0.3); break;
       default: break;
     }

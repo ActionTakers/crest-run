@@ -12,7 +12,7 @@
 <link rel="icon" href="./assets/icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="./assets/icon-180.png">
 <title>Crest Run</title>
-<link rel="stylesheet" href="./css/game.css?v=f12e6f3c">
+<link rel="stylesheet" href="./css/game.css?v=09ccd5d2">
 <script type="importmap">{ "imports": { "three": "./vendor/three-0.186.1/build/three.module.js", "three/addons/": "./vendor/three-0.186.1/examples/jsm/" } }</script>
 </head>
 <body>
@@ -34,9 +34,11 @@
   <div id="h-msg"></div>
   <div id="h-count"></div>
   <div id="h-warn"></div>
+  <!-- speed and boost sit beside the boost button, clear of the player's yacht in the middle -->
   <div id="h-dash">
+    <span id="h-chain"></span>
     <div id="h-speed"><b id="h-kmh">0</b><small id="h-unit">km/h</small></div>
-    <div id="h-boost"><i id="h-boost-fill"></i><span id="h-chain"></span></div>
+    <div id="h-boost"><i id="h-boost-fill"></i></div>
   </div>
   <div id="h-left"><div id="h-steer"><i id="h-knob"></i></div><span id="h-left-label">HOLD: DRIFT</span></div>
   <div id="h-boostbtn"><span>BOOST</span></div>
@@ -47,6 +49,7 @@
     <div class="logo"><span>CREST</span> <span>RUN</span></div>
     <div class="bar"><i id="boot-bar"></i></div>
     <p id="boot-msg" class="dim">Loading the sea...</p>
+    <button id="b-reload" class="ghost hidden">Reload</button>
   </section>
 
   <section id="s-title" class="screen">
@@ -75,13 +78,13 @@
     <div class="menu">
       <div class="menu-head">
         <div class="logo small"><span>CREST</span> <span>RUN</span></div>
-        <div class="tabs" id="m-modes"><button data-mode="race" class="on">Race</button><button data-mode="trial">Time trial</button></div>
+        <div class="tabs" id="m-modes"><button data-mode="race" class="on">Race</button><button data-mode="trial">Time trial</button><button data-mode="rescue">Rescue</button></div>
         <button id="b-menu-settings" class="ghost">Settings</button>
       </div>
       <div id="m-courses" class="cards"></div>
       <div class="menu-foot">
         <div class="pick" id="p-tune"><small>Tune</small><div id="m-tunes" class="chips one-line"></div></div>
-        <div class="pick" id="m-diff-wrap"><small>Rivals</small><div id="m-diff" class="chips one-line"><button data-diff="easy">Easy</button><button data-diff="normal">Normal</button><button data-diff="hard">Hard</button></div></div>
+        <div class="pick" id="m-diff-wrap"><small id="m-diff-label">Rivals</small><div id="m-diff" class="chips one-line"><button data-diff="easy">Easy</button><button data-diff="normal">Normal</button><button data-diff="hard">Hard</button></div></div>
         <div class="pick" id="p-colour"><small>Colour</small><div id="m-liveries" class="dots"></div></div>
         <p id="m-hint"></p>
         <button id="b-go" class="cta">RACE</button>
@@ -91,10 +94,19 @@
 
   <section id="s-results" class="screen">
     <div class="panel wide results">
-      <div class="res-top"><div id="r-place"></div><div><h2 id="r-title"></h2><p id="r-time"></p><p id="r-best" class="dim"></p></div><div id="r-medal"></div></div>
-      <ul id="r-news"></ul>
-      <div id="r-table"></div>
-      <p id="r-stats" class="dim small"></p>
+      <!-- the title across the top, two columns under it, the tip on one line: every line stands clear of the buttons in a
+           browser tab of a small phone too -->
+      <h2 id="r-title"></h2>
+      <div class="res-cols">
+        <div class="res-main">
+          <div class="res-top"><div id="r-place"></div><div><p id="r-time"></p><p id="r-best" class="dim"></p></div><div id="r-medal"></div></div>
+          <ul id="r-news"></ul>
+        </div>
+        <div class="res-side">
+          <div id="r-table"></div>
+          <p id="r-stats" class="dim small"></p>
+        </div>
+      </div>
       <p id="r-tip" class="small"></p>
       <div class="row center sticky"><button id="b-nextcourse" class="cta hidden"></button><button id="b-retry" class="cta">RACE AGAIN</button><button id="b-next" class="ghost">Courses</button></div>
     </div>
@@ -158,6 +170,16 @@
   </section>
 </div>
 <div id="toast"></div>
-<script type="module" src="./src/main.mjs?v=f12e6f3c"></script>
+<!-- a file of the game that does not arrive (a weak connection) must not leave "Loading the sea..." up for ever -->
+<script>
+window.addEventListener('error', function (e) {
+  var t = e.target;
+  if (window.__ready || !t || t === window || !(t.tagName === 'SCRIPT' || (t.tagName === 'LINK' && t.rel === 'stylesheet'))) return;
+  var m = document.getElementById('boot-msg'), b = document.getElementById('b-reload');
+  if (m) m.textContent = 'A file of the game did not arrive. Check the connection, then reload.';
+  if (b) { b.classList.remove('hidden'); b.onclick = function () { location.reload(); }; }
+}, true);
+</script>
+<script type="module" src="./src/main.mjs?v=09ccd5d2"></script>
 </body>
 </html>

@@ -16,16 +16,31 @@ export function shortUA() {
   return `${m ? m[1].replace(/_/g, '.') : '?'} ${b ? b[1] + ' ' + b[2] : ''}`.trim();
 }
 
-// ---- screen wake lock: asked inside a tap, asked again whenever the page comes back ----
-export const wake = { supported: 'wakeLock' in navigator, state: 'not requested', sentinel: null, releases: 0 };
-export async function requestWake() {
-  if (!wake.supported) { wake.state = 'not supported'; return false; }
-  if (wake.sentinel) return true;
-  try {
-    wake.sentinel = await navigator.wakeLock.request('screen'); wake.state = 'active';
-    wake.sentinel.addEventListener('release', () => { wake.releases++; wake.sentinel = null; wake.state = 'released'; });
-    return true;
-  } catch (e) { wake.state = 'refused: ' + ((e && e.name) || e); return false; }
+// ---- screen wake lock: held while a race runs (asked inside the tap that starts or resumes it) and let go on a pause, on the
+// result and on the menus, so the phone can dim and sleep there as it always does (the outside critic's finding 4, 2026-11-14).
+// releases counts the times the phone took the lock away; given counts the times the game let it go.
+export const wake = { supported: 'wakeLock' in navigator, state: 'not requested', sentinel: null, releases: 0, given: 0, wanted: false, pending: null };
+export function requestWake() {
+  if (!wake.supported) { wake.state = 'not supported'; return Promise.resolve(false); }
+  wake.wanted = true;
+  if (wake.sentinel) return Promise.resolve(true);
+  if (wake.pending) return wake.pending;
+  wake.pending = (async () => {
+    try {
+      const s = await navigator.wakeLock.request('screen');
+      s.addEventListener('release', () => { if (wake.sentinel === s) { wake.sentinel = null; wake.releases++; wake.state = 'taken away by the phone'; } });
+      if (!wake.wanted) { wake.given++; wake.state = 'let go (no race running)'; try { await s.release(); } catch (e) { /* already gone */ } return true; }   // let go while the request was on its way
+      wake.sentinel = s; wake.state = 'active';
+      return true;
+    } catch (e) { wake.state = 'refused: ' + ((e && e.name) || e); return false; } finally { wake.pending = null; }
+  })();
+  return wake.pending;
+}
+export function releaseWake() {
+  wake.wanted = false;
+  const s = wake.sentinel; if (!s) return;
+  wake.sentinel = null; wake.given++; wake.state = 'let go (no race running)';
+  try { const p = s.release(); if (p && p.catch) p.catch(() => {}); } catch (e) { /* already gone */ }
 }
 
 // ---- storage: JSON under one key; the game runs without it (private browsing, storage full) ----

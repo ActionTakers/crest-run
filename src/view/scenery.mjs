@@ -4,8 +4,8 @@
 // Everything that repeats is instanced, so the scenery costs a handful of draw calls. Written 2026-11-13, yacht project session.
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
-import * as W from '../sim/waves.mjs?v=f12e6f3c';
-import { pointInto } from '../sim/courses.mjs?v=f12e6f3c';
+import * as W from '../sim/waves.mjs?v=09ccd5d2';
+import { pointInto } from '../sim/courses.mjs?v=09ccd5d2';
 
 function mulberry(seed) { let s = seed >>> 0; return () => { s = (s + 0x6d2b79f5) >>> 0; let t = s; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
 const COL = { gate: new THREE.Color(0xff8a1f), slalom: new THREE.Color(0xffc21a), corner: new THREE.Color(0xff8a1f), ok: new THREE.Color(0x35d07a), miss: new THREE.Color(0xe8343c), edge: new THREE.Color(0xf4f4f4) };
@@ -100,6 +100,7 @@ export class Scenery {
   setCourse(c) {
     if (c === this.course && this.buoys) { this.resetGates(); return; }   // the same course again (a retry, back from a race): keep what is built
     this.course = c; this.builds++;
+    const arena = this.arena = !!(c.def && c.def.arena);   // the rescue level: a ring around an island, no gates, no gantry; the inside is the level's own
     for (const x of this.owned) x.dispose();                              // the last course's own geometry and instance buffers
     this.owned.length = 0;
     this.group.clear(); this.ramps = []; this.sails = [];
@@ -109,13 +110,13 @@ export class Scenery {
     this.buoys = own(new THREE.InstancedMesh(this.buoyGeo, this.buoyMat, n)); this.lamps = own(new THREE.InstancedMesh(this.lampGeo, this.lampMat, n));
     this.buoyXZ = new Float32Array(n * 2);
     c.gates.forEach((g, i) => { [g.lo, g.hi].forEach((lat, k) => { pointInto(c, g.s, lat, o); this.buoyXZ[4 * i + 2 * k] = o[0]; this.buoyXZ[4 * i + 2 * k + 1] = o[1]; }); });
-    this.buoys.frustumCulled = false; this.lamps.frustumCulled = false; this.group.add(this.buoys, this.lamps);
+    this.buoys.frustumCulled = false; this.lamps.frustumCulled = false; this.buoys.visible = this.lamps.visible = !arena; this.group.add(this.buoys, this.lamps);
     this.gateState = c.gates.map(() => 0); this.paintGates();
     this.beams = [new THREE.Mesh(this.beamGeo, this.beamMat), new THREE.Mesh(this.beamGeo, this.beamMat)];
     for (const b of this.beams) { b.frustumCulled = false; b.renderOrder = 4; this.group.add(b); }
     // ---- edge markers every 40 m on both sides ----
     const ex = [];
-    for (let s = 0; s < c.len; s += 40) for (const lat of [-c.halfWidth, c.halfWidth]) { pointInto(c, s, lat, o); ex.push(o[0], o[1]); }
+    for (let s = 0; s < c.len; s += 40) for (const lat of arena ? [-c.halfWidth] : [-c.halfWidth, c.halfWidth]) { pointInto(c, s, lat, o); ex.push(o[0], o[1]); }
     this.edgeXZ = Float32Array.from(ex);
     this.edges = own(new THREE.InstancedMesh(this.edgeGeo, this.edgeMat, ex.length / 2));
     this.edges.frustumCulled = false; this.group.add(this.edges);
@@ -135,7 +136,7 @@ export class Scenery {
       this.group.add(grp); this.ramps.push({ grp, x: o[0], z: o[1] });
     }
     // ---- the start and finish gantry ----
-    const gan = new THREE.Group(), gw = Math.min(c.halfWidth - 6, 22);
+    const gan = new THREE.Group(), gw = Math.min(c.halfWidth - 6, 22); gan.visible = !arena;
     for (const lat of [-gw, gw]) { pointInto(c, 0, lat, o); const p = new THREE.Mesh(this.poleGeo, this.poleMat); p.position.set(o[0], 5.5, o[1]); gan.add(p); }
     pointInto(c, 0, 0, o);
     const ban = new THREE.Mesh(own(new THREE.PlaneGeometry(2 * gw, 2.4)), this.bannerMat);
@@ -146,7 +147,7 @@ export class Scenery {
     const want = { islands: 11, liner: 1, cargo: 1, tug: 1, sails: 5, towers: 1, ...((c.def && c.def.scenery) || {}) };
     const isl = [], palms = [], rocks = [];
     for (let tries = 0; tries < 500 && isl.length < want.islands; tries++) {
-      const s = rnd() * c.len, lat = (rnd() < 0.5 ? -1 : 1) * (c.halfWidth + 30 + rnd() * 120), rad = 12 + rnd() * 24;
+      const s = rnd() * c.len, sg = rnd() < 0.5 ? -1 : 1, lat = (arena ? -1 : sg) * (c.halfWidth + 30 + rnd() * 120), rad = 12 + rnd() * 24;
       pointInto(c, s, lat, o); const x = o[0], z = o[1];
       if (!clear(x, z, rad + 14) || isl.some((q) => (q.x - x) ** 2 + (q.z - z) ** 2 < (q.rad + rad + 20) ** 2)) continue;
       const h = 3 + rnd() * 5; isl.push({ x, z, rad, h });
@@ -165,7 +166,7 @@ export class Scenery {
     const byRad = [...isl].sort((a, b) => b.rad - a.rad).slice(0, want.towers);
     this.kitInstances('pk_tower-complete-large', byRad.map((q) => ({ x: q.x, y: q.h * 0.75, z: q.z, ry: 0 })), 15);
     // anchored ships and sails, far enough from the lane to be landmarks, never in it
-    const far = (minD, maxD) => { for (let k = 0; k < 80; k++) { const s = rnd() * c.len, lat = (rnd() < 0.5 ? -1 : 1) * (c.halfWidth + minD + rnd() * (maxD - minD)); pointInto(c, s, lat, o); if (clear(o[0], o[1], minD * 0.8) && !isl.some((q) => (q.x - o[0]) ** 2 + (q.z - o[1]) ** 2 < (q.rad + 30) ** 2)) return { x: o[0], z: o[1], ry: rnd() * 6.28 }; } return null; };
+    const far = (minD, maxD) => { for (let k = 0; k < 80; k++) { const s = rnd() * c.len, sg = rnd() < 0.5 ? -1 : 1, lat = (arena ? -1 : sg) * (c.halfWidth + minD + rnd() * (maxD - minD)); pointInto(c, s, lat, o); if (clear(o[0], o[1], minD * 0.8) && !isl.some((q) => (q.x - o[0]) ** 2 + (q.z - o[1]) ** 2 < (q.rad + 30) ** 2)) return { x: o[0], z: o[1], ry: rnd() * 6.28 }; } return null; };
     const many = (n, minD, maxD, y) => { const out = []; for (let k = 0; k < n; k++) { const p = far(minD, maxD); if (p) out.push({ ...p, y }); } return out; };
     this.kitInstances('wc_ship-ocean-liner', many(want.liner, 220, 420, -1.5), 170);
     this.kitInstances('wc_ship-cargo-a', many(want.cargo, 110, 300, -1), 90);
@@ -210,7 +211,7 @@ export class Scenery {
     for (const r of this.ramps) { const f = sea.fadeAt(r.x, r.z); r.grp.position.y = (f > 0.01 ? W.heightFast(wv, r.x, r.z, t, 2) * f : 0) - 0.05; }
     const ng = me && !me.finished ? me.nextGate : -1;
     for (let k = 0; k < 2; k++) {
-      const b = this.beams[k]; b.visible = ng >= 0;
+      const b = this.beams[k]; b.visible = ng >= 0 && !this.arena;
       if (ng >= 0) { const x = bx[4 * ng + 2 * k], z = bx[4 * ng + 2 * k + 1]; b.position.set(x, 0, z); }
     }
     this.beamMat.uniforms.uAmt.value = 0.42 + 0.16 * Math.sin(t * 7);

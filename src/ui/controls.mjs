@@ -1,10 +1,10 @@
 // controls.mjs: the player's hands. Tilt (the phone held like a steering wheel, sim/tilt-input.mjs, signal B) with the thumbs on
 // the screen: right half = boost (hold), left half = brake and slide (hold). Touch steering when there is no motion data or the
 // player prefers it: the left thumb slides left and right, the right thumb boosts, no brake (review finding F05). Keys for a desk.
-// Covers the tilt edge cases of the F1 analysis: a permission prompt that never answers (INPUT-04), sensor events that arrive late
+// Covers the tilt edge cases of the F1 analysis: a permission prompt that answers late or never (INPUT-04), sensor events that arrive late
 // (INPUT-03: offered, never switched silently), a phone lying flat (INPUT-11), a recentre that does not jump (INPUT-10).
 // Written 2026-11-13 by the yacht project session.
-import { TiltInput } from '../sim/tilt-input.mjs?v=f12e6f3c';
+import { TiltInput } from '../sim/tilt-input.mjs?v=09ccd5d2';
 
 const clamp = (v, lo, hi) => (v < lo ? lo : v > hi ? hi : v);
 const now = () => performance.now();
@@ -15,25 +15,33 @@ export class Controls {
     this.mode = 'none';            // 'tilt', 'touch' or 'keys' once started
     this.prefer = 'auto';          // the player's setting: 'auto', 'tilt' or 'touch'
     this.steer = 0; this.brake = 0; this.boost = 0;
-    this.perm = null; this.started = false; this.flat = false; this.lostAt = null; this.tiltSeen = false;
+    this.perm = null; this.asking = false; this.started = false; this.flat = false; this.lostAt = null; this.tiltSeen = false;
     this.blend = 0; this.out = 0;
     this.t = { steerId: null, x0: 0, target: 0, value: 0, boost: new Set(), brake: new Set(), w: 800, range: 70 };
     this.k = { left: false, right: false, boost: false, brake: false, used: false, value: 0 };
     this.onChange = () => {};      // called when the mode changes by itself (data lost, late data)
     this.recentres = 0;
   }
-  // Inside a tap handler: ask for motion access (one prompt grants motion and orientation on iPhone, S1-01) with a time limit.
-  async start() {
-    const ask = TiltInput.requestPermission(window);
-    const limit = new Promise((r) => setTimeout(() => r({ motion: 'no answer', orientation: 'no answer' }), 4000));
-    let perm; try { perm = await Promise.race([ask, limit]); } catch (e) { perm = { motion: 'error', orientation: 'error' }; }
-    this.perm = perm; this.tilt.attach(window); this.tilt.start(now()); this.started = true;
-    const refused = [perm.motion, perm.orientation].some((v) => v === 'denied' || v === 'no answer' || String(v).startsWith('error'));
-    if (refused || this.prefer === 'touch') this.mode = 'touch';
-    return perm;
+  // Inside a tap handler: ask for motion access (one prompt grants motion and orientation on iPhone, S1-01). The answer is waited
+  // for as long as the player takes: a 4 s limit once sent a slow reader of the prompt to touch steering for good (the outside
+  // critic's test of 2026-11-14). `asking` is true until the answer is in: the screen says so and offers touch steering meanwhile,
+  // which also covers a prompt that never answers (INPUT-04). The sensors are listened to from the answer on.
+  start() {
+    this.asking = true; this.perm = null;
+    const answered = (perm) => {
+      this.perm = perm; this.asking = false;
+      if (!this.started) { this.tilt.attach(window); this.tilt.start(now()); this.started = true; }
+      const refused = [perm.motion, perm.orientation].some((v) => v === 'denied' || String(v).startsWith('error'));
+      if (refused || this.prefer === 'touch') this.mode = 'touch';
+      return perm;
+    };
+    let ask; try { ask = TiltInput.requestPermission(window); } catch (e) { ask = Promise.reject(e); }
+    return ask.then(answered, () => answered({ motion: 'error', orientation: 'error' }));
   }
-  // 'waiting' (no event yet, under a second), 'tilt' (data flows) or 'touch' (no data came, or refused)
+  // 'asking' (the motion question is still open), 'waiting' (no event yet, under a second), 'tilt' (data flows) or 'touch' (no
+  // data came, or refused)
   sensorState() {
+    if (this.asking) return 'asking';
     if (!this.started) return 'waiting';
     const src = this.tilt.checkNoData(now());
     if (src === 'tilt') { this.tiltSeen = true; return this.mode === 'touch' ? 'touch' : 'tilt'; }

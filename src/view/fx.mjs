@@ -1,8 +1,8 @@
 // fx.mjs: what a moving hull does to the water: a V-shaped wake ribbon and spray. Based on shared/water-view.mjs of
-// <local> (commit 26df76d, session g-50); rewritten 2026-11-13 by the yacht project session with typed arrays
+// <local> (commit 26df76d, an earlier session); rewritten 2026-11-13 by the yacht project session with typed arrays
 // and no per-frame allocation (F1 findings RENDER-06 and RENDER-07), a glow for the boost and bursts for landings.
 import * as THREE from 'three';
-import { SEA_POINT_GLSL } from './sea.mjs?v=f12e6f3c';
+import { SEA_POINT_GLSL } from './sea.mjs?v=09ccd5d2';
 
 // A wake: a ribbon behind a boat, rebuilt each frame from the boat's recent track (a ring of positions every dtw seconds).
 export class Wake {
