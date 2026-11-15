@@ -4,8 +4,8 @@
 // Everything that repeats is instanced, so the scenery costs a handful of draw calls. Written 2026-11-13, yacht project session.
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
-import * as W from '../sim/waves.mjs?v=09ccd5d2';
-import { pointInto } from '../sim/courses.mjs?v=09ccd5d2';
+import * as W from '../sim/waves.mjs?v=d21bc96f';
+import { pointInto } from '../sim/courses.mjs?v=d21bc96f';
 
 function mulberry(seed) { let s = seed >>> 0; return () => { s = (s + 0x6d2b79f5) >>> 0; let t = s; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
 const COL = { gate: new THREE.Color(0xff8a1f), slalom: new THREE.Color(0xffc21a), corner: new THREE.Color(0xff8a1f), ok: new THREE.Color(0x35d07a), miss: new THREE.Color(0xe8343c), edge: new THREE.Color(0xf4f4f4) };

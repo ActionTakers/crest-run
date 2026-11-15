@@ -8,8 +8,8 @@
 // never by a person on a phone. Tests: tests/rescue.test.mjs.
 // World and headings as in race-sim.mjs: forward f = (-sin h, cos h), right r = (-cos h, -sin h); an angle a around the island
 // puts a point at (cos a, sin a) * radius, and a boat that circles with growing a has heading h = a and the island on its right.
-import { DT, BOOST, Race } from './race-sim.mjs?v=09ccd5d2';
-import { buildCourse, wrapA } from './courses.mjs?v=09ccd5d2';
+import { DT, BOOST, Race } from './race-sim.mjs?v=d21bc96f';
+import { buildCourse, wrapA } from './courses.mjs?v=d21bc96f';
 
 const DEG = Math.PI / 180;
 const clamp = (v, lo, hi) => (v < lo ? lo : v > hi ? hi : v);
@@ -64,11 +64,13 @@ export class Rescue {
     this.total = L.waves.reduce((a, x) => a + x, 0);
     this.llamas = []; this.sharks = []; this.shells = [];
     let k = 0;
+    // the swimmers: llamas, and as the last of each group one of the crew (kind 'person', who: which of this mission's three);
+    // the rules are the same for both, only the picture differs
     L.waves.forEach((n, w) => { for (let j = 0; j < n; j++, k++) {
       // on deck: a row along the rail that faces the island; its beach spot: a place on the sand under the ship's side of the island
       const along = (k - (this.total - 1) / 2) * 4.6, dx = SHIP.x + SHIP.ax * along + SHIP.nx * (SHIP.beam / 2 - 1.6), dz = SHIP.z + SHIP.az * along + SHIP.nz * (SHIP.beam / 2 - 1.6);
       const ba = ARENA.ship.a + (k - (this.total - 1) / 2) * 5.5 * DEG;
-      this.llamas.push({ i: k, wave: w, j, st: A.deck, x: dx, z: dz, h: Math.atan2(-SHIP.nx, SHIP.nz), v: 0, t: 0, x0: dx, z0: dz, x1: 0, z1: 0, by: -1, follow: false, bx: I.x + Math.cos(ba) * (I.r - 6), bz: I.z + Math.sin(ba) * (I.r - 6) });
+      this.llamas.push({ i: k, wave: w, j, kind: j === n - 1 ? 'person' : 'llama', who: j === n - 1 ? w : -1, st: A.deck, x: dx, z: dz, h: Math.atan2(-SHIP.nx, SHIP.nz), v: 0, t: 0, x0: dx, z0: dz, x1: 0, z1: 0, by: -1, follow: false, bx: I.x + Math.cos(ba) * (I.r - 6), bz: I.z + Math.sin(ba) * (I.r - 6) });
     } });
     L.sharks.forEach((n, w) => { for (let j = 0; j < n; j++) this.sharks.push({ i: this.sharks.length, wave: w, j, st: S.none, x: 0, z: 0, h: 0, v: 0, hp: L.hp, t: 0, target: -1, at: 0 }); });
     for (let i = 0; i < 28; i++) this.shells.push({ on: false, x: 0, z: 0, vx: 0, vz: 0, t: 0, life: 0 });

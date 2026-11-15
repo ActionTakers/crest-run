@@ -80,7 +80,8 @@ export function applyRescue(save, result) {
   s.stats.rescues = (s.stats.rescues || 0) + 1;
   s.last = { ...s.last, tune: result.tune, livery: result.livery || s.last.livery, mode: 'rescue' };
   if (!result.finished) return { save: s, news };
-  s.stats.llamas = (s.stats.llamas || 0) + result.saved;
+  // a boss fight (result.boss) counts its win, not its crystals as llamas
+  if (result.boss) { if (result.won) s.stats.bosses = (s.stats.bosses || 0) + 1; } else s.stats.llamas = (s.stats.llamas || 0) + result.saved;
   const key = `${result.course}:rescue`, old = s.best[key];
   if (!old || result.saved > old.saved || (result.saved === old.saved && result.time < old.time)) {
     s.best[key] = { saved: result.saved, total: result.total, time: result.time, tune: result.tune, difficulty: result.difficulty };

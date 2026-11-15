@@ -6,19 +6,23 @@
 // live page): "finding N" in comments names them; the triage is review/r4-critic/TRIAGE.md of the project.
 // 0.3.0 (2026-11-15): the rescue level (sim/rescue.mjs, view/rescue-view.mjs): a third mode beside the race and the time trial.
 // 0.3.1 (the same day): the llamas of that level are animated (idle, hop, paddle, walk), from the model of his Friendly Fighters site.
-import { Stage, CAMS } from './view/stage.mjs?v=09ccd5d2';
-import { LIVERIES, LIVERY_KEYS } from './view/boats.mjs?v=09ccd5d2';
-import { WORLDS } from './view/sky.mjs?v=09ccd5d2';
-import { getCourse, COURSE_DEFS, COURSE_KEYS, pointInto, wrapA, wrapS } from './sim/courses.mjs?v=09ccd5d2';
-import { Race, defaultSettings, DT, TUNES, TUNE_KEYS, BOOST, SIM_VERSION, encodeInputs, decodeInputs } from './sim/race-sim.mjs?v=09ccd5d2';
-import { Rescue, arenaCourse, rescueSettings, ARENA, RESCUE, S as SHARK } from './sim/rescue.mjs?v=09ccd5d2';
-import { Governor, RefreshWatch, measureRefresh } from './sim/governor.mjs?v=09ccd5d2';
-import * as PR from './sim/progress.mjs?v=09ccd5d2';
-import { Controls } from './ui/controls.mjs?v=09ccd5d2';
-import { Sound } from './ui/sound.mjs?v=09ccd5d2';
-import * as PF from './ui/platform.mjs?v=09ccd5d2';
+// 0.4.0 (the same day): the crew (view/people.mjs): three of them swim among the llamas of a mission, one stands at each helm in a race;
+// and a boss level, The World Dragon (sim/boss.mjs, view/boss-view.mjs): a second card under the Rescue tab.
+import { Stage, CAMS } from './view/stage.mjs?v=d21bc96f';
+import { LIVERIES, LIVERY_KEYS } from './view/boats.mjs?v=d21bc96f';
+import { OWNER, crewFor } from './view/people.mjs?v=d21bc96f';
+import { WORLDS } from './view/sky.mjs?v=d21bc96f';
+import { getCourse, COURSE_DEFS, COURSE_KEYS, pointInto, wrapA, wrapS } from './sim/courses.mjs?v=d21bc96f';
+import { Race, defaultSettings, DT, TUNES, TUNE_KEYS, BOOST, SIM_VERSION, encodeInputs, decodeInputs } from './sim/race-sim.mjs?v=d21bc96f';
+import { Rescue, arenaCourse, rescueSettings, ARENA, RESCUE, S as SHARK } from './sim/rescue.mjs?v=d21bc96f';
+import { Boss, dragonCourse, bossSettings, DRAGON, BOSS as FIGHT } from './sim/boss.mjs?v=d21bc96f';
+import { Governor, RefreshWatch, measureRefresh } from './sim/governor.mjs?v=d21bc96f';
+import * as PR from './sim/progress.mjs?v=d21bc96f';
+import { Controls } from './ui/controls.mjs?v=d21bc96f';
+import { Sound } from './ui/sound.mjs?v=d21bc96f';
+import * as PF from './ui/platform.mjs?v=d21bc96f';
 
-export const VERSION = 'crest-run 0.3.1', BUILD = '2026-11-15 #09ccd5d2';
+export const VERSION = 'crest-run 0.4.0', BUILD = '2026-11-15 #d21bc96f';
 const $ = (id) => document.getElementById(id);
 const Q = new URLSearchParams(location.search);
 // on a desk (a local address) the page takes two test switches from its address that a published page ignores: the computer at
@@ -45,7 +49,7 @@ const G = window.__game = { version: VERSION, build: BUILD, stage, controls, sou
   probe: { n: 0, deltas: [] }, probes: 0, lastRuns: [], storage: true, calT: 0, calTry: 0, calDone: 0, resultsAt: null, hudOn: Q.get('hud') !== '0', resumeLeft: 0, resumeShown: '', afterCal: null, dirty: true, filmT: 0, inputAt: performance.now(), draws: 0 };
 const settings = () => G.save.settings;
 G.sel = { mode: ['trial', 'rescue'].includes(G.save.last.mode) ? G.save.last.mode : 'race', course: COURSE_KEYS.includes(G.save.last.course) ? G.save.last.course : COURSE_KEYS[0],
-  tune: G.save.unlocked.tunes.includes(G.save.last.tune) ? G.save.last.tune : 'cruise', livery: G.save.unlocked.liveries.includes(G.save.last.livery) ? G.save.last.livery : 'pearl', difficulty: settings().difficulty };
+  tune: G.save.unlocked.tunes.includes(G.save.last.tune) ? G.save.last.tune : 'cruise', livery: G.save.unlocked.liveries.includes(G.save.last.livery) ? G.save.last.livery : 'pearl', difficulty: settings().difficulty, level: ARENA.key };
 window.addEventListener('error', (e) => { G.errors.push(String(e.message).slice(0, 200)); });
 window.addEventListener('unhandledrejection', (e) => { G.errors.push('rejection: ' + String(e.reason && e.reason.message || e.reason).slice(0, 200)); });
 // the elements the race display writes every frame, looked up once (T-10)
@@ -90,7 +94,7 @@ function startDemo(courseKey = G.sel.course) {
   stage.setWorld(Q.get('world') || def.world); stage.setCourse(c);
   const race = new Race({ ...defaultSettings(c, { rivals: 3, tune: G.sel.tune }), player: -1 }, c);
   G.race = race; G.rescue = null; G.ghost = null; G.mode = 'demo'; G.run = null; G.demoCourse = courseKey; G.timeScale = 1; G.acc = 0; G.paused = false; G.pausedBy = null; G.resumeLeft = 0;
-  stage.setRescue(null); stage.setGhost(null); stage.setRace(race, [G.sel.livery, ...LIVERY_KEYS.filter((k) => k !== G.sel.livery)].slice(0, 4).reverse(), 3);
+  stage.setSkippers([]); stage.setRescue(null); stage.setBoss(null); stage.setGhost(null); stage.setRace(race, [G.sel.livery, ...LIVERY_KEYS.filter((k) => k !== G.sel.livery)].slice(0, 4).reverse(), 3);
   stage.setCameraMode('orbit');
   for (let i = 0; i < Math.round(5 / DT); i++) { race.step(0, 0, 0); race.events.length = 0; }   // past the countdown: boats already moving
 }
@@ -99,7 +103,7 @@ function startDemo(courseKey = G.sel.course) {
 function startRace() {
   if (G.sel.mode === 'rescue') return startRescue();
   const { mode, course: key, tune, livery, difficulty } = G.sel, c = getCourse(key), def = COURSE_DEFS[key];
-  G.rescue = null; stage.setRescue(null); E.hud.classList.remove('rescue');
+  G.rescue = null; stage.setRescue(null); E.hud.classList.remove('rescue'); stage.setBoss(null);
   stage.setWorld(Q.get('world') || def.world); stage.setCourse(c);
   const set = defaultSettings(c, { tune, rivals: mode === 'race' ? 3 : 0, difficulty });
   if (DEV && Q.get('seed')) set.sea.seed = +Q.get('seed');
@@ -116,6 +120,9 @@ function startRace() {
     marks: race.boats.map(() => new Float32Array(nm).fill(-1)), markN: new Int32Array(n), gmarks: G.ghost ? new Float32Array(nm).fill(-1) : null, gmarkN: 0,
     coach: G.save.stats.races < 2 && !G.film && !G.auto, coachRamp: false, coachBoost: false };   // the first two races explain gates, ramps and the boost (P20)
   stage.setRace(race, liveries, race.player); stage.setGhost(G.ghost ? G.ghost.race : null);
+  // at the helms: the player's own figure, and three of the crew on the rival yachts, others every race (view/people.mjs)
+  const rivals = crewFor(G.save.stats.races, 3, 5); let rk = 0;
+  const crewReady = stage.setSkippers(race.boats.map((b, i) => (i === race.player ? OWNER : rivals[rk++ % 3])));
   stage.setCameraMode('chase'); controls.releaseAll();
   E.hud.classList.toggle('final', false); $('h-of').textContent = mode === 'race' ? '/' + n : ''; E.place.textContent = mode === 'race' ? n : ''; E.count.textContent = ''; E.warn.style.display = 'none';
   for (const k of Object.keys(H)) H[k] = null;
@@ -124,10 +131,12 @@ function startRace() {
   for (let i = 0; i < n; i++) if (i !== race.player) { const d = document.createElement('i'); d.className = 'rv'; d.style.background = '#' + LIVERIES[liveries[i]].accent.toString(16).padStart(6, '0'); E.prog.appendChild(d); G.run.dots.push({ el: d, i, x: null }); }
   clearTimeout(toastT); E.toast.classList.remove('show');       // a note of the menu does not hang over the start (finding 9)
   paintControlsHint(); show('race'); G.run.trackW = E.prog.clientWidth || 1; sound.music('race'); keepAwake();
+  return crewReady;       // the figures at the helms have arrived: the film waits for this, a player does not
 }
 // ---------- the rescue level: the yacht roams around the island, llamas swim from the ship to the shore, sharks come for them
 // (sim/rescue.mjs). The same boat, controls, camera and display frame as a race; no laps, no rivals. ----------
 async function startRescue() {
+  if (G.sel.level === DRAGON.key) return startBoss();
   if (G.rescueStarting) return; G.rescueStarting = true;
   try {
     if (!stage.rescueView.ready) { toast('Loading the island...', 6000); await stage.rescueLoad; }
@@ -139,7 +148,9 @@ async function startRescue() {
     G.run = { mode: 'rescue', course: ARENA.key, tune, livery, difficulty, at: new Date().toISOString(), frames: 0, late: 0, worst: 0, sumMs: 0, mot0: controls.tilt.counts.mot, th0: performance.now(), steerMode: controls.mode, recentres0: controls.recentres,
       lastHud: 0, countShown: '', dots: [], trackW: 1, wake0: PF.wake.releases, marks: [new Float32Array(1)], markN: new Int32Array(1), gmarks: null, gmarkN: 0,
       coach: !(G.save.stats.rescues > 0) && !G.film && !G.auto, coachAim: false, coachFollow: false, coachBoost: false };
-    stage.setRace(race, [livery], 0); stage.setGhost(null); stage.setRescue(rescue);
+    stage.setBoss(null); stage.setRace(race, [livery], 0); stage.setGhost(null);
+    // three of the crew swim among the llamas, others every mission; a film waits for their models, a player does not
+    const crewReady = Promise.all([stage.setSkippers([OWNER]), stage.setRescue(rescue, crewFor(G.save.stats.rescues || 0, 3, 0))]); if (G.film) await crewReady;
     stage.setCameraMode('chase'); controls.releaseAll();
     E.hud.classList.toggle('final', false); E.hud.classList.add('rescue'); $('h-of').textContent = '/' + rescue.total; E.place.textContent = '0'; E.count.textContent = ''; E.warn.style.display = 'none';
     for (const k of Object.keys(H)) H[k] = null;
@@ -150,6 +161,7 @@ async function startRescue() {
   } finally { G.rescueStarting = false; }
 }
 function endRescue() {
+  if (G.rescue.kind === 'boss') return endBoss();
   const race = G.race, run = G.run, R = G.rescue, sm = R.summary(), rs = race.summary();
   const result = { mode: 'rescue', course: ARENA.key, tune: run.tune, livery: run.livery, difficulty: run.difficulty, finished: sm.finished, saved: sm.saved, total: sm.total, time: sm.time, medal: sm.medal };
   const old = G.save.best[`${ARENA.key}:rescue`], r = PR.applyRescue(G.save, result);
@@ -162,20 +174,98 @@ function endRescue() {
   const lvl = run.difficulty[0].toUpperCase() + run.difficulty.slice(1);
   $('r-place').innerHTML = `${sm.saved}<small>/${sm.total}</small>`;
   $('r-title').textContent = `${ARENA.name}: rescue, sharks on ${lvl}`;
-  $('r-time').textContent = sm.finished ? (sm.saved === sm.total ? 'Every llama safe' : sm.saved === 0 ? 'No llama made it' : `${sm.saved} llamas safe`) : 'Left before the end';
+  $('r-time').textContent = sm.finished ? (sm.saved === sm.total ? 'Everyone safe' : sm.saved === 0 ? 'Nobody made it' : `${sm.saved} safe`) : 'Left before the end';
   $('r-best').textContent = !sm.finished ? '' : old ? (sm.saved > old.saved ? `New best: ${sm.saved - old.saved} more than before` : `Best so far: ${old.saved} of ${old.total}`) : 'First rescue on the board';
   $('r-medal').innerHTML = sm.medal ? `<span class="medal-dot ${sm.medal}"></span><span class="name">${sm.medal}</span>` : '';
   const NEWS = { best: () => 'New best rescue', medal: (n) => `${n.medal[0].toUpperCase() + n.medal.slice(1)} medal` };
   $('r-news').innerHTML = r.news.map((n, i) => `<li style="animation-delay:${(0.9 + 0.4 * i).toFixed(1)}s">${NEWS[n.type](n)}</li>`).join('');
   r.news.forEach((n, i) => setTimeout(() => { if (G.screen === 'results' && G.race === race) sound.sfx('chip', i); }, 900 + 400 * i));
-  $('r-table').innerHTML = [['Sharks sunk', sm.sunk], ['by ramming', sm.rams], ['Cannon hits', `${sm.hits}/${sm.shots}`], ['Llamas lost', sm.lost]].map(([k, v]) => `<span></span><span>${k}</span><span>${v}</span>`).join('');
+  $('r-table').innerHTML = [['Sharks sunk', sm.sunk], ['by ramming', sm.rams], ['Cannon hits', `${sm.hits}/${sm.shots}`], ['Lost', sm.lost]].map(([k, v]) => `<span></span><span>${k}</span><span>${v}</span>`).join('');
   $('r-stats').innerHTML = [`time ${sm.time === null ? '-' : PR.fmtTime(sm.time)}`, `top ${fmtSpeed(rs.topKmh / 3.6)} ${settings().units === 'kn' ? 'kn' : 'km/h'}`, `boost ${rs.boostS.toFixed(1)} s`].map((t) => `<span>${t}</span>`).join('');
   $('r-tip').textContent = !sm.finished ? '' : sm.saved < RESCUE.medals.bronze ? (run.difficulty !== 'easy' ? 'Tip: on the course screen you can set the sharks to Easy.' : 'Tip: stay near the swimmers; they follow your wake to the shore.')
-    : sm.saved === sm.total && run.difficulty !== 'hard' ? 'Tip: every llama safe. Try the sharks one level up.' : '';
+    : sm.saved === sm.total && run.difficulty !== 'hard' ? 'Tip: everyone safe. Try the sharks one level up.' : '';
   G.nextCourse = null; E.nextCourse.classList.add('hidden'); E.retry.textContent = 'RESCUE AGAIN'; E.retry.className = 'cta';
   if (sm.medal && r.news.some((n) => n.type === 'medal')) setTimeout(() => { if (G.screen === 'results' && G.race === race) sound.sfx('medal'); }, 450);
   race.afterglow = true;
   G.mode = 'after'; G.acc = 0; stage.setCameraMode('orbit'); sound.music('menu'); show('results'); PF.releaseWake();
+}
+// ---------- the boss level: a dragon the size of an island, one of the crew on its back as the boss, six crystals to break
+// (sim/boss.mjs). The same frame as the rescue level: G.rescue holds the fight, its kind is 'boss'. ----------
+async function startBoss() {
+  if (G.rescueStarting) return; G.rescueStarting = true;
+  try {
+    if (!stage.bossView.ready) { toast('Waking the dragon...', 6000); await stage.bossView.load(); }
+    if (!stage.bossView.ready) return toast('The dragon did not load. Check the connection, then try again.', 5000);
+    const { tune, livery, difficulty } = G.sel, c = dragonCourse(), seed = DEV && Q.get('seed') ? +Q.get('seed') : 9;
+    stage.setWorld(Q.get('world') || DRAGON.world); stage.setCourse(c);
+    const race = new Race(bossSettings(c, { tune }), c), boss = new Boss(race, { difficulty, seed });
+    G.race = race; G.rescue = boss; G.ghost = null; G.mode = 'race'; G.acc = 0; G.timeScale = 1; G.slowLeft = 0; G.slowArmed = false; G.paused = false; G.pausedBy = null; G.resultsAt = null; G.resumeLeft = 0;
+    G.run = { mode: 'boss', course: DRAGON.key, tune, livery, difficulty, at: new Date().toISOString(), frames: 0, late: 0, worst: 0, sumMs: 0, mot0: controls.tilt.counts.mot, th0: performance.now(), steerMode: controls.mode, recentres0: controls.recentres,
+      lastHud: 0, countShown: '', dots: [], trackW: 1, wake0: PF.wake.releases, marks: [new Float32Array(1)], markN: new Int32Array(1), gmarks: null, gmarkN: 0,
+      coach: !G.save.best[`${DRAGON.key}:rescue`] && !G.film && !G.auto, coachAim: false, coachFire: false };
+    stage.setRescue(null); stage.setRace(race, [livery], 0); stage.setGhost(null);
+    // the boss: one of the crew, another every time; a film waits for the models, a player does not
+    const ready = Promise.all([stage.setSkippers([OWNER]), stage.setBoss(boss, crewFor(G.save.stats.rescues || 0, 1, 8)[0])]); if (G.film) await ready;
+    stage.setCameraMode('chase'); controls.releaseAll();
+    E.hud.classList.toggle('final', false); E.hud.classList.add('rescue'); $('h-of').textContent = '/' + boss.total; E.place.textContent = '0'; E.count.textContent = ''; E.warn.style.display = 'none';
+    for (const k of Object.keys(H)) H[k] = null;
+    clearTimeout(msgT); E.msg.className = ''; msgPri = 0; msgUntil = 0;
+    E.prog.querySelectorAll('i.rv').forEach((e) => e.remove());
+    clearTimeout(toastT); E.toast.classList.remove('show');
+    paintControlsHint(); show('race'); sound.music('race'); keepAwake();
+  } finally { G.rescueStarting = false; }
+}
+function endBoss() {
+  const race = G.race, run = G.run, B = G.rescue, sm = B.summary(), rs = race.summary();
+  const result = { mode: 'rescue', course: DRAGON.key, tune: run.tune, livery: run.livery, difficulty: run.difficulty, finished: sm.finished, saved: sm.saved, total: sm.total, time: sm.time, medal: sm.medal, boss: true, won: sm.won };
+  const old = G.save.best[`${DRAGON.key}:rescue`], r = PR.applyRescue(G.save, result);
+  G.save = r.save; saveNow();
+  const dur = Math.max(0.001, (performance.now() - run.th0) / 1000);
+  G.lastRuns.push({ at: run.at, course: DRAGON.key, mode: 'boss', tune: run.tune, steer: run.steerMode, difficulty: run.difficulty, saved: sm.saved, total: sm.total, hull: sm.hull, time: sm.time, shots: sm.shots, hits: sm.hits,
+    topKmh: rs.topKmh, boostS: rs.boostS, why: !sm.finished ? 'left early' : sm.won ? 'boss beaten' : sm.hull <= 0 ? 'yacht sunk' : 'time up', frames: run.frames, latePct: run.frames ? +(100 * run.late / run.frames).toFixed(1) : null, meanMs: run.frames ? +(run.sumMs / run.frames).toFixed(1) : null, worstMs: Math.round(run.worst),
+    motPerS: +((controls.tilt.counts.mot - run.mot0) / dur).toFixed(0), recentres: controls.recentres - run.recentres0, tier: stage.tierKey, scale: stage.scale, render: stage.renderSize(), wake: PF.wake.state, wakeLost: PF.wake.releases - run.wake0 });
+  if (G.lastRuns.length > 6) G.lastRuns.shift();
+  const lvl = run.difficulty[0].toUpperCase() + run.difficulty.slice(1);
+  $('r-place').innerHTML = `${sm.saved}<small>/${sm.total}</small>`;
+  $('r-title').textContent = `${DRAGON.name}: boss, fire on ${lvl}`;
+  $('r-time').textContent = !sm.finished ? 'Left before the end' : sm.won ? 'The boss is beaten' : sm.hull <= 0 ? 'Your yacht was sunk' : 'Time ran out';
+  $('r-best').textContent = !sm.finished ? '' : old ? (sm.saved > old.saved ? `New best: ${sm.saved - old.saved} more than before` : `Best so far: ${old.saved} of ${old.total} crystals`) : 'First fight on the board';
+  $('r-medal').innerHTML = sm.medal ? `<span class="medal-dot ${sm.medal}"></span><span class="name">${sm.medal}</span>` : '';
+  const NEWS = { best: () => 'New best fight', medal: (n) => `${n.medal[0].toUpperCase() + n.medal.slice(1)} medal` };
+  $('r-news').innerHTML = r.news.map((n, i) => `<li style="animation-delay:${(0.9 + 0.4 * i).toFixed(1)}s">${NEWS[n.type](n)}</li>`).join('');
+  r.news.forEach((n, i) => setTimeout(() => { if (G.screen === 'results' && G.race === race) sound.sfx('chip', i); }, 900 + 400 * i));
+  $('r-table').innerHTML = [['Hull left', `${sm.hull}/${FIGHT.hull}`], ['Hits taken', sm.taken], ['Cannon hits', `${sm.hits}/${sm.shots}`], ['Crystals left', sm.lost]].map(([k, v]) => `<span></span><span>${k}</span><span>${v}</span>`).join('');
+  $('r-stats').innerHTML = [`time ${sm.time === null ? '-' : PR.fmtTime(sm.time)}`, `top ${fmtSpeed(rs.topKmh / 3.6)} ${settings().units === 'kn' ? 'kn' : 'km/h'}`, `boost ${rs.boostS.toFixed(1)} s`].map((t) => `<span>${t}</span>`).join('');
+  $('r-tip').textContent = !sm.finished ? '' : !sm.won ? (run.difficulty !== 'easy' ? 'Tip: on the course screen you can set the fire to Easy.' : 'Tip: keep turning: the fire lands where you were heading when it was thrown.')
+    : sm.medal === 'gold' && run.difficulty !== 'hard' ? 'Tip: gold. Try the fire one level up.' : '';
+  G.nextCourse = null; E.nextCourse.classList.add('hidden'); E.retry.textContent = 'FIGHT AGAIN'; E.retry.className = 'cta';
+  if (sm.medal && r.news.some((n) => n.type === 'medal')) setTimeout(() => { if (G.screen === 'results' && G.race === race) sound.sfx('medal'); }, 450);
+  race.afterglow = true;
+  G.mode = 'after'; G.acc = 0; stage.setCameraMode('orbit'); sound.music('menu'); show('results'); PF.releaseWake();
+}
+// the boss level's display: crystals broken in place of the race position, the hull under the clock, an arrow to the crystal
+// that glows when it is not ahead, a warning when fire will land where the yacht is heading
+function paintBoss(race, run, dt, me) {
+  const B = G.rescue;
+  const left = race.go - race.t, ct = left > 0 ? String(Math.ceil(left)) : left > -0.8 ? 'GO' : '';
+  if (ct !== run.countShown) { run.countShown = ct; E.count.textContent = ct; if (ct && ct !== 'GO') sound.sfx('count'); }
+  run.lastHud += dt; if (run.lastHud < 0.09) return; run.lastHud = 0;
+  const t = race.lapT; setText('h-time', 'time', `${Math.floor(t / 60)}:${(t % 60).toFixed(1).padStart(4, '0')}`);
+  setText('h-place', 'place', String(B.broken)); setText('h-lap', 'lap', 'BROKEN');
+  setText('h-gap', 'gap', B.over ? '' : `hull ${Math.max(0, B.hull)} of ${FIGHT.hull}`);
+  setText('h-kmh', 'kmh', fmtSpeed(Math.max(0, me.u)));
+  setText('h-chain', 'chain', B.taken ? `${B.taken} hit${B.taken > 1 ? 's' : ''} taken` : '');
+  const open = B.openCrystal, ang = open ? wrapA(Math.atan2(-(open.x - me.x), open.z - me.z) - me.h) : 0, far = !!open && Math.abs(ang) > 0.42 && race.racing && !B.over;
+  if (far !== H.arrowOn) { H.arrowOn = far; E.arrow.style.opacity = far ? '1' : '0'; }
+  if (far) { const a = Math.round(ang * 180 / Math.PI / 3) * 3; if (a !== H.arrow) { H.arrow = a; E.arrow.style.transform = `rotate(${a}deg)`; } }
+  let incoming = false;
+  for (const f of B.fires) { if (!f.on) continue; const tl = FIGHT.fireS - f.t; if (Math.hypot(me.x + me.vx * tl - f.x, me.z + me.vz * tl - f.z) < FIGHT.fireR + 4) incoming = true; }
+  const warn = controls.mode === 'tilt' && controls.flat ? 'Tip the screen up towards you' : Math.abs(me.lat) > race.c.halfWidth && Math.hypot(me.x, me.z) > DRAGON.R ? 'Open sea: turn back' : incoming && !B.over ? 'Fire ahead: turn' : '';
+  if (warn !== H.warn) { H.warn = warn; E.warn.textContent = warn; E.warn.style.display = warn ? 'block' : 'none'; }
+  if (run.coach && race.racing && !B.over) {
+    if (!run.coachAim && race.lapT > 2.5) { run.coachAim = true; hudMsg('BREAK THE GLOWING CRYSTAL: POINT YOUR BOW AT IT', 'tip', 2, true); }
+    else if (!run.coachFire && B.fires.some((f) => f.on) && race.lapT > 6) { run.coachFire = true; hudMsg('THE RING SHOWS WHERE THE FIRE LANDS: STEER AWAY', 'tip', 2, true); }
+  }
 }
 function paintControlsHint() {
   const m = controls.mode;
@@ -251,7 +341,7 @@ function paintHud(race, run, dt) {
   const ready = me.boostE >= BOOST.minStart || me.boosting, bs = me.boosting ? 2 : ready ? 1 : 0;
   if (bs !== H.bs) { H.bs = bs; E.boost.classList.toggle('ready', bs === 1); E.boost.classList.toggle('on', bs === 2); E.btn.classList.toggle('ready', bs >= 1); E.btn.classList.toggle('on', bs === 2); }
   if (controls.mode === 'touch') { const kx = Math.round(78 * controls.steer); if (kx !== H.knob) { H.knob = kx; E.knob.style.transform = `translateX(${kx}px)`; } }
-  if (G.rescue) return paintRescue(race, run, dt, me, ready);
+  if (G.rescue) return G.rescue.kind === 'boss' ? paintBoss(race, run, dt, me) : paintRescue(race, run, dt, me, ready);
   const total = laps * c.len, tw = run.trackW, px = Math.round(tw * clamp(me.prog / total, 0, 1));
   if (px !== H.me) { H.me = px; E.progMe.style.transform = `translateX(${px}px)`; }
   for (let k = 0; k < run.dots.length; k++) { const d = run.dots[k], x = Math.round(tw * clamp(race.boats[d.i].prog / total, 0, 1)); if (x !== d.x) { d.x = x; d.el.style.transform = `translateX(${x}px)`; } }
@@ -309,7 +399,7 @@ function paintRescue(race, run, dt, me, ready) {
   const ang = urgent ? wrapA(Math.atan2(-(urgent.x - me.x), urgent.z - me.z) - me.h) : 0, far = !!urgent && Math.abs(ang) > 0.42 && race.racing && !R.over;
   if (far !== H.arrowOn) { H.arrowOn = far; E.arrow.style.opacity = far ? '1' : '0'; }
   if (far) { const a = Math.round(ang * 180 / Math.PI / 3) * 3; if (a !== H.arrow) { H.arrow = a; E.arrow.style.transform = `rotate(${a}deg)`; } }
-  const warn = controls.mode === 'tilt' && controls.flat ? 'Tip the screen up towards you' : Math.abs(me.lat) > race.c.halfWidth && Math.hypot(me.x - ARENA.island.x, me.z - ARENA.island.z) > ARENA.R ? 'Open sea: turn back' : urgent && urgent.st === SHARK.bite ? 'A shark has a llama: hit it' : '';
+  const warn = controls.mode === 'tilt' && controls.flat ? 'Tip the screen up towards you' : Math.abs(me.lat) > race.c.halfWidth && Math.hypot(me.x - ARENA.island.x, me.z - ARENA.island.z) > ARENA.R ? 'Open sea: turn back' : urgent && urgent.st === SHARK.bite ? 'A shark has one: hit it' : '';
   if (warn !== H.warn) { H.warn = warn; E.warn.textContent = warn; E.warn.style.display = warn ? 'block' : 'none'; }
   // the first mission: what the cannon, the wake and the boost do, said once each when they matter
   if (run.coach && race.racing && !R.over) {
@@ -322,14 +412,14 @@ function paintRescue(race, run, dt, me, ready) {
 function onRescueEvent(e) {
   switch (e.type) {
     case 'go': sound.sfx('go'); break;
-    case 'wave': sound.sfx('lap'); hudMsg(e.n === 1 ? 'THE SHIP OPENS: GUARD THE LLAMAS' : e.n === e.of ? 'LAST GROUP' : `GROUP ${e.n} OF ${e.of}`, 'cool', 4, e.n === 1); break;
+    case 'wave': sound.sfx('lap'); hudMsg(e.n === 1 ? 'THE SHIP OPENS: GUARD THE SWIMMERS' : e.n === e.of ? 'LAST GROUP' : `GROUP ${e.n} OF ${e.of}`, 'cool', 4, e.n === 1); break;
     case 'jump': sound.sfx('jump', e.a); break;
     case 'splashIn': sound.sfx('splash'); break;
     case 'shark': sound.sfx('shark'); hudMsg('SHARK', 'bad', 2); break;
     case 'lunge': sound.sfx('alarm'); break;
-    case 'grab': sound.sfx('grab'); hudMsg('A SHARK HAS A LLAMA: HIT IT', 'bad', 4); pulse(E.edge, 'hit'); break;
+    case 'grab': sound.sfx('grab'); hudMsg('A SHARK HAS ONE: HIT IT', 'bad', 4); pulse(E.edge, 'hit'); break;
     case 'freed': sound.sfx('perfect', 2); hudMsg('FREED', 'good', 4); break;
-    case 'lostA': sound.sfx('miss'); hudMsg('LLAMA LOST', 'bad', 4); pulse(E.edge, 'hit'); break;
+    case 'lostA': sound.sfx('miss'); hudMsg('ONE LOST', 'bad', 4); pulse(E.edge, 'hit'); break;
     case 'saved': sound.sfx('gate', Math.min(7, e.saved - 1)); pulse(E.place, 'up'); pulse(E.boost, 'tick'); hudMsg(`${e.saved} SAFE`, 'good', 3); break;
     case 'shot': sound.sfx('shot'); break;
     case 'hit': sound.sfx(e.dead ? 'sunk' : 'hit'); if (e.dead) { hudMsg('SHARK DOWN', 'good', 2); pulse(E.boost, 'tick'); } break;
@@ -337,6 +427,11 @@ function onRescueEvent(e) {
     case 'splash': break;
     case 'aground': sound.sfx('bump', e.v); break;
     case 'missionEnd': sound.sfx('finish'); hudMsg(`${e.saved} OF ${e.total} SAFE`, e.saved >= RESCUE.medals.bronze ? 'good' : 'bad', 5, true); G.resultsAt = performance.now() + 3000; stage.setCameraMode('orbit'); break;
+    // the boss level
+    case 'throw': sound.sfx('alarm'); break;
+    case 'fire': if (e.hit) { sound.sfx('ram'); hudMsg(`HIT: HULL ${Math.max(0, e.hull)} OF ${FIGHT.hull}`, 'bad', 4); pulse(E.edge, 'hit'); } else sound.sfx('splash'); break;
+    case 'crystal': sound.sfx(e.broken ? 'sunk' : 'hit'); if (e.broken) { hudMsg(e.left ? `CRYSTAL BROKEN: ${e.left} LEFT` : 'THE LAST CRYSTAL IS BROKEN', 'good', 4); pulse(E.place, 'up'); pulse(E.boost, 'tick'); } break;
+    case 'bossEnd': sound.sfx(e.won ? 'finish' : 'miss'); hudMsg(e.won ? 'THE BOSS IS BEATEN' : e.hull <= 0 ? 'YOUR YACHT IS SUNK' : 'TIME IS UP', e.won ? 'good' : 'bad', 5, true); G.resultsAt = performance.now() + 3000; stage.setCameraMode('orbit'); break;
     default: return false;
   }
   return true;
@@ -471,9 +566,12 @@ function paintMenu() {
   $('m-modes').querySelectorAll('button').forEach((b) => b.classList.toggle('on', b.dataset.mode === sel.mode));
   const rescue = sel.mode === 'rescue';
   if (rescue) {
-    const best = s.best[`${ARENA.key}:rescue`], medal = s.medals[`${ARENA.key}:rescue`], w = WORLDS[ARENA.world] || WORLDS.sunset, rgb = (a) => `rgb(${a.map((v) => Math.round(255 * Math.min(1, Math.sqrt(v)))).join(',')})`;
-    $('m-courses').innerHTML = `<button class="card on" data-level="${ARENA.key}"><span class="sw" style="background:linear-gradient(180deg, ${rgb(w.zenith)} 0%, ${rgb(w.horizon)} 78%, ${rgb(w.scatter)} 100%)"></span>`
-      + `<span class="medal"><span class="medal-dot ${medal || 'none'}"></span></span><b>${ARENA.name}</b><small>12 llamas leave the ship in three groups</small><small>${best ? `Best: ${best.saved} of ${best.total} safe` : 'Not played yet'}</small></button>`;
+    const rgb = (a) => `rgb(${a.map((v) => Math.round(255 * Math.min(1, Math.sqrt(v)))).join(',')})`;
+    const card = (Lv, line, bestText) => { const best = s.best[`${Lv.key}:rescue`], medal = s.medals[`${Lv.key}:rescue`], w = WORLDS[Lv.world] || WORLDS.sunset;
+      return `<button class="card ${sel.level === Lv.key ? 'on' : ''}" data-level="${Lv.key}"><span class="sw" style="background:linear-gradient(180deg, ${rgb(w.zenith)} 0%, ${rgb(w.horizon)} 78%, ${rgb(w.scatter)} 100%)"></span>`
+        + `<span class="medal"><span class="medal-dot ${medal || 'none'}"></span></span><b>${Lv.name}</b><small>${line}</small><small>${best ? bestText(best) : 'Not played yet'}</small></button>`; };
+    $('m-courses').innerHTML = card(ARENA, 'Nine llamas and three of the crew leave the ship', (b) => `Best: ${b.saved} of ${b.total} safe`)
+      + card(DRAGON, 'A boss on a dragon the size of an island', (b) => `Best: ${b.saved} of ${b.total} crystals`);
   } else
   $('m-courses').innerHTML = COURSE_KEYS.map((k, i) => {
     const d = COURSE_DEFS[k], open = PR.courseOpen(s, COURSE_KEYS, k), best = s.best[`${k}:${sel.mode}`], medal = s.medals[`${k}:${sel.mode}`], w = WORLDS[d.world] || WORLDS.sunset;
@@ -485,10 +583,11 @@ function paintMenu() {
   $('m-liveries').innerHTML = LIVERY_KEYS.map((k) => { const L = LIVERIES[k], col = L.amount ? `rgb(${L.color.map((v) => Math.round(255 * Math.sqrt(v))).join(',')})` : '#f6f6f2', open = s.unlocked.liveries.includes(k);
     return `<button data-livery="${k}" aria-label="${L.label}" class="${k === sel.livery ? 'on' : ''} ${open ? '' : 'locked'}"><i style="background:${col}"></i>${open ? '' : '<span class="lock"></span>'}</button>`; }).join('');
   $('m-diff').querySelectorAll('button').forEach((b) => b.classList.toggle('on', b.dataset.diff === sel.difficulty));
-  $('m-diff-wrap').classList.toggle('hidden', sel.mode === 'trial'); $('m-diff-label').textContent = rescue ? 'Sharks' : 'Rivals';
-  $('b-go').textContent = sel.mode === 'race' ? 'RACE' : rescue ? 'RESCUE' : 'GO';
+  $('m-diff-wrap').classList.toggle('hidden', sel.mode === 'trial'); $('m-diff-label').textContent = rescue ? (sel.level === DRAGON.key ? 'Fire' : 'Sharks') : 'Rivals';
+  $('b-go').textContent = sel.mode === 'race' ? 'RACE' : rescue ? (sel.level === DRAGON.key ? 'FIGHT' : 'RESCUE') : 'GO';
   const T = TUNES[sel.tune];
-  if (rescue) { $('m-hint').innerHTML = 'Point your bow at a shark and the cannon fires; ram one at speed.<span class="more"> Llamas near your yacht follow its wake to the shore.</span>'; return; }
+  if (rescue && sel.level === DRAGON.key) { $('m-hint').innerHTML = 'Point your bow at the glowing crystal and the cannon fires.<span class="more"> Keep turning: the fire lands where you were heading.</span>'; return; }
+  if (rescue) { $('m-hint').innerHTML = 'Point your bow at a shark and the cannon fires; ram one at speed.<span class="more"> Swimmers near your yacht follow its wake to the shore.</span>'; return; }
   // the second sentence makes way for the course cards on a small phone (css: .more; finding 9)
   $('m-hint').innerHTML = `${T.label}: top ${fmtSpeed(T.top)} ${settings().units === 'kn' ? 'kn' : 'km/h'}, ${T.turnRate >= 62 ? 'quick turns' : T.grip < 2.5 ? 'slides wide' : 'steady'}.`
     + `<span class="more"> ${sel.mode === 'race' ? 'Gates and clean landings fill the boost; clip a gate\'s inside buoy for PERFECT.' : 'Alone against the clock and your own ghost.'}</span>`;
@@ -496,6 +595,7 @@ function paintMenu() {
 function menuClick(e) {
   const b = e.target.closest('button'); if (!b) return; const s = G.save, sel = G.sel; sound.resume(); sound.sfx('click');
   if (b.dataset.mode) sel.mode = b.dataset.mode;
+  else if (b.dataset.level) sel.level = b.dataset.level;
   else if (b.dataset.course) { if (!PR.courseOpen(s, COURSE_KEYS, b.dataset.course)) return toast(`Finish in the top 3 on ${COURSE_DEFS[COURSE_KEYS[COURSE_KEYS.indexOf(b.dataset.course) - 1]].name} to open this course.`); sel.course = b.dataset.course; if (G.demoCourse !== sel.course) startDemo(sel.course); }
   else if (b.dataset.tune) { if (!s.unlocked.tunes.includes(b.dataset.tune)) return toast(`${TUNES[b.dataset.tune].label} tune: ${PR.UNLOCKS.tunes[b.dataset.tune]}.`); sel.tune = b.dataset.tune; }
   else if (b.dataset.livery) { if (!s.unlocked.liveries.includes(b.dataset.livery)) return toast(`${LIVERIES[b.dataset.livery].label}: ${PR.UNLOCKS.liveries[b.dataset.livery]}.`); sel.livery = b.dataset.livery; stage.boats[3] && stage.boats[3].vis.setLivery(sel.livery); }
@@ -524,7 +624,8 @@ function cardText() {
   L.push(`Steering: ${I.mode} (setting ${s.steering}) | permission ${I.perm ? `${I.perm.motion}/${I.perm.orientation}` : 'not asked'} | gyro ${I.tilt.gyro} | events/s motion ${I.rates.mot.toFixed(0)}, orientation ${I.rates.ori.toFixed(0)} | interval ${I.tilt.interval || '?'} | calibrations ${I.tilt.calOk} ok, ${I.tilt.calRejected} refused${I.tilt.cal ? ` (last: moved ${I.tilt.cal.spread} deg, tilted back ${I.tilt.cal.tiltBack} deg)` : ''} | recentres ${I.recentres} | full lock ${I.maxDeg} deg, reverse ${I.invert ? 'on' : 'off'}`);
   L.push(`Sound: ${s.sound ? 'on' : 'off'}, music ${s.music ? 'on' : 'off'}, engine ${sound.state}, audio session ${sound.session}, effects played ${sound.tones} | screen lock ${PF.wake.state} (taken away by the phone ${PF.wake.releases}x, let go by the game ${PF.wake.given}x)${G.wakeTold ? ', the player was told to touch the screen' : ''} | storage ${G.storage ? 'ok' : 'FAILED'} | camera ${s.camera}, motion ${s.motion}`);
   if (!G.lastRuns.length) L.push('Runs: none yet');
-  G.lastRuns.forEach((r, i) => L.push((r.mode === 'rescue' ? `Run ${i + 1} ${r.course} rescue ${r.tune} (${r.steer}), sharks ${r.difficulty}: ${r.why}, llamas safe ${r.saved}/${r.total}, time ${r.time ?? '-'} s, sharks sunk ${r.sunk} (${r.rams} rammed), cannon hits ${r.hits}/${r.shots}, top ${r.topKmh} km/h, boost ${r.boostS} s`
+  G.lastRuns.forEach((r, i) => L.push((r.mode === 'boss' ? `Run ${i + 1} ${r.course} boss ${r.tune} (${r.steer}), fire ${r.difficulty}: ${r.why}, crystals ${r.saved}/${r.total}, hull ${r.hull}/${FIGHT.hull}, time ${r.time ?? '-'} s, cannon hits ${r.hits}/${r.shots}, top ${r.topKmh} km/h, boost ${r.boostS} s`
+    : r.mode === 'rescue' ? `Run ${i + 1} ${r.course} rescue ${r.tune} (${r.steer}), sharks ${r.difficulty}: ${r.why}, safe ${r.saved}/${r.total}, time ${r.time ?? '-'} s, sharks sunk ${r.sunk} (${r.rams} rammed), cannon hits ${r.hits}/${r.shots}, top ${r.topKmh} km/h, boost ${r.boostS} s`
     : `Run ${i + 1} ${r.course} ${r.mode} ${r.tune} (${r.steer}): ${r.why}, place ${r.place}/${r.boats}, time ${r.time ?? '-'} s, gates ${r.passed}/${r.gates} (${r.perfects} perfect), landings ${r.clean} clean ${r.rough} rough, contacts ${r.contacts}, top ${r.topKmh} km/h, boost ${r.boostS} s`)
     + ` | frames ${r.frames}, late ${r.latePct} %, mean ${r.meanMs} ms, worst ${r.worstMs} ms | motion events ${r.motPerS}/s | recentres ${r.recentres} | tier ${r.tier}, scale ${r.scale}, render ${r.render} | screen lock at the finish: ${r.wake}, taken away ${r.wakeLost}x`));
   L.push(`Progress: races ${G.save.stats.races}, finished ${G.save.stats.finished}, wins ${G.save.stats.wins} | page errors ${G.errors.length}${G.errors.length ? ': ' + G.errors.slice(-3).join(' / ') : ''}`);
@@ -720,7 +821,7 @@ try {
   $('title-build').textContent = `${VERSION}, built ${BUILD}`;
   show('title'); checkRotation();
   // film: no menus; the race starts at once with the computer at the wheel and the caller owns the clock (G.filmStep)
-  if (G.film) { G.started = true; G.auto = true; controls.mode = 'keys'; if (Q.get('course') && COURSE_KEYS.includes(Q.get('course'))) G.sel.course = Q.get('course'); if (Q.get('mode') === 'trial') G.sel.mode = 'trial'; if (Q.get('mode') === 'rescue') G.sel.mode = 'rescue'; await startRace(); }
+  if (G.film) { G.started = true; G.auto = true; controls.mode = 'keys'; if (Q.get('course') && COURSE_KEYS.includes(Q.get('course'))) G.sel.course = Q.get('course'); if (Q.get('mode') === 'trial') G.sel.mode = 'trial'; if (Q.get('mode') === 'rescue') G.sel.mode = 'rescue'; if (Q.get('level') === DRAGON.key) G.sel.level = DRAGON.key; await startRace(); }
   if (!G.film) requestAnimationFrame(frame);
   window.__ready = true;
 } catch (e) { bootFail(e, 'The game could not start: ' + String((e && e.message) || e)); }

@@ -8,12 +8,14 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { clone as cloneRig } from 'three/addons/utils/SkeletonUtils.js';
-import * as W from '../sim/waves.mjs?v=09ccd5d2';
-import { ARENA, SHIP, RESCUE, A, S } from '../sim/rescue.mjs?v=09ccd5d2';
+import * as W from '../sim/waves.mjs?v=d21bc96f';
+import { ARENA, SHIP, RESCUE, A, S } from '../sim/rescue.mjs?v=d21bc96f';
+import { crewClip, lightClip, tick } from './people.mjs?v=d21bc96f';
 
 const M4 = new THREE.Matrix4(), Q = new THREE.Quaternion(), V = new THREE.Vector3(), SC = new THREE.Vector3(), E = new THREE.Euler(), C = new THREE.Color();
 const clamp = (v, lo, hi) => (v < lo ? lo : v > hi ? hi : v);
-const LLAMA_H = 2.6, MOUNT_H = 4.4, SHARK_L = 5.6, PATH_R = 29, GANG_Y = 3.3;
+const LLAMA_H = 2.6, CREW_H = 2.4, MOUNT_H = 4.4, SHARK_L = 5.6, PATH_R = 29, GANG_Y = 3.3;
+const LLAMA_CLIPS = { deck: 'Idle', jump: 'Hop', swim: 'Trot', beach: 'Walk' }, CREW_CLIPS = { deck: 'idle', jump: 'run', swim: 'run', beach: 'walk' };
 const MAX_SHARKS = 24;   // room for the sharks of any level: the meshes are made once, at the first mission (Hard has 19)
 
 // ---------- the island: a round shore (the simulation's circle) with a lumpy inside ----------
@@ -55,8 +57,9 @@ function sharkGeometry() {
 }
 
 export class RescueView {
-  constructor(scene, sea, spray, scenery) {
-    this.scene = scene; this.sea = sea; this.spray = spray; this.scenery = scenery;
+  constructor(scene, sea, spray, scenery, people) {
+    this.scene = scene; this.sea = sea; this.spray = spray; this.scenery = scenery; this.people = people;
+    this.crewIds = [null, null, null]; this.crewRigs = [null, null, null];      // this mission's three of the crew: codes, and their figures once loaded
     this.group = new THREE.Group(); this.group.visible = false; scene.add(this.group);
     this.rescue = null; this.ready = false; this.built = false; this.t = 0; this.flash = 0; this.cheer = null;
     this.emp = { a: ARENA.ship.a, dir: 1, h: 0, ph: 0, v: 0 };
@@ -67,6 +70,7 @@ export class RescueView {
     // the llama: nose toward +z, feet at y = 0; its height in its own units from the mesh's box as it stands
     lg.scene.updateMatrixWorld(true); const box = new THREE.Box3();
     lg.scene.traverse((o) => { if (o.isSkinnedMesh) { o.computeBoundingBox(); box.union(o.boundingBox.clone().applyMatrix4(o.matrixWorld)); } });
+    for (const c of lg.animations) lightClip(c);
     this.llamaSrc = { scene: lg.scene, clips: lg.animations, height: box.max.y - box.min.y, minY: box.min.y };
     this.emperor = eg.scene; this.clips = eg.animations; this.mixer = new THREE.AnimationMixer(eg.scene);
     this.act = {}; for (const c of this.clips) this.act[c.name] = this.mixer.clipAction(c);
@@ -124,7 +128,7 @@ export class RescueView {
     root.scale.setScalar(k); root.position.y = -S0.minY * k; hold.add(root); hold.rotation.order = 'YXZ';
     root.traverse((o) => { if (o.isMesh) o.frustumCulled = false; });
     const mixer = new THREE.AnimationMixer(root), act = {}; for (const c of S0.clips) act[c.name] = mixer.clipAction(c);
-    return { hold, root, mixer, act, clip: '', until: 0, n: this.llamaRigs ? this.llamaRigs.length : 0 };
+    return { hold, root, mixer, act, clip: '', until: 0, n: this.llamaRigs ? this.llamaRigs.length : 0, acc: 0, skip: 0 };
   }
   // the clip a llama plays: changed with a short blend; speed: how fast it runs; once: play it through and hold the last pose
   llamaClip(one, name, speed = 1, once = false) {
@@ -142,12 +146,27 @@ export class RescueView {
     if (this.cur && this.cur !== a) this.cur.fadeOut(0.3);
     a.reset(); a.setLoop(loop ? THREE.LoopRepeat : THREE.LoopOnce, loop ? Infinity : 1); a.clampWhenFinished = !loop; a.fadeIn(0.3).play(); this.cur = a; this.curName = name; this.curT = 0; this.curLen = a.getClip().duration; this.curLoop = loop;
   }
-  setRescue(rescue) {
+  // this mission's three of the crew (codes of view/people.mjs). A figure appears when its model has arrived; until then
+  // a llama swims in its place
+  setCrew(ids) {
+    const waits = [];
+    for (let k = 0; k < 3; k++) {
+      const id = ids[k] || null, rig = this.crewRigs[k];
+      if (rig && this.crewIds[k] === id) { rig.mixer.stopAllAction(); rig.clip = ''; rig.hold.visible = true; continue; }
+      if (rig) this.people.free(rig);
+      this.crewRigs[k] = null; this.crewIds[k] = id; if (!id || !this.people) continue;
+      waits.push(this.people.load(id).then((src) => { if (!src || this.crewIds[k] !== id || this.crewRigs[k]) return; const one = this.people.make(id, CREW_H); one.n = k; this.group.add(one.hold); this.crewRigs[k] = one; }));
+    }
+    return Promise.all(waits);
+  }
+  setRescue(rescue, crew = []) {
     this.rescue = rescue && this.ready ? rescue : null; this.group.visible = !!this.rescue;
     if (this.rescue && !this.built) this.build(rescue);
+    const crewReady = this.rescue ? this.setCrew(crew) : this.setCrew([]);
     if (this.rescue) this.sharks.count = this.smarks.count = Math.min(MAX_SHARKS, rescue.sharks.length);   // this mission's sharks: 10, 15 or 19
     if (this.rescue) for (const one of this.llamaRigs) { one.mixer.stopAllAction(); one.clip = ''; one.until = 0; one.hold.visible = true; }
     if (this.rescue) { this.emp.a = ARENA.ship.a - 0.5; this.emp.dir = 1; this.flash = 0; if (this.curName !== 'sit') this.play('sit', true); }
+    return crewReady;
   }
   seaY(wv, x, z, t) { const f = this.sea.fadeAt(x, z); return f > 0.01 ? W.heightFast(wv, x, z, t, 2) * f : 0; }
   // effects for what the simulation reports; stage: for the camera shake and the picture flash
@@ -174,23 +193,28 @@ export class RescueView {
     this.t += dt;
     const wv = R.race.waves, I = ARENA.island, tt = this.t;
     // ---- llamas ----
-    const s = LLAMA_H, off = this.gangOff, hop = this.llamaRigs[0].act.Hop, hopS = hop ? hop.getClip().duration : 1.4;
+    const off = this.gangOff, hop = this.llamaRigs[0].act.Hop, hopS = hop ? hop.getClip().duration : 1.4;
     for (const a of R.llamas) {
-      const one = this.llamaRigs[a.i];
+      // a llama, or one of the crew once that model has arrived (until then the llama of that place stands in)
+      const crew = a.kind === 'person' ? this.crewRigs[a.who] : null, one = crew || this.llamaRigs[a.i];
+      if (crew) this.llamaRigs[a.i].hold.visible = false;
+      const s = crew ? CREW_H : LLAMA_H, sink = crew ? 0.76 : 0.5, K = crew ? CREW_CLIPS : LLAMA_CLIPS, clip = crew ? crewClip : (o, n, v, once) => this.llamaClip(o, n, v, once);
       let x = a.x, z = a.z, y = 0, h = a.h, pitch = 0, roll = 0, show = true, mark = 0;
-      if (a.st === A.deck) { x += SHIP.nx * off; z += SHIP.nz * off; y = GANG_Y; this.llamaClip(one, 'Idle'); }
-      else if (a.st === A.jump) { const p = clamp(a.t / RESCUE.jumpS, 0, 1), sx = a.x0 + SHIP.nx * off, sz = a.z0 + SHIP.nz * off; x = sx + (a.x1 - sx) * p; z = sz + (a.z1 - sz) * p; y = GANG_Y * (1 - p) - 0.5 * s * p + 5.5 * 4 * p * (1 - p) * 0.5; pitch = -0.9 * p; this.llamaClip(one, 'Hop', hopS / RESCUE.jumpS, true); }
-      else if (a.st === A.swim) { const f = a.follow ? 5.2 : 3.1; y = this.seaY(wv, x, z, t) - 0.5 * s + 0.09 * s * Math.sin(tt * f + a.i * 2.1); pitch = 0.2 + 0.06 * Math.sin(tt * f + a.i); roll = 0.1 * Math.sin(tt * f * 0.5 + a.i * 1.3); mark = a.follow ? 2 : 1; this.llamaClip(one, 'Trot', a.follow ? 1.3 : 0.8); }
-      else if (a.st === A.grab) { const p = clamp(a.t / RESCUE.grabS, 0, 1); y = this.seaY(wv, x, z, t) - (0.5 + 0.45 * p) * s; roll = 0.6 * Math.sin(tt * 19); pitch = 0.5; mark = 3; this.llamaClip(one, 'Trot', 2.6); }
-      else if (a.st === A.beach) { const sea0 = this.seaY(wv, x, z, t) - 0.5 * s; y = Math.max(sea0, islandY(x, z) - 0.05); this.llamaClip(one, 'Walk', 1.45); }
+      if (a.st === A.deck) { x += SHIP.nx * off; z += SHIP.nz * off; y = GANG_Y; clip(one, K.deck); }
+      else if (a.st === A.jump) { const p = clamp(a.t / RESCUE.jumpS, 0, 1), sx = a.x0 + SHIP.nx * off, sz = a.z0 + SHIP.nz * off; x = sx + (a.x1 - sx) * p; z = sz + (a.z1 - sz) * p; y = GANG_Y * (1 - p) - sink * s * p + 11 * p * (1 - p); pitch = (crew ? -0.3 : -0.9) * p; clip(one, K.jump, crew ? 1.3 : hopS / RESCUE.jumpS, true); }
+      else if (a.st === A.swim) { const f = a.follow ? 5.2 : 3.1; y = this.seaY(wv, x, z, t) - sink * s + (crew ? 0.035 : 0.09) * s * Math.sin(tt * f + a.i * 2.1); pitch = (crew ? 0.14 : 0.2) + 0.06 * Math.sin(tt * f + a.i); roll = 0.1 * Math.sin(tt * f * 0.5 + a.i * 1.3); mark = a.follow ? 2 : 1; clip(one, K.swim, (a.follow ? 1.3 : 0.8) * (crew ? 0.75 : 1)); }
+      else if (a.st === A.grab) { const p = clamp(a.t / RESCUE.grabS, 0, 1); y = this.seaY(wv, x, z, t) - (sink + (crew ? 0.2 : 0.45) * p) * s; roll = (crew ? 0.35 : 0.6) * Math.sin(tt * 19); pitch = crew ? 0.25 : 0.5; mark = 3; clip(one, K.swim, crew ? 2 : 2.6); }
+      else if (a.st === A.beach) { const sea0 = this.seaY(wv, x, z, t) - sink * s; y = Math.max(sea0, islandY(x, z) - 0.05); clip(one, K.beach, crew ? 1.25 : 1.45); }
       else if (a.st === A.safe) {
         y = islandY(x, z) - 0.05; h = Math.atan2(-(SHIP.x - x), SHIP.z - z) + 0.5 * Math.sin(a.i * 3.3);
-        // on the sand: idle, and a hop of joy now and then (each llama in its own time)
-        if (tt >= one.until) { if (one.until === 0 || one.clip === 'Hop') { this.llamaClip(one, 'Idle'); one.until = tt + 2 + ((a.i * 2.7) % 5); } else { this.llamaClip(one, 'Hop', 1, true); one.until = tt + hopS; } }
+        // on the sand: idle; a llama also hops for joy now and then (each in its own time)
+        if (crew) clip(one, K.deck);
+        else if (tt >= one.until) { if (one.until === 0 || one.clip === 'Hop') { this.llamaClip(one, 'Idle'); one.until = tt + 2 + ((a.i * 2.7) % 5); } else { this.llamaClip(one, 'Hop', 1, true); one.until = tt + hopS; } }
       } else show = false;
       if (a.st !== A.safe) one.until = 0;
       one.hold.visible = show;
-      if (show) { one.hold.position.set(x, y, z); one.hold.rotation.set(-pitch, -h, roll); one.mixer.update(dt); }
+      // near the camera a figure moves every frame, further off every third (twelve llamas and three of the crew)
+      if (show) { one.hold.position.set(x, y, z); one.hold.rotation.set(-pitch, -h, roll); tick(one, dt, (x - camera.position.x) ** 2 + (z - camera.position.z) ** 2 < 3600 ? 1 : 3); }
       // the marker: gold over a swimmer, green over one that follows the yacht, red and fast over one in a shark's jaws
       const my = y + s * 1.05 + 0.55 + 0.12 * Math.sin(tt * 4 + a.i), ms = mark === 0 ? 0 : mark === 3 ? 1.5 + 0.5 * Math.sin(tt * 22) : 1;
       M4.compose(V.set(x, my, z), Q.setFromEuler(E.set(0, tt * 2 + a.i, 0)), SC.setScalar(ms)); this.marks.setMatrixAt(a.i, M4);
@@ -241,7 +265,7 @@ export class RescueView {
     this.rider.position.set(ex, islandY(ex, ez), ez); this.rider.rotation.y = -Em.h;
     // the mount: its walk clip at the pace of its steps (about 3 m a cycle at this size), idle while the emperor cheers or rages
     if (Em.v > 0.25) this.llamaClip(this.mountRig, 'Walk', Em.v / 3); else this.llamaClip(this.mountRig, 'Idle');
-    this.mountRig.mixer.update(dt);
+    tick(this.mountRig, dt, 2);
     this.mixer.update(dt);
   }
 }
