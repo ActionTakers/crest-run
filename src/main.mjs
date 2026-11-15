@@ -8,21 +8,25 @@
 // 0.3.1 (the same day): the llamas of that level are animated (idle, hop, paddle, walk), from the model of his Friendly Fighters site.
 // 0.4.0 (the same day): the crew (view/people.mjs): three of them swim among the llamas of a mission, one stands at each helm in a race;
 // and a boss level, The World Dragon (sim/boss.mjs, view/boss-view.mjs): a second card under the Rescue tab.
-import { Stage, CAMS } from './view/stage.mjs?v=d21bc96f';
-import { LIVERIES, LIVERY_KEYS } from './view/boats.mjs?v=d21bc96f';
-import { OWNER, crewFor } from './view/people.mjs?v=d21bc96f';
-import { WORLDS } from './view/sky.mjs?v=d21bc96f';
-import { getCourse, COURSE_DEFS, COURSE_KEYS, pointInto, wrapA, wrapS } from './sim/courses.mjs?v=d21bc96f';
-import { Race, defaultSettings, DT, TUNES, TUNE_KEYS, BOOST, SIM_VERSION, encodeInputs, decodeInputs } from './sim/race-sim.mjs?v=d21bc96f';
-import { Rescue, arenaCourse, rescueSettings, ARENA, RESCUE, S as SHARK } from './sim/rescue.mjs?v=d21bc96f';
-import { Boss, dragonCourse, bossSettings, DRAGON, BOSS as FIGHT } from './sim/boss.mjs?v=d21bc96f';
-import { Governor, RefreshWatch, measureRefresh } from './sim/governor.mjs?v=d21bc96f';
-import * as PR from './sim/progress.mjs?v=d21bc96f';
-import { Controls } from './ui/controls.mjs?v=d21bc96f';
-import { Sound } from './ui/sound.mjs?v=d21bc96f';
-import * as PF from './ui/platform.mjs?v=d21bc96f';
+// 0.4.1 (the same day): every skipper sits at the helm, in one pose made in code (view/people.mjs, seatClip).
+// 0.5.0 (the same day): a second boss level, The Leviathan (sim/leviathan.mjs, view/leviathan-view.mjs), built on what research
+// step A3 took from the boss fights of the Final Fantasy series: phases, marks, a stagger gauge, a ram, a cast to break.
+import { Stage, CAMS } from './view/stage.mjs?v=e0d5d047';
+import { LIVERIES, LIVERY_KEYS } from './view/boats.mjs?v=e0d5d047';
+import { OWNER, crewFor } from './view/people.mjs?v=e0d5d047';
+import { WORLDS } from './view/sky.mjs?v=e0d5d047';
+import { getCourse, COURSE_DEFS, COURSE_KEYS, pointInto, wrapA, wrapS } from './sim/courses.mjs?v=e0d5d047';
+import { Race, defaultSettings, DT, TUNES, TUNE_KEYS, BOOST, SIM_VERSION, encodeInputs, decodeInputs } from './sim/race-sim.mjs?v=e0d5d047';
+import { Rescue, arenaCourse, rescueSettings, ARENA, RESCUE, S as SHARK } from './sim/rescue.mjs?v=e0d5d047';
+import { Boss, dragonCourse, bossSettings, DRAGON, BOSS as FIGHT } from './sim/boss.mjs?v=e0d5d047';
+import { Leviathan, leviCourse, leviSettings, LEVI, FIGHT as LFIGHT, PHASES } from './sim/leviathan.mjs?v=e0d5d047';
+import { Governor, RefreshWatch, measureRefresh } from './sim/governor.mjs?v=e0d5d047';
+import * as PR from './sim/progress.mjs?v=e0d5d047';
+import { Controls } from './ui/controls.mjs?v=e0d5d047';
+import { Sound } from './ui/sound.mjs?v=e0d5d047';
+import * as PF from './ui/platform.mjs?v=e0d5d047';
 
-export const VERSION = 'crest-run 0.4.0', BUILD = '2026-11-15 #d21bc96f';
+export const VERSION = 'crest-run 0.5.0', BUILD = '2026-11-16 #e0d5d047';
 const $ = (id) => document.getElementById(id);
 const Q = new URLSearchParams(location.search);
 // on a desk (a local address) the page takes two test switches from its address that a published page ignores: the computer at
@@ -94,7 +98,7 @@ function startDemo(courseKey = G.sel.course) {
   stage.setWorld(Q.get('world') || def.world); stage.setCourse(c);
   const race = new Race({ ...defaultSettings(c, { rivals: 3, tune: G.sel.tune }), player: -1 }, c);
   G.race = race; G.rescue = null; G.ghost = null; G.mode = 'demo'; G.run = null; G.demoCourse = courseKey; G.timeScale = 1; G.acc = 0; G.paused = false; G.pausedBy = null; G.resumeLeft = 0;
-  stage.setSkippers([]); stage.setRescue(null); stage.setBoss(null); stage.setGhost(null); stage.setRace(race, [G.sel.livery, ...LIVERY_KEYS.filter((k) => k !== G.sel.livery)].slice(0, 4).reverse(), 3);
+  stage.setSkippers([]); stage.setRescue(null); stage.setBoss(null); stage.setLevi(null); stage.setGhost(null); stage.setRace(race, [G.sel.livery, ...LIVERY_KEYS.filter((k) => k !== G.sel.livery)].slice(0, 4).reverse(), 3);
   stage.setCameraMode('orbit');
   for (let i = 0; i < Math.round(5 / DT); i++) { race.step(0, 0, 0); race.events.length = 0; }   // past the countdown: boats already moving
 }
@@ -103,7 +107,7 @@ function startDemo(courseKey = G.sel.course) {
 function startRace() {
   if (G.sel.mode === 'rescue') return startRescue();
   const { mode, course: key, tune, livery, difficulty } = G.sel, c = getCourse(key), def = COURSE_DEFS[key];
-  G.rescue = null; stage.setRescue(null); E.hud.classList.remove('rescue'); stage.setBoss(null);
+  G.rescue = null; stage.setRescue(null); E.hud.classList.remove('rescue'); stage.setBoss(null); stage.setLevi(null); E.hud.classList.remove('bossfight');
   stage.setWorld(Q.get('world') || def.world); stage.setCourse(c);
   const set = defaultSettings(c, { tune, rivals: mode === 'race' ? 3 : 0, difficulty });
   if (DEV && Q.get('seed')) set.sea.seed = +Q.get('seed');
@@ -137,6 +141,7 @@ function startRace() {
 // (sim/rescue.mjs). The same boat, controls, camera and display frame as a race; no laps, no rivals. ----------
 async function startRescue() {
   if (G.sel.level === DRAGON.key) return startBoss();
+  if (G.sel.level === LEVI.key) return startLevi();
   if (G.rescueStarting) return; G.rescueStarting = true;
   try {
     if (!stage.rescueView.ready) { toast('Loading the island...', 6000); await stage.rescueLoad; }
@@ -148,7 +153,7 @@ async function startRescue() {
     G.run = { mode: 'rescue', course: ARENA.key, tune, livery, difficulty, at: new Date().toISOString(), frames: 0, late: 0, worst: 0, sumMs: 0, mot0: controls.tilt.counts.mot, th0: performance.now(), steerMode: controls.mode, recentres0: controls.recentres,
       lastHud: 0, countShown: '', dots: [], trackW: 1, wake0: PF.wake.releases, marks: [new Float32Array(1)], markN: new Int32Array(1), gmarks: null, gmarkN: 0,
       coach: !(G.save.stats.rescues > 0) && !G.film && !G.auto, coachAim: false, coachFollow: false, coachBoost: false };
-    stage.setBoss(null); stage.setRace(race, [livery], 0); stage.setGhost(null);
+    stage.setBoss(null); stage.setRace(race, [livery], 0); stage.setGhost(null); stage.setLevi(null); E.hud.classList.remove('bossfight');
     // three of the crew swim among the llamas, others every mission; a film waits for their models, a player does not
     const crewReady = Promise.all([stage.setSkippers([OWNER]), stage.setRescue(rescue, crewFor(G.save.stats.rescues || 0, 3, 0))]); if (G.film) await crewReady;
     stage.setCameraMode('chase'); controls.releaseAll();
@@ -161,6 +166,7 @@ async function startRescue() {
   } finally { G.rescueStarting = false; }
 }
 function endRescue() {
+  if (G.rescue.kind === 'levi') return endLevi();
   if (G.rescue.kind === 'boss') return endBoss();
   const race = G.race, run = G.run, R = G.rescue, sm = R.summary(), rs = race.summary();
   const result = { mode: 'rescue', course: ARENA.key, tune: run.tune, livery: run.livery, difficulty: run.difficulty, finished: sm.finished, saved: sm.saved, total: sm.total, time: sm.time, medal: sm.medal };
@@ -203,11 +209,11 @@ async function startBoss() {
     G.run = { mode: 'boss', course: DRAGON.key, tune, livery, difficulty, at: new Date().toISOString(), frames: 0, late: 0, worst: 0, sumMs: 0, mot0: controls.tilt.counts.mot, th0: performance.now(), steerMode: controls.mode, recentres0: controls.recentres,
       lastHud: 0, countShown: '', dots: [], trackW: 1, wake0: PF.wake.releases, marks: [new Float32Array(1)], markN: new Int32Array(1), gmarks: null, gmarkN: 0,
       coach: !G.save.best[`${DRAGON.key}:rescue`] && !G.film && !G.auto, coachAim: false, coachFire: false };
-    stage.setRescue(null); stage.setRace(race, [livery], 0); stage.setGhost(null);
+    stage.setRescue(null); stage.setLevi(null); stage.setRace(race, [livery], 0); stage.setGhost(null);
     // the boss: one of the crew, another every time; a film waits for the models, a player does not
     const ready = Promise.all([stage.setSkippers([OWNER]), stage.setBoss(boss, crewFor(G.save.stats.rescues || 0, 1, 8)[0])]); if (G.film) await ready;
     stage.setCameraMode('chase'); controls.releaseAll();
-    E.hud.classList.toggle('final', false); E.hud.classList.add('rescue'); $('h-of').textContent = '/' + boss.total; E.place.textContent = '0'; E.count.textContent = ''; E.warn.style.display = 'none';
+    E.hud.classList.remove('final', 'bossfight'); E.hud.classList.add('rescue'); $('h-of').textContent = '/' + boss.total; E.place.textContent = '0'; E.count.textContent = ''; E.warn.style.display = 'none';
     for (const k of Object.keys(H)) H[k] = null;
     clearTimeout(msgT); E.msg.className = ''; msgPri = 0; msgUntil = 0;
     E.prog.querySelectorAll('i.rv').forEach((e) => e.remove());
@@ -266,6 +272,91 @@ function paintBoss(race, run, dt, me) {
     if (!run.coachAim && race.lapT > 2.5) { run.coachAim = true; hudMsg('BREAK THE GLOWING CRYSTAL: POINT YOUR BOW AT IT', 'tip', 2, true); }
     else if (!run.coachFire && B.fires.some((f) => f.on) && race.lapT > 6) { run.coachFire = true; hudMsg('THE RING SHOWS WHERE THE FIRE LANDS: STEER AWAY', 'tip', 2, true); }
   }
+}
+// ---------- the second boss level: The Leviathan (sim/leviathan.mjs). The same frame as the first: G.rescue holds the fight, its
+// kind is 'levi'. The display adds a boss bar: its name and phase, its health, its stagger, the cast of the Tide Wall. ----------
+async function startLevi() {
+  if (G.rescueStarting) return; G.rescueStarting = true;
+  try {
+    const { tune, livery, difficulty } = G.sel, c = leviCourse(), seed = DEV && Q.get('seed') ? +Q.get('seed') : 2;
+    stage.setWorld(Q.get('world') || LEVI.world); stage.setCourse(c);
+    const race = new Race(leviSettings(c, { tune }), c), levi = new Leviathan(race, { difficulty, seed });
+    G.race = race; G.rescue = levi; G.ghost = null; G.mode = 'race'; G.acc = 0; G.timeScale = 1; G.slowLeft = 0; G.slowArmed = false; G.paused = false; G.pausedBy = null; G.resultsAt = null; G.resumeLeft = 0;
+    G.run = { mode: 'levi', course: LEVI.key, tune, livery, difficulty, at: new Date().toISOString(), frames: 0, late: 0, worst: 0, sumMs: 0, mot0: controls.tilt.counts.mot, th0: performance.now(), steerMode: controls.mode, recentres0: controls.recentres,
+      lastHud: 0, countShown: '', dots: [], trackW: 1, wake0: PF.wake.releases, marks: [new Float32Array(1)], markN: new Int32Array(1), gmarks: null, gmarkN: 0,
+      coach: !G.save.best[`${LEVI.key}:rescue`] && !G.film && !G.auto, coachAim: false, named: false, bpm0: sound.bpm0 };
+    stage.setRescue(null); stage.setBoss(null); stage.setRace(race, [livery], 0); stage.setGhost(null); stage.setLevi(levi);
+    const ready = stage.setSkippers([OWNER]); if (G.film) await ready;
+    stage.setCameraMode('chase'); controls.releaseAll();
+    E.hud.classList.remove('final'); E.hud.classList.add('rescue', 'bossfight'); $('h-of').textContent = '%'; E.place.textContent = '0'; E.count.textContent = ''; E.warn.style.display = 'none';
+    for (const k of Object.keys(H)) H[k] = null;
+    clearTimeout(msgT); E.msg.className = ''; msgPri = 0; msgUntil = 0;
+    E.prog.querySelectorAll('i.rv').forEach((e) => e.remove());
+    clearTimeout(toastT); E.toast.classList.remove('show');
+    paintControlsHint(); show('race'); sound.music('race'); keepAwake();
+  } finally { G.rescueStarting = false; }
+}
+function endLevi() {
+  const race = G.race, run = G.run, B = G.rescue, sm = B.summary(), rs = race.summary();
+  sound.bpm = run.bpm0;
+  const result = { mode: 'rescue', course: LEVI.key, tune: run.tune, livery: run.livery, difficulty: run.difficulty, finished: sm.finished, saved: sm.saved, total: sm.total, time: sm.time, medal: sm.medal, boss: true, won: sm.won };
+  const old = G.save.best[`${LEVI.key}:rescue`], r = PR.applyRescue(G.save, result);
+  G.save = r.save; saveNow();
+  const dur = Math.max(0.001, (performance.now() - run.th0) / 1000);
+  G.lastRuns.push({ at: run.at, course: LEVI.key, mode: 'levi', tune: run.tune, steer: run.steerMode, difficulty: run.difficulty, saved: sm.saved, phase: sm.phase, hull: sm.hull, time: sm.time, shots: sm.shots, hits: sm.hits, stuns: sm.stuns, rams: sm.rams,
+    topKmh: rs.topKmh, boostS: rs.boostS, why: !sm.finished ? 'left early' : sm.won ? 'boss beaten' : sm.hull <= 0 ? 'yacht sunk' : 'time up', frames: run.frames, latePct: run.frames ? +(100 * run.late / run.frames).toFixed(1) : null, meanMs: run.frames ? +(run.sumMs / run.frames).toFixed(1) : null, worstMs: Math.round(run.worst),
+    motPerS: +((controls.tilt.counts.mot - run.mot0) / dur).toFixed(0), recentres: controls.recentres - run.recentres0, tier: stage.tierKey, scale: stage.scale, render: stage.renderSize(), wake: PF.wake.state, wakeLost: PF.wake.releases - run.wake0 });
+  if (G.lastRuns.length > 6) G.lastRuns.shift();
+  const lvl = run.difficulty[0].toUpperCase() + run.difficulty.slice(1);
+  $('r-place').innerHTML = `${sm.saved}<small>%</small>`;
+  $('r-title').textContent = `${LEVI.name}: boss, fury on ${lvl}`;
+  $('r-time').textContent = !sm.finished ? 'Left before the end' : sm.won ? 'The Leviathan is beaten' : sm.hull <= 0 ? 'Your yacht was sunk' : 'Time ran out';
+  $('r-best').textContent = !sm.finished ? '' : old ? (sm.saved > old.saved ? `New best: ${sm.saved - old.saved} % more than before` : `Best so far: ${old.saved} % of its health`) : 'First fight on the board';
+  $('r-medal').innerHTML = sm.medal ? `<span class="medal-dot ${sm.medal}"></span><span class="name">${sm.medal}</span>` : '';
+  const NEWS = { best: () => 'New best fight', medal: (n) => `${n.medal[0].toUpperCase() + n.medal.slice(1)} medal` };
+  $('r-news').innerHTML = r.news.map((n, i) => `<li style="animation-delay:${(0.9 + 0.4 * i).toFixed(1)}s">${NEWS[n.type](n)}</li>`).join('');
+  r.news.forEach((n, i) => setTimeout(() => { if (G.screen === 'results' && G.race === race) sound.sfx('chip', i); }, 900 + 400 * i));
+  $('r-table').innerHTML = [['Hull left', `${sm.hull}/${LFIGHT.hull}`], ['Reached', `phase ${sm.phase} of 3`], ['Stuns and rams', `${sm.stuns} and ${sm.rams}`], ['Cannon hits', `${sm.hits}/${sm.shots}`]].map(([k, v]) => `<span></span><span>${k}</span><span>${v}</span>`).join('');
+  $('r-stats').innerHTML = [`time ${sm.time === null ? '-' : PR.fmtTime(sm.time)}`, `top ${fmtSpeed(rs.topKmh / 3.6)} ${settings().units === 'kn' ? 'kn' : 'km/h'}`, `boost ${rs.boostS.toFixed(1)} s`].map((t) => `<span>${t}</span>`).join('');
+  $('r-tip').textContent = !sm.finished ? '' : !sm.won ? (run.difficulty !== 'easy' ? 'Tip: on the course screen you can set its fury to Easy.' : 'Tip: when it lies stunned, ram it at full boost.')
+    : sm.medal === 'gold' && run.difficulty !== 'hard' ? 'Tip: gold. Try its fury one level up.' : '';
+  G.nextCourse = null; E.nextCourse.classList.add('hidden'); E.retry.textContent = 'FIGHT AGAIN'; E.retry.className = 'cta';
+  if (sm.medal && r.news.some((n) => n.type === 'medal')) setTimeout(() => { if (G.screen === 'results' && G.race === race) sound.sfx('medal'); }, 450);
+  race.afterglow = true;
+  G.mode = 'after'; G.acc = 0; stage.setCameraMode('orbit'); sound.music('menu'); show('results'); PF.releaseWake();
+}
+// its display: how much of its health is gone in place of the race position, the hull under the clock, the boss bar (name and
+// phase, health, stagger, the cast), an arrow to its lures when they are not ahead, a warning for what is about to land
+function paintLevi(race, run, dt, me) {
+  const B = G.rescue;
+  const left = race.go - race.t, ct = left > 0 ? String(Math.ceil(left)) : left > -0.8 ? 'GO' : '';
+  if (ct !== run.countShown) { run.countShown = ct; E.count.textContent = ct; if (ct && ct !== 'GO') sound.sfx('count'); }
+  run.lastHud += dt; if (run.lastHud < 0.09) return; run.lastHud = 0;
+  const t = race.lapT; setText('h-time', 'time', `${Math.floor(t / 60)}:${(t % 60).toFixed(1).padStart(4, '0')}`);
+  const done = Math.round(100 * (B.hpMax - Math.max(0, B.hp)) / B.hpMax);
+  setText('h-place', 'place', String(done)); setText('h-lap', 'lap', 'TAKEN');
+  setText('h-gap', 'gap', B.over ? '' : `hull ${Math.max(0, B.hull)} of ${LFIGHT.hull}`);
+  setText('h-kmh', 'kmh', fmtSpeed(Math.max(0, me.u)));
+  setText('h-chain', 'chain', B.taken ? `${B.taken} hit${B.taken > 1 ? 's' : ''} taken` : '');
+  // the boss bar
+  setText('bb-name', 'bbname', `${LEVI.name}: ${PHASES[B.phase - 1]}`);
+  const hp = Math.round(100 * Math.max(0, B.hp) / B.hpMax), stun = B.st === 'stun', st = stun ? Math.round(100 * (1 - B.t / LFIGHT.stunS)) : Math.round(100 * Math.min(1, B.stag / LFIGHT.stagger));
+  if (H.bbhp !== hp) { H.bbhp = hp; $('bb-hp-fill').style.width = hp + '%'; }
+  if (H.bbst !== st) { H.bbst = st; $('bb-st-fill').style.width = st + '%'; }
+  if (H.bbstun !== stun) { H.bbstun = stun; $('bb-st').classList.toggle('stun', stun); }
+  setText('bb-cast', 'bbcast', B.over ? '' : B.st === 'cast' ? `TIDE WALL in ${Math.ceil(B.castLeft)} s: ${B.castHits} of ${LFIGHT.cast.need} hits` : stun ? (B.rammed ? 'stunned: double damage' : 'STUNNED: RAM IT') : B.st === 'dive' ? 'under water' : '');
+  if (B.phase !== run.phase) { run.phase = B.phase; sound.bpm = Math.round(run.bpm0 * (1 + 0.07 * (B.phase - 1))); }
+  if (!run.named && race.racing) { run.named = true; hudMsg(`I: ${PHASES[0].toUpperCase()}`, 'tip', 3, true); }
+  const P = B.at(LEVI.spots[1], {}), ang = wrapA(Math.atan2(-(P.x - me.x), P.z - me.z) - me.h), far = B.exposed && Math.abs(ang) > 0.42 && race.racing && !B.over;
+  if (far !== H.arrowOn) { H.arrowOn = far; E.arrow.style.opacity = far ? '1' : '0'; }
+  if (far) { const a = Math.round(ang * 180 / Math.PI / 3) * 3; if (a !== H.arrow) { H.arrow = a; E.arrow.style.transform = `rotate(${a}deg)`; } }
+  let incoming = false; const q = B.breach;
+  for (const m of B.marks) { if (!m.on) continue; const tl = m.land - m.t; if (Math.hypot(me.x + me.vx * tl - m.x, me.z + me.vz * tl - m.z) < LFIGHT.spout.r + 4) incoming = true; }
+  const under = q.on && q.locked && Math.hypot(me.x - q.x, me.z - q.z) < LFIGHT.breach.r + 6, dO = Math.hypot(me.x, me.z);
+  const warn = B.over ? '' : controls.mode === 'tilt' && controls.flat ? 'Tip the screen up towards you' : Math.abs(me.lat) > race.c.halfWidth && dO > LEVI.R ? 'Open sea: turn back'
+    : under ? 'It is under you: move' : B.phase >= 2 && dO < 60 ? 'The maelstrom: steer out' : incoming ? 'Water ahead: turn' : q.on && !q.locked ? 'Its shadow follows you: keep moving' : '';
+  if (warn !== H.warn) { H.warn = warn; E.warn.textContent = warn; E.warn.style.display = warn ? 'block' : 'none'; }
+  if (run.coach && race.racing && !B.over && !run.coachAim && race.lapT > 3.5) { run.coachAim = true; hudMsg('SHOOT THE GLOWING LURES ON ITS BACK: POINT YOUR BOW AT THEM', 'tip', 2, true); }
 }
 function paintControlsHint() {
   const m = controls.mode;
@@ -341,7 +432,7 @@ function paintHud(race, run, dt) {
   const ready = me.boostE >= BOOST.minStart || me.boosting, bs = me.boosting ? 2 : ready ? 1 : 0;
   if (bs !== H.bs) { H.bs = bs; E.boost.classList.toggle('ready', bs === 1); E.boost.classList.toggle('on', bs === 2); E.btn.classList.toggle('ready', bs >= 1); E.btn.classList.toggle('on', bs === 2); }
   if (controls.mode === 'touch') { const kx = Math.round(78 * controls.steer); if (kx !== H.knob) { H.knob = kx; E.knob.style.transform = `translateX(${kx}px)`; } }
-  if (G.rescue) return G.rescue.kind === 'boss' ? paintBoss(race, run, dt, me) : paintRescue(race, run, dt, me, ready);
+  if (G.rescue) return G.rescue.kind === 'levi' ? paintLevi(race, run, dt, me) : G.rescue.kind === 'boss' ? paintBoss(race, run, dt, me) : paintRescue(race, run, dt, me, ready);
   const total = laps * c.len, tw = run.trackW, px = Math.round(tw * clamp(me.prog / total, 0, 1));
   if (px !== H.me) { H.me = px; E.progMe.style.transform = `translateX(${px}px)`; }
   for (let k = 0; k < run.dots.length; k++) { const d = run.dots[k], x = Math.round(tw * clamp(race.boats[d.i].prog / total, 0, 1)); if (x !== d.x) { d.x = x; d.el.style.transform = `translateX(${x}px)`; } }
@@ -427,6 +518,19 @@ function onRescueEvent(e) {
     case 'splash': break;
     case 'aground': sound.sfx('bump', e.v); break;
     case 'missionEnd': sound.sfx('finish'); hudMsg(`${e.saved} OF ${e.total} SAFE`, e.saved >= RESCUE.medals.bronze ? 'good' : 'bad', 5, true); G.resultsAt = performance.now() + 3000; stage.setCameraMode('orbit'); break;
+    // the second boss level
+    case 'lure': sound.sfx('hit'); pulse(E.place, 'up'); break;
+    case 'spoutMark': sound.sfx('shark'); break;
+    case 'spout': case 'breach': if (e.hit) { sound.sfx('ram'); hudMsg(`HIT: HULL ${Math.max(0, e.hull)} OF ${LFIGHT.hull}`, 'bad', 4); pulse(E.edge, 'hit'); } else sound.sfx('splash'); break;
+    case 'breachLock': sound.sfx('alarm'); break;
+    case 'maw': sound.sfx('ram'); hudMsg(`THE MAELSTROM TEARS AT THE HULL: ${Math.max(0, e.hull)} OF ${LFIGHT.hull}`, 'bad', 4); pulse(E.edge, 'hit'); break;
+    case 'stun': sound.sfx('sunk'); hudMsg(e.why === 'cast' ? 'CAST BROKEN: IT IS STUNNED, RAM IT' : 'STAGGERED: RAM IT AT FULL BOOST', 'good', 5, true); pulse(E.boost, 'tick'); break;
+    case 'ramLevi': sound.sfx('ram'); sound.sfx('chip', 2); hudMsg('RAMMED', 'good', 5); break;
+    case 'phase': sound.sfx('alarm'); hudMsg(`${['', 'I', 'II', 'III'][e.n]}: ${e.name.toUpperCase()}`, 'tip', 6, true); break;
+    case 'castStart': sound.sfx('alarm'); hudMsg(`IT CASTS THE TIDE WALL: ${e.need} HITS BREAK IT`, 'bad', 6, true); break;
+    case 'tide': sound.sfx('ram'); hudMsg(`THE TIDE WALL: HULL ${Math.max(0, e.hull)} OF ${LFIGHT.hull}`, 'bad', 6); pulse(E.edge, 'hit'); break;
+    case 'surface': sound.sfx('jump'); break;
+    case 'leviEnd': sound.sfx(e.won ? 'finish' : 'miss'); hudMsg(e.won ? 'THE LEVIATHAN IS BEATEN' : e.hull <= 0 ? 'YOUR YACHT IS SUNK' : 'TIME IS UP', e.won ? 'good' : 'bad', 7, true); G.resultsAt = performance.now() + 3000; stage.setCameraMode('orbit'); break;
     // the boss level
     case 'throw': sound.sfx('alarm'); break;
     case 'fire': if (e.hit) { sound.sfx('ram'); hudMsg(`HIT: HULL ${Math.max(0, e.hull)} OF ${FIGHT.hull}`, 'bad', 4); pulse(E.edge, 'hit'); } else sound.sfx('splash'); break;
@@ -571,7 +675,8 @@ function paintMenu() {
       return `<button class="card ${sel.level === Lv.key ? 'on' : ''}" data-level="${Lv.key}"><span class="sw" style="background:linear-gradient(180deg, ${rgb(w.zenith)} 0%, ${rgb(w.horizon)} 78%, ${rgb(w.scatter)} 100%)"></span>`
         + `<span class="medal"><span class="medal-dot ${medal || 'none'}"></span></span><b>${Lv.name}</b><small>${line}</small><small>${best ? bestText(best) : 'Not played yet'}</small></button>`; };
     $('m-courses').innerHTML = card(ARENA, 'Nine llamas and three of the crew leave the ship', (b) => `Best: ${b.saved} of ${b.total} safe`)
-      + card(DRAGON, 'A boss on a dragon the size of an island', (b) => `Best: ${b.saved} of ${b.total} crystals`);
+      + card(DRAGON, 'A boss on a dragon the size of an island', (b) => `Best: ${b.saved} of ${b.total} crystals`)
+      + card(LEVI, 'A sea guardian in three phases', (b) => `Best: ${b.saved} % of its health`);
   } else
   $('m-courses').innerHTML = COURSE_KEYS.map((k, i) => {
     const d = COURSE_DEFS[k], open = PR.courseOpen(s, COURSE_KEYS, k), best = s.best[`${k}:${sel.mode}`], medal = s.medals[`${k}:${sel.mode}`], w = WORLDS[d.world] || WORLDS.sunset;
@@ -583,9 +688,10 @@ function paintMenu() {
   $('m-liveries').innerHTML = LIVERY_KEYS.map((k) => { const L = LIVERIES[k], col = L.amount ? `rgb(${L.color.map((v) => Math.round(255 * Math.sqrt(v))).join(',')})` : '#f6f6f2', open = s.unlocked.liveries.includes(k);
     return `<button data-livery="${k}" aria-label="${L.label}" class="${k === sel.livery ? 'on' : ''} ${open ? '' : 'locked'}"><i style="background:${col}"></i>${open ? '' : '<span class="lock"></span>'}</button>`; }).join('');
   $('m-diff').querySelectorAll('button').forEach((b) => b.classList.toggle('on', b.dataset.diff === sel.difficulty));
-  $('m-diff-wrap').classList.toggle('hidden', sel.mode === 'trial'); $('m-diff-label').textContent = rescue ? (sel.level === DRAGON.key ? 'Fire' : 'Sharks') : 'Rivals';
-  $('b-go').textContent = sel.mode === 'race' ? 'RACE' : rescue ? (sel.level === DRAGON.key ? 'FIGHT' : 'RESCUE') : 'GO';
+  $('m-diff-wrap').classList.toggle('hidden', sel.mode === 'trial'); $('m-diff-label').textContent = rescue ? (sel.level === DRAGON.key ? 'Fire' : sel.level === LEVI.key ? 'Fury' : 'Sharks') : 'Rivals';
+  $('b-go').textContent = sel.mode === 'race' ? 'RACE' : rescue ? (sel.level === DRAGON.key || sel.level === LEVI.key ? 'FIGHT' : 'RESCUE') : 'GO';
   const T = TUNES[sel.tune];
+  if (rescue && sel.level === LEVI.key) { $('m-hint').innerHTML = 'Shoot the glowing lures on its back while it is up.<span class="more"> Stagger it, then ram it at full boost.</span>'; return; }
   if (rescue && sel.level === DRAGON.key) { $('m-hint').innerHTML = 'Point your bow at the glowing crystal and the cannon fires.<span class="more"> Keep turning: the fire lands where you were heading.</span>'; return; }
   if (rescue) { $('m-hint').innerHTML = 'Point your bow at a shark and the cannon fires; ram one at speed.<span class="more"> Swimmers near your yacht follow its wake to the shore.</span>'; return; }
   // the second sentence makes way for the course cards on a small phone (css: .more; finding 9)
@@ -624,7 +730,8 @@ function cardText() {
   L.push(`Steering: ${I.mode} (setting ${s.steering}) | permission ${I.perm ? `${I.perm.motion}/${I.perm.orientation}` : 'not asked'} | gyro ${I.tilt.gyro} | events/s motion ${I.rates.mot.toFixed(0)}, orientation ${I.rates.ori.toFixed(0)} | interval ${I.tilt.interval || '?'} | calibrations ${I.tilt.calOk} ok, ${I.tilt.calRejected} refused${I.tilt.cal ? ` (last: moved ${I.tilt.cal.spread} deg, tilted back ${I.tilt.cal.tiltBack} deg)` : ''} | recentres ${I.recentres} | full lock ${I.maxDeg} deg, reverse ${I.invert ? 'on' : 'off'}`);
   L.push(`Sound: ${s.sound ? 'on' : 'off'}, music ${s.music ? 'on' : 'off'}, engine ${sound.state}, audio session ${sound.session}, effects played ${sound.tones} | screen lock ${PF.wake.state} (taken away by the phone ${PF.wake.releases}x, let go by the game ${PF.wake.given}x)${G.wakeTold ? ', the player was told to touch the screen' : ''} | storage ${G.storage ? 'ok' : 'FAILED'} | camera ${s.camera}, motion ${s.motion}`);
   if (!G.lastRuns.length) L.push('Runs: none yet');
-  G.lastRuns.forEach((r, i) => L.push((r.mode === 'boss' ? `Run ${i + 1} ${r.course} boss ${r.tune} (${r.steer}), fire ${r.difficulty}: ${r.why}, crystals ${r.saved}/${r.total}, hull ${r.hull}/${FIGHT.hull}, time ${r.time ?? '-'} s, cannon hits ${r.hits}/${r.shots}, top ${r.topKmh} km/h, boost ${r.boostS} s`
+  G.lastRuns.forEach((r, i) => L.push((r.mode === 'levi' ? `Run ${i + 1} ${r.course} boss ${r.tune} (${r.steer}), fury ${r.difficulty}: ${r.why}, health taken ${r.saved} %, phase ${r.phase}, hull ${r.hull}/${LFIGHT.hull}, time ${r.time ?? '-'} s, stuns ${r.stuns}, rams ${r.rams}, cannon hits ${r.hits}/${r.shots}, top ${r.topKmh} km/h, boost ${r.boostS} s`
+    : r.mode === 'boss' ? `Run ${i + 1} ${r.course} boss ${r.tune} (${r.steer}), fire ${r.difficulty}: ${r.why}, crystals ${r.saved}/${r.total}, hull ${r.hull}/${FIGHT.hull}, time ${r.time ?? '-'} s, cannon hits ${r.hits}/${r.shots}, top ${r.topKmh} km/h, boost ${r.boostS} s`
     : r.mode === 'rescue' ? `Run ${i + 1} ${r.course} rescue ${r.tune} (${r.steer}), sharks ${r.difficulty}: ${r.why}, safe ${r.saved}/${r.total}, time ${r.time ?? '-'} s, sharks sunk ${r.sunk} (${r.rams} rammed), cannon hits ${r.hits}/${r.shots}, top ${r.topKmh} km/h, boost ${r.boostS} s`
     : `Run ${i + 1} ${r.course} ${r.mode} ${r.tune} (${r.steer}): ${r.why}, place ${r.place}/${r.boats}, time ${r.time ?? '-'} s, gates ${r.passed}/${r.gates} (${r.perfects} perfect), landings ${r.clean} clean ${r.rough} rough, contacts ${r.contacts}, top ${r.topKmh} km/h, boost ${r.boostS} s`)
     + ` | frames ${r.frames}, late ${r.latePct} %, mean ${r.meanMs} ms, worst ${r.worstMs} ms | motion events ${r.motPerS}/s | recentres ${r.recentres} | tier ${r.tier}, scale ${r.scale}, render ${r.render} | screen lock at the finish: ${r.wake}, taken away ${r.wakeLost}x`));
@@ -821,7 +928,7 @@ try {
   $('title-build').textContent = `${VERSION}, built ${BUILD}`;
   show('title'); checkRotation();
   // film: no menus; the race starts at once with the computer at the wheel and the caller owns the clock (G.filmStep)
-  if (G.film) { G.started = true; G.auto = true; controls.mode = 'keys'; if (Q.get('course') && COURSE_KEYS.includes(Q.get('course'))) G.sel.course = Q.get('course'); if (Q.get('mode') === 'trial') G.sel.mode = 'trial'; if (Q.get('mode') === 'rescue') G.sel.mode = 'rescue'; if (Q.get('level') === DRAGON.key) G.sel.level = DRAGON.key; await startRace(); }
+  if (G.film) { G.started = true; G.auto = true; controls.mode = 'keys'; if (Q.get('course') && COURSE_KEYS.includes(Q.get('course'))) G.sel.course = Q.get('course'); if (Q.get('mode') === 'trial') G.sel.mode = 'trial'; if (Q.get('mode') === 'rescue') G.sel.mode = 'rescue'; if (Q.get('level') === DRAGON.key) G.sel.level = DRAGON.key; if (Q.get('level') === LEVI.key) G.sel.level = LEVI.key; await startRace(); }
   if (!G.film) requestAnimationFrame(frame);
   window.__ready = true;
 } catch (e) { bootFail(e, 'The game could not start: ' + String((e && e.message) || e)); }

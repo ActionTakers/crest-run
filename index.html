@@ -12,7 +12,7 @@
 <link rel="icon" href="./assets/icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="./assets/icon-180.png">
 <title>Crest Run</title>
-<link rel="stylesheet" href="./css/game.css?v=d21bc96f">
+<link rel="stylesheet" href="./css/game.css?v=e0d5d047">
 <script type="importmap">{ "imports": { "three": "./vendor/three-0.186.1/build/three.module.js", "three/addons/": "./vendor/three-0.186.1/examples/jsm/" } }</script>
 </head>
 <body>
@@ -34,6 +34,7 @@
   <div id="h-msg"></div>
   <div id="h-count"></div>
   <div id="h-warn"></div>
+  <div id="bossbar"><b id="bb-name"></b><div id="bb-hp"><i id="bb-hp-fill"></i></div><div id="bb-st"><i id="bb-st-fill"></i></div><small id="bb-cast"></small></div>
   <!-- speed and boost sit beside the boost button, clear of the player's yacht in the middle -->
   <div id="h-dash">
     <span id="h-chain"></span>
@@ -180,6 +181,6 @@ window.addEventListener('error', function (e) {
   if (b) { b.classList.remove('hidden'); b.onclick = function () { location.reload(); }; }
 }, true);
 </script>
-<script type="module" src="./src/main.mjs?v=d21bc96f"></script>
+<script type="module" src="./src/main.mjs?v=e0d5d047"></script>
 </body>
 </html>

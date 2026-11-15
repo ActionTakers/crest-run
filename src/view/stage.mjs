@@ -3,17 +3,18 @@
 // shows it, interpolated between the last two physics steps so the picture is smooth at any frame rate.
 // Written 2026-11-13 by the yacht project session.
 import * as THREE from 'three';
-import * as W from '../sim/waves.mjs?v=d21bc96f';
-import { pointInto, wrapA } from '../sim/courses.mjs?v=d21bc96f';
-import { Sky, WORLDS, makeNoiseTexture } from './sky.mjs?v=d21bc96f';
-import { Sea } from './sea.mjs?v=d21bc96f';
-import { Post } from './post.mjs?v=d21bc96f';
-import { Wake, Spray } from './fx.mjs?v=d21bc96f';
-import { loadYacht, BoatVisual } from './boats.mjs?v=d21bc96f';
-import { Scenery } from './scenery.mjs?v=d21bc96f';
-import { RescueView } from './rescue-view.mjs?v=d21bc96f';
-import { People, crewClip, tick } from './people.mjs?v=d21bc96f';
-import { BossView } from './boss-view.mjs?v=d21bc96f';
+import * as W from '../sim/waves.mjs?v=e0d5d047';
+import { pointInto, wrapA } from '../sim/courses.mjs?v=e0d5d047';
+import { Sky, WORLDS, makeNoiseTexture } from './sky.mjs?v=e0d5d047';
+import { Sea } from './sea.mjs?v=e0d5d047';
+import { Post } from './post.mjs?v=e0d5d047';
+import { Wake, Spray } from './fx.mjs?v=e0d5d047';
+import { loadYacht, BoatVisual } from './boats.mjs?v=e0d5d047';
+import { Scenery } from './scenery.mjs?v=e0d5d047';
+import { RescueView } from './rescue-view.mjs?v=e0d5d047';
+import { People, crewClip, tick } from './people.mjs?v=e0d5d047';
+import { BossView } from './boss-view.mjs?v=e0d5d047';
+import { LeviathanView } from './leviathan-view.mjs?v=e0d5d047';
 
 const clamp = (v, lo, hi) => (v < lo ? lo : v > hi ? hi : v);
 const smooth = (e0, e1, x) => { const t = clamp((x - e0) / (e1 - e0), 0, 1); return t * t * (3 - 2 * t); };
@@ -29,7 +30,7 @@ export const TIERS = {
 // Cameras. back/up: where the camera sits behind the boat; look/lookUp: the point it looks at ahead; fov0 + fovK at top speed;
 // roll: how much it leans with the hull; lead: how far it looks into a turn.
 // where a skipper stands on the yacht, as shares of its height (above the waterline) and its length (ahead of the middle)
-export const HELM = { y: 0.47, z: -0.02 };
+export const HELM = { y: 0.47, z: -0.02, drop: 0.44 };   // drop: how far a seated skipper is lowered onto the helm seat, metres
 export const CAMS = {
   chase: { label: 'Chase', back: 12.5, up: 4.3, look: 9, lookUp: 1.6, fov0: 60, fovK: 9, roll: 0, lead: 0.2 },
   high: { label: 'High', back: 17, up: 8.2, look: 14, lookUp: 0.6, fov0: 56, fovK: 5, roll: 0, lead: 0.4 },
@@ -56,6 +57,7 @@ export class Stage {
     this.people = new People(); this.skippers = [];        // the crew (view/people.mjs): one at each helm, when its model has arrived
     this.rescueView = new RescueView(this.scene, this.sea, this.spray, this.scenery, this.people); this.rescue = null; this.rescueLoad = null;
     this.bossView = new BossView(this.scene, this.sea, this.spray, this.people); this.boss = null; this.bossId = null;      // the boss level (sim/boss.mjs)
+    this.leviView = new LeviathanView(this.scene, this.sea, this.spray); this.levi = null;                                 // the second boss level (sim/leviathan.mjs)
     this.boats = [];           // { vis, wake, y, pitch, roll, x, z, h } per race boat
     this.yacht = null; this.world = null; this.worldKey = null; this.course = null; this.race = null;
     this.tierKey = 'mid'; this.tier = TIERS.mid; this.dpr = 1; this.cssW = 2; this.cssH = 2; this.scale = 1;
@@ -136,6 +138,8 @@ export class Stage {
   trimPeople() { this.people.keepOnly([...(this.skipperIds || []), ...(this.crewIds || []), this.bossId].filter(Boolean)); }
   // the boss level's fight and which of the crew is the boss, or null for none. The dragon's model must have arrived
   // (bossView.load). The promise: the boss's own model has arrived
+  // the second boss level's fight, or null for none (its beast is made in code: nothing to load)
+  setLevi(levi) { this.levi = levi || null; this.leviView.setLevi(this.levi); }
   setBoss(boss, id = null) { this.boss = boss || null; this.bossId = this.boss ? id : null; this.trimPeople(); return this.bossView.setBoss(this.boss, this.bossId); }
   // a skipper at the helm of each yacht: ids[i] = the code of boat i's figure, or null for an empty helm. A figure appears when
   // its model has arrived; a boat that fades (a rival between the camera and the player) hides its skipper
@@ -148,7 +152,7 @@ export class Stage {
       if (!id) return;
       waits.push(this.people.load(id).then((src) => {
         if (!src || this.skipperIds[i] !== id || B.skipper) return;
-        const one = this.people.make(id, 1.9); one.n = i; one.hold.position.set(0, this.yacht.height * HELM.y, this.yacht.length * HELM.z); B.vis.group.add(one.hold); B.skipper = one;
+        const one = this.people.make(id, 1.9); one.n = i; one.hold.position.set(0, this.yacht.height * HELM.y - (one.act.sit ? HELM.drop : 0), this.yacht.length * HELM.z); B.vis.group.add(one.hold); B.skipper = one;
       }));
     });
     return Promise.all(waits);       // the film waits for the figures, a player does not
@@ -160,6 +164,7 @@ export class Stage {
     const race = this.race, me = e.i === this.focus;
     if (this.rescue) this.rescueView.onEvent(e, this);
     if (this.boss) this.bossView.onEvent(e, this);
+    if (this.levi) this.leviView.onEvent(e, this);
     if (e.type === 'gate' || e.type === 'miss') { if (me) this.scenery.markGate(e.gate, e.type === 'gate'); }
     if (e.type === 'lap' && me) this.scenery.resetGates();
     if (e.type === 'land') {
@@ -202,11 +207,12 @@ export class Stage {
       const near = i === this.focus ? 1 : 0.5;
       this.spray.trail(i, B.x, B.y, B.z, B.h, B.u * (1 + 0.5 * b.boostLv), b.air, dt, T.spray * near, b.P.length * 0.26, b.P.beam * 0.46);
     }
-    for (let i = 0; i < R.length; i++) { const one = this.boats[i].skipper; if (!one) continue; one.hold.visible = (this.boats[i].vis.opacity === undefined || this.boats[i].vis.opacity > 0.6); if (one.hold.visible) { crewClip(one, 'idle'); const B = this.boats[i], far = i !== this.focus && (B.x - this.camera.position.x) ** 2 + (B.z - this.camera.position.z) ** 2 > 2500; tick(one, dt, far ? 8 : 2); } }   // a far rival's skipper moves in coarse steps
+    for (let i = 0; i < R.length; i++) { const one = this.boats[i].skipper; if (!one) continue; one.hold.visible = (this.boats[i].vis.opacity === undefined || this.boats[i].vis.opacity > 0.6); if (one.hold.visible) { crewClip(one, one.act.sit ? 'sit' : 'idle'); const B = this.boats[i], far = i !== this.focus && (B.x - this.camera.position.x) ** 2 + (B.z - this.camera.position.z) ** 2 > 2500; tick(one, dt, far ? 8 : 2); } }   // a far rival's skipper moves in coarse steps
     this.spray.update(dt, this.camera, this.bufferH || 600);
     this.scenery.update(race, tSim, this.camera, me, dt);
     if (this.rescue) this.rescueView.update(dt, tSim, this.camera, M);
     if (this.boss) this.bossView.update(dt, tSim, this.camera, M);
+    if (this.levi) this.leviView.update(dt, tSim, this.camera, M);
     // picture effects
     const fx = this.post.fx, F = this.fx, top = me.P.top, k = clamp(me.u / top, 0, 1.4), mo = this.cam.motion;
     F.flash = Math.max(0, F.flash - dt * 1.6); F.bloomPulse = Math.max(0, F.bloomPulse - dt * 1.4);

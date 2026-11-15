@@ -3,6 +3,8 @@
 // people who agreed to be in these games (the owner's words of 2026-11-15, <local>); the game names
 // nobody: a figure is a code here and "crew" on the screen. Roles rotate: in a rescue mission three of them swim among the
 // llamas, in a race three sail the rival yachts. Written 2026-11-15 by the yacht project session. NOT_ASSESSED on a phone.
+// At a helm everybody sits in the same position (the owner's words of 2026-11-15 23:12): the "sit" clip is made here, in code,
+// from each figure's idle clip (research step A2, fact A2-04: thighs, calves and arms turned about their own z axis).
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { clone as cloneRig } from 'three/addons/utils/SkeletonUtils.js';
@@ -11,6 +13,20 @@ export const OWNER = 'f01';                                                     
 export const CREW = ['f02', 'f03', 'f06', 'f07', 'f08', 'f09', 'f10', 'f11', 'f12', 'f13', 'f14'];   // the others, in turn
 // who plays this time: `count` codes for round n (the number of missions or races played before this one); offset shifts one
 // role's turn against another's, so the first race's rivals are not the first mission's swimmers
+// the seat: joint, radians about the joint's own z axis, laid over the idle clip (found with pictures, research A2: p1, p2)
+export const SEAT = [['L_Thigh', 1.45], ['R_Thigh', 1.45], ['L_Calf', -1.5], ['R_Calf', -1.5], ['L_Upperarm', 1.0], ['R_Upperarm', 1.0], ['L_Forearm', 0.5], ['R_Forearm', 0.5]];
+// a "sit" clip from an idle clip: the same tracks, with every key of the seat's joints turned by the seat's angle, so the
+// figure still breathes and sways. Null when the clip has none of those joints (another rig)
+export function seatClip(idle) {
+  const q = new THREE.Quaternion(), r = new THREE.Quaternion(), Z = new THREE.Vector3(0, 0, 1); let turned = 0;
+  const tracks = idle.tracks.map((t) => {
+    const c = t.clone(), s = SEAT.find(([j]) => t.name === j + '.quaternion'); if (!s) return c;
+    r.setFromAxisAngle(Z, s[1]); turned++;
+    for (let i = 0; i < c.values.length; i += 4) { q.fromArray(c.values, i).multiply(r).toArray(c.values, i); }
+    return c;
+  });
+  return turned ? new THREE.AnimationClip('sit', idle.duration, tracks) : null;
+}
 export function crewFor(n, count, offset = 0) { const out = []; for (let k = 0; k < count; k++) out.push(CREW[((n * count + offset + k) % CREW.length + CREW.length) % CREW.length]); return out; }
 
 export class People {
@@ -24,6 +40,7 @@ export class People {
       g.scene.updateMatrixWorld(true); const box = new THREE.Box3();
       g.scene.traverse((o) => { if (o.isSkinnedMesh) { o.computeBoundingBox(); box.union(o.boundingBox.clone().applyMatrix4(o.matrixWorld)); } });
       for (const c of g.animations) lightClip(c);
+      const idle = g.animations.find((c) => c.name === 'idle'), sit = idle ? seatClip(idle) : null; if (sit) g.animations.push(sit);
       const s = { id, scene: g.scene, clips: g.animations, height: box.max.y - box.min.y, minY: box.min.y };
       if (this.keep && !this.keep.has(id)) { disposeModel(s.scene); return null; }      // no longer wanted by the time it arrived
       this.src.set(id, s); return s;
@@ -63,7 +80,7 @@ export function crewClip(one, name, speed = 1) {
   const a = one.act[name]; if (!a) return;
   if (one.clip !== name) {
     const old = one.act[one.clip]; if (old) old.fadeOut(0.2);
-    a.reset(); a.setLoop(name === 'idle' ? THREE.LoopPingPong : THREE.LoopRepeat, Infinity); a.fadeIn(0.2).play(); a.time = (one.n * 0.61) % a.getClip().duration; one.clip = name;
+    a.reset(); a.setLoop(name === 'idle' || name === 'sit' ? THREE.LoopPingPong : THREE.LoopRepeat, Infinity); a.fadeIn(0.2).play(); a.time = (one.n * 0.61) % a.getClip().duration; one.clip = name;
   }
   a.timeScale = speed;
 }

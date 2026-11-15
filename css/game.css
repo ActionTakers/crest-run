@@ -181,6 +181,13 @@ pre { text-align: left; white-space: pre-wrap; word-break: break-word; font-size
 #h-knob { position: absolute; top: -6px; left: 50%; width: 20px; height: 20px; margin-left: -10px; border-radius: 50%; background: #fff; will-change: transform; }
 #hud.final #h-lap { color: var(--gold); }
 /* the rescue level: no course bar; the arrow points at a shark, the line over the speed counts llamas lost */
+/* the boss bar of the second boss level: its name and phase, its health, its stagger, the cast of its great attack */
+#bossbar { display: none; position: absolute; left: calc(30% + var(--sl)); right: calc(30% + var(--sr)); top: calc(67px + var(--st)); text-align: center; pointer-events: none; }
+#hud.bossfight #bossbar { display: block; } #hud.bossfight #h-warn { top: calc(120px + var(--st)); } #hud.bossfight #h-msg { top: 38%; }
+#bossbar b { display: block; font-size: 12px; line-height: 14px; font-weight: 900; letter-spacing: 0.08em; text-transform: uppercase; white-space: nowrap; }
+#bb-hp, #bb-st { height: 7px; margin-top: 3px; background: rgba(0, 0, 0, 0.5); border-radius: 4px; overflow: hidden; } #bb-st { height: 4px; }
+#bb-hp i, #bb-st i { display: block; height: 100%; width: 100%; background: linear-gradient(90deg, #ff5a4a, #ffb14a); transition: width 0.15s linear; } #bb-st i { width: 0; background: var(--gold); }
+#bb-st.stun i { background: #fff; } #bb-cast { display: block; min-height: 15px; font-size: 12px; line-height: 15px; font-weight: 800; color: #9fe0ff; white-space: nowrap; }
 #hud.rescue #h-prog { display: none; } #hud.rescue #h-arrow { color: #ff5a4a; } #hud.rescue #h-chain { color: #ff9a8a; }
 @media (max-height: 360px) { .logo.big { font-size: 15vh; } .grid { gap: 6px 14px; } #h-boostbtn { width: 78px; height: 78px; } #h-dash { right: calc(112px + var(--sr)); } .card { padding: 6px 12px; } }
 /* a browser tab on a phone held sideways: the result panel gives up padding before any of its lines gives way to the buttons */

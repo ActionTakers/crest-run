@@ -16,7 +16,7 @@ const BUS = { eng: 0.5, sfx: 0.8, mus: 0.42 }, OUT_GAIN = 1.5;
 export class Sound {
   constructor() {
     this.ctx = null; this.state = 'not started'; this.session = 'audioSession' in navigator ? 'supported' : 'not supported';
-    this.on = true; this.musicOn = true; this.volume = 0.8; this.mode = 'off'; this.timer = null; this.next = 0; this.step = 0; this.bpm = 112;
+    this.on = true; this.musicOn = true; this.volume = 0.8; this.mode = 'off'; this.timer = null; this.next = 0; this.step = 0; this.bpm = 112; this.bpm0 = 112;   // bpm0: the music's own pace; a boss fight raises bpm by phase, music() puts it back
     this.tones = 0; this.level = 0; this.offline = false;
   }
   // A Sound on an OfflineAudioContext, for rendering a film's sound track: the caller steps it (frame, sfx, schedule) at the
@@ -130,7 +130,7 @@ export class Sound {
   }
   // ---- music: 'menu' (pad and a slow arpeggio), 'race' (bass, drums, full arpeggio) or 'off' ----
   music(mode) {
-    this.mode = mode;
+    this.mode = mode; this.bpm = this.bpm0;
     if (mode === 'off' || !this.ctx) { if (this.timer) { clearInterval(this.timer); this.timer = null; } return; }
     if (!this.timer) { this.next = this.ctx.currentTime + 0.12; this.step = 0; this.timer = this.offline ? 'stepped by the caller' : setInterval(() => this.schedule(), 90); }
   }
