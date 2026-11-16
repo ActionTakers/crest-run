@@ -4,15 +4,16 @@
 // code except the palms (the scenery kit). The land lies toward low z (toward the mountain), the sea toward high z.
 // Written 2026-11-16 by the yacht project session (plan steps B0 to B2, PLAN-MONKEYKING.md).
 import * as THREE from 'three';
-import * as W from '../sim/waves.mjs?v=e1a47756';
-import { BAY, RULES, P as ST } from '../sim/voyage.mjs?v=e1a47756';
-import { WIND, B as BT } from '../sim/voyage2.mjs?v=e1a47756';
-import { NIGHT, CHAIN, Q as WHO } from '../sim/voyage3.mjs?v=e1a47756';
-import { Parts, at, bar, COL, makeJukung, HULL } from './jukung.mjs?v=e1a47756';
+import * as W from '../sim/waves.mjs?v=281086e4';
+import { BAY, RULES, P as ST } from '../sim/voyage.mjs?v=281086e4';
+import { WIND, B as BT } from '../sim/voyage2.mjs?v=281086e4';
+import { NIGHT, CHAIN, Q as WHO } from '../sim/voyage3.mjs?v=281086e4';
+import { Parts, at, bar, COL, makeJukung, HULL } from './jukung.mjs?v=281086e4';
+import { crewClip, tick, SIT_HIP } from './people.mjs?v=281086e4';
 
 const M4 = new THREE.Matrix4(), Q = new THREE.Quaternion(), V = new THREE.Vector3(), S1 = new THREE.Vector3(1, 1, 1), E = new THREE.Euler(), ZERO = new THREE.Matrix4().makeScale(0, 0, 0);
 function mulberry(seed) { let s = seed >>> 0; return () => { s = (s + 0x6d2b79f5) >>> 0; let t = s; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
-const SAND = 0x4b4038, SAND_WET = 0x2f2924, GREEN = 0x3d6b38, GREEN_FAR = 0x2c5231, THATCH = 0x9a7b4a, VEST = 0xff7a1a, SKIN = 0xb9855a, SHELL = 0x5a4a2a, TURTLE = 0x6f8a4a;
+const SAND = 0x4b4038, SAND_WET = 0x2f2924, GREEN = 0x33602f, GREEN_FAR = 0x24482a, THATCH = 0x9a7b4a, VEST = 0xff7a1a, SKIN = 0xb9855a, SHELL = 0x5a4a2a, TURTLE = 0x6f8a4a;
 // how high the land is, d metres inland from the water's edge, at x along the shore
 const landY = (d, x) => (d < 9 ? -0.7 + 0.16 * d : d < 40 ? 0.74 + 0.045 * (d - 9) : 2.1 + 0.115 * (d - 40) * (1 + 0.35 * Math.sin(x * 0.011 + 1.3) + 0.2 * Math.sin(x * 0.031)));
 
@@ -97,7 +98,7 @@ export class BayView {
     const vol = this.volcano = flat(new THREE.Mesh(volcanoGeometry(), this.farMat)); vol.position.set(-420, 0, BAY.shoreZ - 3500); vol.renderOrder = 8; G.add(vol);
     G.add(flat(pavilions(rnd).mesh(std, 'bay-pavilions')));
     // palms from the scenery kit, where the sand turns green
-    const palms = []; for (let k = 0; k < 34; k++) { const x = -520 + rnd() * 1040, d = 15 + rnd() * 34; palms.push({ x, y: landY(d, x) - 0.3, z: BAY.shoreZ + 2 - d, ry: rnd() * 6.28, s: 0.8 + rnd() * 0.7 }); }
+    const palms = []; for (let k = 0; k < 64; k++) { const x = -520 + rnd() * 1040, d = 15 + rnd() * 34; palms.push({ x, y: landY(d, x) - 0.3, z: BAY.shoreZ + 2 - d, ry: rnd() * 6.28, s: 0.8 + rnd() * 0.7 }); }
     this.own = [...this.scenery.kitInstances('pk_palm-detailed-bend', palms.filter((_, i) => i % 2 === 0), 8.5, G), ...this.scenery.kitInstances('pk_palm-detailed-straight', palms.filter((_, i) => i % 2 === 1), 9, G)];
     for (const m of this.own) { const i = this.scenery.owned.indexOf(m); if (i >= 0) this.scenery.owned.splice(i, 1); }   // these stay when another course is set
     // boats drawn up on the sand: the same hull, without sail or lookout, one draw call for all
@@ -143,11 +144,30 @@ export class BayView {
     // the third voyage: the overdue boat (a bigger hull, its sail down), and lamps: small bright lights that the picture's glow picks up
     const big = makeJukung({ lookout: false, trim: 0x8a8f96 }).template; big.scale.setScalar(1.4); const sl = big.getObjectByName('jk-sail'); if (sl) sl.visible = false; big.visible = false; big.traverse((m) => { m.frustumCulled = false; }); G.add(big); this.overdue = big;
     this.lamps = flat(new THREE.InstancedMesh(new THREE.SphereGeometry(0.34, 10, 8), new THREE.MeshBasicMaterial({ color: new THREE.Color(7, 4.6, 1.7), fog: false }), 20)); this.lamps.visible = false; G.add(this.lamps);
+    // a canopy over the overdue boat: four posts and a cloth roof
+    { const cp = new Parts(); for (const sx of [-1, 1]) for (const z of [-1.9, 1.3]) cp.add(bar([sx * 0.36, 0.4, z], [sx * 0.42, 2.05, z], 0.03, 5), COL.wood); cp.add(new THREE.BoxGeometry(1.05, 0.05, 3.7), 0xe9dcc0, at(0, 2.08, -0.3)); cp.add(new THREE.BoxGeometry(1.09, 0.12, 0.05), 0x2a62c9, at(0, 2.0, 1.55)); cp.add(new THREE.BoxGeometry(1.09, 0.12, 0.05), 0x2a62c9, at(0, 2.0, -2.15)); big.children[0].add(flat(cp.mesh(std, 'bay-canopy'))); }
+    // forest on the slopes: round crowns in three greens, one draw call
+    { const n = 420, crowns = this.forest = flat(new THREE.InstancedMesh(new THREE.IcosahedronGeometry(1, 1), new THREE.MeshStandardMaterial({ roughness: 1, metalness: 0, flatShading: true }), n)), c = new THREE.Color(), tones = [0x2f6a33, 0x3d7a3a, 0x25562c, 0x4a8a3e];
+      for (let k = 0; k < n; k++) { const x = -1050 + rnd() * 2100, d = 44 + Math.pow(rnd(), 1.6) * 520, r = 5 + rnd() * 7 + d * 0.012; M4.compose(V.set(x, landY(d, x) + r * 0.45, BAY.shoreZ + 2 - d), Q.setFromEuler(E.set(0, rnd() * 6.28, 0)), V.clone().set(r, r * (0.7 + rnd() * 0.35), r)); crowns.setMatrixAt(k, M4); crowns.setColorAt(k, c.setHex(tones[k % 4]).multiplyScalar(0.85 + rnd() * 0.3)); }
+      crowns.instanceMatrix.needsUpdate = true; G.add(crowns); }
+    // cloud at the volcano's shoulder
+    { const n = 9, cl = this.clouds = flat(new THREE.InstancedMesh(new THREE.SphereGeometry(1, 10, 6), new THREE.MeshBasicMaterial({ fog: false, transparent: true, opacity: 0.86 }), n)); for (let k = 0; k < n; k++) { const a = (k / n - 0.5) * 1.5, r = 150 + rnd() * 120; M4.compose(V.set(-420 + Math.sin(a) * 1500, 330 + rnd() * 80, BAY.shoreZ - 3500 + 1750 * Math.cos(a) - 300), Q.identity(), V.clone().set(r * 1.6, r * 0.34, r * 0.8)); cl.setMatrixAt(k, M4); } cl.instanceMatrix.needsUpdate = true; cl.renderOrder = 9; G.add(cl); }
+    // the village: warm lights among the palms, lit when the light is low
+    { const n = 46, vl = this.village = flat(new THREE.InstancedMesh(new THREE.SphereGeometry(0.42, 8, 6), new THREE.MeshBasicMaterial({ color: new THREE.Color(5.5, 3.4, 1.3), fog: false }), n)); for (let k = 0; k < n; k++) { const x = -600 + rnd() * 1200, d = 14 + rnd() * 90; M4.compose(V.set(x, landY(d, x) + 1.6 + rnd() * 2, BAY.shoreZ + 2 - d), Q.identity(), V.clone().set(1, 1, 1).multiplyScalar(0.6 + rnd() * 0.8)); vl.setMatrixAt(k, M4); } vl.instanceMatrix.needsUpdate = true; vl.visible = false; G.add(vl); }
+    // rain: short streaks that fall round the camera, slanted with the wind (shown under the squall)
+    { const n = 900, pos = new Float32Array(n * 6), seed = new Float32Array(n * 2), wx = WIND.dir.x * 0.9, wz = WIND.dir.z * 0.9; for (let k = 0; k < n; k++) { const x = (rnd() - 0.5) * 90, y = rnd() * 34, z = (rnd() - 0.5) * 90, sd = rnd(); pos.set([x, y, z, x + wx, y - 1.9, z + wz], 6 * k); seed[2 * k] = seed[2 * k + 1] = sd; }
+      const rg = new THREE.BufferGeometry(); rg.setAttribute('position', new THREE.BufferAttribute(pos, 3)); rg.setAttribute('aSeed', new THREE.BufferAttribute(seed, 1));
+      this.rainU = { uTime: { value: 0 }, uCam: { value: new THREE.Vector3() }, uWind: { value: new THREE.Vector2(WIND.dir.x, WIND.dir.z) }, uAmt: { value: 0 } };
+      this.rain = flat(new THREE.LineSegments(rg, new THREE.ShaderMaterial({ uniforms: this.rainU, transparent: true, depthWrite: false,
+        vertexShader: 'attribute float aSeed; uniform float uTime; uniform vec3 uCam; uniform vec2 uWind; void main() { vec3 p = position; float fall = mod(uTime * (24.0 + 9.0 * aSeed) + aSeed * 34.0, 34.0); p.y = mod(position.y - fall + 34.0, 34.0) - 4.0; p.xz += uWind * fall * 0.45; p.xz = mod(p.xz + 45.0, 90.0) - 45.0; p += vec3(uCam.x, 0.0, uCam.z); gl_Position = projectionMatrix * viewMatrix * vec4(p, 1.0); }',
+        fragmentShader: 'uniform float uAmt; void main() { gl_FragColor = vec4(0.82, 0.88, 0.95, 0.34 * uAmt); }' }))); this.rain.visible = false; this.rain.renderOrder = 12; G.add(this.rain); }
     this.ground = flat(new THREE.Mesh(new THREE.RingGeometry(WIND.ground.r - 0.8, WIND.ground.r, 56), new THREE.MeshBasicMaterial({ color: 0xffe14a, transparent: true, opacity: 0.6, depthWrite: false, side: THREE.DoubleSide }))); this.ground.rotation.x = -Math.PI / 2; this.ground.position.set(WIND.ground.x, 0.08, WIND.ground.z); this.ground.renderOrder = 3; this.ground.visible = false; G.add(this.ground);
   }
   // the volcano stands in the haze: between the sky's two colours, a little darker, warmed by a low sun
   setWorld(w) {
-    if (!this.farMat) return; const k = Math.min(0.92, Math.max(0, (w.fog - 0.001) / 0.002));   // thick air hides it: it takes the horizon's colour
+    this.w = w; if (!this.farMat) return;
+    this.village.visible = w.ambient < 0.9;                                    // evening and night
+    this.clouds.material.color.setRGB(Math.min(1, w.cloudLit[0] * 0.9 + w.horizon[0] * 0.2), Math.min(1, w.cloudLit[1] * 0.9 + w.horizon[1] * 0.2), Math.min(1, w.cloudLit[2] * 0.9 + w.horizon[2] * 0.2)); this.clouds.material.opacity = w.fog > 0.0025 ? 0.2 : w.ambient < 0.6 ? 0.28 : 0.6; const k = Math.min(0.92, Math.max(0, (w.fog - 0.001) / 0.002));   // thick air hides it: it takes the horizon's colour
     const r = (w.horizon[0] * 0.42 + w.zenith[0] * 0.5) * 0.9 + w.sunCol[0] * 0.06, g = (w.horizon[1] * 0.42 + w.zenith[1] * 0.5) * 0.86, b = (w.horizon[2] * 0.42 + w.zenith[2] * 0.55) * 0.92;
     this.farMat.color.setRGB(r + (w.horizon[0] - r) * k, g + (w.horizon[1] - g) * k, b + (w.horizon[2] - b) * k);
   }
@@ -155,6 +175,16 @@ export class BayView {
   setVoyage(v, world = null) {
     this.voyage = v || null; this.group.visible = !!v; if (!v) return;
     this.build(); if (world) this.setWorld(world); this.turtleAway = 0; this.t = 0;
+  }
+  // Little Captain Jack (a figure of view/people.mjs that the stage made), where = 'boat': at the helm of his own boat, the
+  // first of the other boats, in the place of its fisher of round shapes; 'beach': standing by his fire. null: not here.
+  setJack(one, where = null) {
+    this.jack = one || null; this.jackAt = one ? where : null; if (!this.others) return;
+    const boat = this.others[0], f = boat.getObjectByName('bay-fisher'); if (f) f.visible = !(one && where === 'boat');
+    if (!one) return;
+    if (where === 'boat') { boat.children[0].add(one.hold); one.hold.position.set(0, -0.04 + (one.act.sit ? SIT_HIP - one.hip : 0), -2.1); one.hold.rotation.set(0, 0, 0); }
+    else { const x = BAY.beach.x + 33.5; this.group.add(one.hold); one.hold.position.set(x, landY(8, x), BAY.shoreZ - 6); one.hold.rotation.set(0, 0.35, 0); }   // beside the fire, above the wash of the waves, looking out to sea
+    one.hold.visible = true;
   }
   seaY(wv, x, z, t) { const f = this.sea.fadeAt(x, z); return f > 0.01 ? W.heightFast(wv, x, z, t, 2) * f : 0; }
   onEvent(e, stage) {
@@ -178,6 +208,8 @@ export class BayView {
     const wv = v.race.waves, T = this.t, N = v.net, mk1 = v.key === 'mk1';
     this.guests.visible = v.people.length > 0; this.ripple.visible = mk1; for (const m of this.under) m.visible = true;
     this.updateBoats(v, wv, t, T, boat);
+    if (this.jack) { crewClip(this.jack, this.jackAt === 'boat' && this.jack.act.sit ? 'sit' : 'idle'); tick(this.jack, dt, 2); }
+    const wet = !!v.squall; this.rain.visible = wet || this.rainU.uAmt.value > 0.02; this.rainU.uAmt.value += ((wet ? 1 : 0) - this.rainU.uAmt.value) * Math.min(1, dt * 0.8); this.rainU.uTime.value = T; this.rainU.uCam.value.copy(camera.position);
     // guests: in the water they bob and are carried; aboard they sit on the thwarts; home they stand on the sand
     let seat = 0, home = 0;
     let onO = 0, onJ = 0; const O = v.O, Jk = v.key === 'mk3' ? v.jack : null;
@@ -216,7 +248,8 @@ export class BayView {
     if (mk1) for (let k = 0; k < 18; k++) { const s = ((T * D.v * 4 + k * (len / 18)) % len), off = ((k * 37) % 23) - 11, x = G0.x + D.x * s - D.z * off, z = G0.z + D.z * s + D.x * off; M4.compose(V.set(x, this.seaY(wv, x, z, t) + 0.07, z), Q.setFromEuler(E.set(-Math.PI / 2, 0, Math.atan2(D.x, D.z) + Math.PI / 2, 'YXZ')), S1); this.ripple.setMatrixAt(k, M4); }
     this.ripple.instanceMatrix.needsUpdate = true;
     // the beach line shows when there is someone to bring home
-    this.beachRing.visible = (v.aboard > 0 || (v.line && v.line.length > 0)) && !v.over; this.beachRing.material.opacity = 0.35 + 0.2 * Math.sin(T * 3);
+    // (a true or false: three.js draws whatever is not exactly false)
+    this.beachRing.visible = !!((v.aboard > 0 || (v.line && v.line.length > 0)) && !v.over); this.beachRing.material.opacity = 0.35 + 0.2 * Math.sin(T * 3);
     for (const m of this.under) m.position.y = 0.04;
   }
   // the third voyage: Jack's boat beside the player's, the lamp boats of the chain, the overdue boat, and every light of the night
@@ -227,7 +260,7 @@ export class BayView {
     let n = 0; const lamp = (x, y, z, s = 1) => { M4.compose(V.set(x, y, z), Q.identity(), V.clone().set(s, s, s)); this.lamps.setMatrixAt(n++, M4); };
     const dark = v.night ? 1 : 0.55, blink = Math.sin(T * 5.2) > -0.2 ? 1.5 : 0.25;
     lamp(O.x, this.seaY(wv, O.x, O.z, t) + 3.4, O.z, dark * blink);                                           // the one lamp that blinks
-    lamp(boat.x, boat.y + 4.5, boat.z + 0.0, dark * 0.9);                                                      // the boat's own, at the masthead
+    lamp(boat.x - Math.sin(boat.h) * 3.1, boat.y + 1.25, boat.z + Math.cos(boat.h) * 3.1, dark * 0.95);        // the boat's own lantern, at the bow
     if (J) lamp(J.x, this.seaY(wv, J.x, J.z, t) + 4.4, J.z, dark * 0.9);
     for (const q of v.lamps) lamp(q.x, this.seaY(wv, q.x, q.z, t) + 4.4, q.z, dark * (1.25 + 0.2 * Math.sin(T * 3 + q.i)));
     for (let k = 0; k < 6; k++) { const x = BAY.beach.x - 60 + 24 * k; lamp(x, landY(7, x) + 1.5, BAY.shoreZ + 2 - 7, dark * (0.7 + 0.15 * Math.sin(T * 7 + k))); }   // torches along the beach

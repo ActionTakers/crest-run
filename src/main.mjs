@@ -13,31 +13,36 @@
 // step A3 took from the boss fights of the Final Fantasy series: phases, marks, a stagger gauge, a ram, a cast to break.
 // 0.6.0 (2026-11-16): three more boats from the owner's sheets (view/fleet.mjs), one for each rival and a choice for the player;
 // a camera at the seated driver's head (the eye button in a race, or the C key).
+// 0.9.0 (the same day, after the owner's six pictures of 14:14: the project's research/A7-target-pictures): the jukung's look
+// follows the pictures (view/jukung.mjs), the telling on the beach has a table of planks with nine palm leaves and their signs,
+// the slopes are forested, a village is lit at night, rain falls under the squall, the overdue boat has a canopy.
+// 0.10.0 (the same day): the two figures of the voyages (view/people.mjs, KING and JACK): the king at the helm of the jukung,
+// the little captain as its lookout, in his own boat or by his fire; and the artwork on the sail (view/jukung.mjs).
 // 0.8.0 (the same day, plan PLAN-MONKEYKING.md of the project): a sixth boat made wholly in code, the jukung (view/jukung.mjs),
 // and the rescue voyages in the bay (sim/voyage.mjs, view/bay-view.mjs): three choices before leaving, the rescue, the telling
 // on the beach with nine lesson leaves a voyage; a Voyage tab in the menu; a film camera that travels with the boat.
 // 0.7.0 (the same day): each boat handles its own way (sim/boat-stats.mjs), a display inside the cockpit for the view from the
 // helm (view/dash.mjs), a fifth boat (the red catamaran without its lettering), and a ghost that remembers its boat.
-import { Stage, CAMS } from './view/stage.mjs?v=e1a47756';
-import { LIVERIES, LIVERY_KEYS } from './view/boats.mjs?v=e1a47756';
-import { OWNER, crewFor } from './view/people.mjs?v=e1a47756';
-import { WORLDS } from './view/sky.mjs?v=e1a47756';
-import { getCourse, COURSE_DEFS, COURSE_KEYS, pointInto, wrapA, wrapS } from './sim/courses.mjs?v=e1a47756';
-import { Race, defaultSettings, DT, TUNES, TUNE_KEYS, BOOST, SIM_VERSION, encodeInputs, decodeInputs } from './sim/race-sim.mjs?v=e1a47756';
-import { Rescue, arenaCourse, rescueSettings, ARENA, RESCUE, S as SHARK } from './sim/rescue.mjs?v=e1a47756';
-import { Boss, dragonCourse, bossSettings, DRAGON, BOSS as FIGHT } from './sim/boss.mjs?v=e1a47756';
-import { Leviathan, leviCourse, leviSettings, LEVI, FIGHT as LFIGHT, PHASES } from './sim/leviathan.mjs?v=e1a47756';
-import { makeVoyage, bayCourse, voyageSettings, voyageChoices, VOYAGES, VOYAGES_READY as VOYAGE_KEYS } from './sim/voyages.mjs?v=e1a47756';
+import { Stage, CAMS } from './view/stage.mjs?v=281086e4';
+import { LIVERIES, LIVERY_KEYS } from './view/boats.mjs?v=281086e4';
+import { OWNER, KING, crewFor } from './view/people.mjs?v=281086e4';
+import { WORLDS } from './view/sky.mjs?v=281086e4';
+import { getCourse, COURSE_DEFS, COURSE_KEYS, pointInto, wrapA, wrapS } from './sim/courses.mjs?v=281086e4';
+import { Race, defaultSettings, DT, TUNES, TUNE_KEYS, BOOST, SIM_VERSION, encodeInputs, decodeInputs } from './sim/race-sim.mjs?v=281086e4';
+import { Rescue, arenaCourse, rescueSettings, ARENA, RESCUE, S as SHARK } from './sim/rescue.mjs?v=281086e4';
+import { Boss, dragonCourse, bossSettings, DRAGON, BOSS as FIGHT } from './sim/boss.mjs?v=281086e4';
+import { Leviathan, leviCourse, leviSettings, LEVI, FIGHT as LFIGHT, PHASES } from './sim/leviathan.mjs?v=281086e4';
+import { makeVoyage, bayCourse, voyageSettings, voyageChoices, VOYAGES, VOYAGES_READY as VOYAGE_KEYS } from './sim/voyages.mjs?v=281086e4';
 const VOYAGES_READY_ALL = VOYAGE_KEYS;
-import { FLEET, FLEET_KEYS, rivalBoats } from './view/fleet.mjs?v=e1a47756';
-import { BOAT_STATS, boatTweak } from './sim/boat-stats.mjs?v=e1a47756';
-import { Governor, RefreshWatch, measureRefresh } from './sim/governor.mjs?v=e1a47756';
-import * as PR from './sim/progress.mjs?v=e1a47756';
-import { Controls } from './ui/controls.mjs?v=e1a47756';
-import { Sound } from './ui/sound.mjs?v=e1a47756';
-import * as PF from './ui/platform.mjs?v=e1a47756';
+import { FLEET, FLEET_KEYS, rivalBoats } from './view/fleet.mjs?v=281086e4';
+import { BOAT_STATS, boatTweak } from './sim/boat-stats.mjs?v=281086e4';
+import { Governor, RefreshWatch, measureRefresh } from './sim/governor.mjs?v=281086e4';
+import * as PR from './sim/progress.mjs?v=281086e4';
+import { Controls } from './ui/controls.mjs?v=281086e4';
+import { Sound } from './ui/sound.mjs?v=281086e4';
+import * as PF from './ui/platform.mjs?v=281086e4';
 
-export const VERSION = 'crest-run 0.8.0', BUILD = '2026-11-16 #e1a47756';
+export const VERSION = 'crest-run 0.10.0', BUILD = '2026-11-16 #281086e4';
 const $ = (id) => document.getElementById(id);
 const Q = new URLSearchParams(location.search);
 // on a desk (a local address) the page takes two test switches from its address that a published page ignores: the computer at
@@ -390,8 +395,8 @@ async function startVoyage() {
     G.run = { mode: 'voyage', course: key, tune, livery, difficulty, at: new Date().toISOString(), frames: 0, late: 0, worst: 0, sumMs: 0, mot0: controls.tilt.counts.mot, th0: performance.now(), steerMode: controls.mode, recentres0: controls.recentres,
       lastHud: 0, countShown: '', dots: [], trackW: 1, wake0: PF.wake.releases, marks: [new Float32Array(1)], markN: new Int32Array(1), gmarks: null, gmarkN: 0,
       coach: !G.save.best[`${key}:rescue`] && !G.film && !G.auto, coached: {}, bpm0: sound.bpm0 };
-    stage.setRescue(null); stage.setBoss(null); stage.setLevi(null); stage.setRace(race, [livery], 0); stage.setGhost(null); stage.setVoyage(voy);
-    const ready = Promise.all([stage.setBoats(['jukung']), stage.setSkippers([OWNER])]); if (G.film) await ready;
+    stage.setRescue(null); stage.setBoss(null); stage.setLevi(null); stage.setRace(race, [livery], 0); stage.setGhost(null); const cast = stage.setVoyage(voy);
+    const ready = Promise.all([stage.setBoats(['jukung']), stage.setSkippers([KING]), cast]); if (G.film) await ready;   // the king at the helm; where the little captain is, the stage knows
     stage.setCameraMode('chase'); controls.releaseAll();
     E.hud.classList.remove('final', 'bossfight'); E.hud.classList.add('rescue'); if (voy.storm !== undefined) E.hud.classList.add('bossfight'); $('h-of').textContent = `/${voy.total}`; E.place.textContent = '0'; E.count.textContent = ''; E.warn.style.display = 'none';
     for (const k of Object.keys(H)) H[k] = null;
@@ -414,6 +419,14 @@ function paintKies() {
     + (a >= 0 ? '<button data-recall="go" class="next">To the choices</button>' : '') + `</div><div class="told">${a >= 0 ? (a === R.right ? 'Yes. ' : 'Not quite. ') + R.said : ''}</div></div>`; return; }
   $('k-rows').innerHTML = D.rows.map((r, i) => `<div class="krow"><span>${r.label}</span>` + r.opts.map(([v, name, note], j) => `<button data-row="${i}" data-opt="${j}" class="${C[r.key] === v ? 'on' : ''}"><b>${name}</b><small>${note}</small></button>`).join('') + '</div>').join('');
 }
+// The nine signs burned into the leaves of a voyage, in the order of his picture of the beach (the project's research
+// A7-11): a wave, a leaf, a star; a spiral, a mountain, wind; a drop, a young plant, a breaking wave. Drawn here, line by line.
+const SIGNS = [
+  'M34 28q4-7 8 0t8 0t8 0t8 0M36 36q4-7 8 0t8 0t8 0', 'M41 39C41 27 50 20 60 20C60 31 53 39 41 39ZM41 39L58 22', 'M50 17L53 27L63 30L53 33L50 43L47 33L37 30L47 27ZM43 23l4 4M57 23l-4 4M43 37l4-4M57 37l-4-4',
+  'M' + Array.from({ length: 40 }, (_, k) => { const a = k * 0.42, r = 1 + k * 0.27; return (50 + r * Math.cos(a)).toFixed(1) + ' ' + (30 + r * Math.sin(a)).toFixed(1); }).join('L'), 'M33 40L44 23L50 31L56 21L67 40ZM41 28l3 3l3-3M53 26l3 3l3-3', 'M34 25h17a4 4 0 1 0-4-4M34 31h25a4 4 0 1 1-4 4M34 37h13a3 3 0 1 1-3 3',
+  'M50 18C56 27 59 31 59 35a9 9 0 1 1-18 0C41 31 44 27 50 18Z', 'M50 41V30M50 31C44 30 41 25 42 20C48 21 50 26 50 31ZM50 31C56 30 59 25 58 20C52 21 50 26 50 31ZM50 34C45 36 41 35 38 31M50 34C55 36 59 35 62 31', 'M32 40C35 24 51 17 60 25C55 23 51 26 53 31C58 26 65 31 68 40M35 33l2 1M39 27l2 2M62 22l1 2M66 26l1 2',
+];
+const leafSvg = (i) => `<svg viewBox="0 0 100 60" aria-hidden="true"><path class="blade" d="M4 30C24 3 76 3 96 30C76 57 24 57 4 30Z" stroke-width="1.5"/><path class="rib" d="M8 30H92" fill="none" stroke-width="0.8"/><path class="sign" d="${SIGNS[i]}" fill="none" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
 // Veranker: the telling on the beach. Three questions, one for each ring; an answer is a view, not a mark: it earns its leaf and
 // shows what the run itself measured. Under them the voyage's nine leaves: Denken, Doen, Delen by Zelf, Samen, Systeem.
 function openBeach() { if (!G.beach) return; paintBeach(); show('beach'); }
@@ -429,8 +442,12 @@ function paintBeach() {
   $('v-qs').innerHTML = `<div class="vq"><span>${q.ring}<small>${i + 1} of ${D.ask.length}</small></span><p>${q.q}</p><div class="opts">` + q.a.map((a, j) => `<button data-q="${i}" data-a="${j}" class="${Bc.ans[i] === j ? 'on' : ''}">${a}</button>`).join('')
     + (done && i < D.ask.length - 1 ? '<button data-next="1" class="next">Next question</button>' : '') + `</div><div class="told">${done ? told[i] : ''}</div></div>`; }
   const rows = [['DENKEN', 'think'], ['DOEN', 'do'], ['DELEN', 'share']], cols = [['ZELF', 'me'], ['SAMEN', 'us'], ['SYSTEEM', 'the bay']];
+  // the table: nine leaves, each with its sign; a leaf that was earned is pale and can be read, one not yet earned lies dark
+  if (Bc.sel === undefined || Bc.selKey !== Bc.key) { Bc.selKey = Bc.key; Bc.sel = -1; }
+  const said = Bc.sel >= 0 ? (have[Bc.sel] ? D.leaves[Bc.sel] : 'Not earned yet: ' + D.leaves[Bc.sel]) : `${have.filter(Boolean).length} of 9 leaves. Tap a leaf to read it.`;
   $('v-leaves').innerHTML = '<div class="leaves"><span></span>' + cols.map(([c, e]) => `<span class="hd">${c}<small>${e}</small></span>`).join('')
-    + rows.map(([r, e], i) => `<span class="hd">${r}<small>${e}</small></span>` + [0, 1, 2].map((j) => `<span class="leaf ${have[3 * i + j] ? 'on' : ''}">${D.leaves[3 * i + j]}</span>`).join('')).join('') + '</div>';
+    + rows.map(([r, e], i) => `<span class="hd">${r}<small>${e}</small></span>` + [0, 1, 2].map((j) => `<button class="leaf ${have[3 * i + j] ? 'on' : ''} ${Bc.sel === 3 * i + j ? 'sel' : ''}" data-leaf="${3 * i + j}" aria-label="${r} ${cols[j][0]}: ${have[3 * i + j] ? D.leaves[3 * i + j] : 'not earned yet'}">${leafSvg(3 * i + j)}</button>`).join('')).join('')
+    + `<div id="v-leaftext">${said}</div></div>`;
 }
 function endVoyage() {
   const race = G.race, run = G.run, Vg = G.rescue, sm = Vg.summary(), rs = race.summary(), D = Vg.def;
@@ -998,6 +1015,7 @@ function wire() {
   tap('b-kies-go', startRace); tap('b-kies-back', () => { paintMenu(); show('menu'); });
   $('k-rows').addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b) return; sound.resume(); sound.sfx('click'); if (b.dataset.recall !== undefined) { if (b.dataset.recall === 'go') { G.kies.recall = null; G.recalled[G.sel.level] = true; } else G.kies.recall = +b.dataset.recall; return paintKies(); } const key = G.sel.level, C = G.choices[key] = voyageChoices(key, G.choices[key]); const row = VOYAGES[key].rows[+b.dataset.row]; C[row.key] = row.opts[+b.dataset.opt][0]; paintKies(); });
   tap('b-beach-done', () => { if (G.beach && G.beach.book) { G.beach = G.beach.keep; paintKies(); return show('kies'); } show('results'); });
+  $('v-leaves').addEventListener('click', (e) => { const b = e.target.closest('button[data-leaf]'); if (!b || !G.beach) return; sound.resume(); sound.sfx('click'); G.beach.sel = +b.dataset.leaf; G.beach.selKey = G.beach.key; paintBeach(); });
   tap('b-kies-book', () => { G.beach = { book: true, key: G.sel.level, keep: G.beach }; paintBeach(); show('beach'); });
   $('v-qs').addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b || !G.beach) return; sound.resume(); if (b.dataset.book) { sound.sfx('click'); G.beach.key = b.dataset.book; return paintBeach(); } if (b.dataset.next) { sound.sfx('click'); G.beach.step++; return paintBeach(); } sound.sfx('chip', +b.dataset.q); G.beach.ans[+b.dataset.q] = +b.dataset.a; const r = PR.addLeaves(G.save, G.beach.key, [6 + +b.dataset.q]); if (r.fresh) { G.save = r.save; saveNow(); } paintBeach(); });
   tap('b-retry', startRace);

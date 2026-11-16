@@ -12,7 +12,7 @@
 <link rel="icon" href="./assets/icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="./assets/icon-180.png">
 <title>Crest Run</title>
-<link rel="stylesheet" href="./css/game.css?v=e1a47756">
+<link rel="stylesheet" href="./css/game.css?v=281086e4">
 <script type="importmap">{ "imports": { "three": "./vendor/three-0.186.1/build/three.module.js", "three/addons/": "./vendor/three-0.186.1/examples/jsm/" } }</script>
 </head>
 <body>
@@ -127,8 +127,7 @@
   <section id="s-beach" class="screen">
     <div class="panel wide beach">
       <h2 id="v-title"></h2>
-      <div id="v-qs"></div>
-      <div id="v-leaves"></div>
+      <div class="vcols"><div id="v-qs"></div><div id="v-leaves"></div></div>
       <div class="row center sticky"><button id="b-beach-done" class="cta">DONE</button></div>
     </div>
   </section>
@@ -201,6 +200,6 @@ window.addEventListener('error', function (e) {
   if (b) { b.classList.remove('hidden'); b.onclick = function () { location.reload(); }; }
 }, true);
 </script>
-<script type="module" src="./src/main.mjs?v=e1a47756"></script>
+<script type="module" src="./src/main.mjs?v=281086e4"></script>
 </body>
 </html>

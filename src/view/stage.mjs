@@ -3,22 +3,22 @@
 // shows it, interpolated between the last two physics steps so the picture is smooth at any frame rate.
 // Written 2026-11-13 by the yacht project session.
 import * as THREE from 'three';
-import * as W from '../sim/waves.mjs?v=e1a47756';
-import { pointInto, wrapA } from '../sim/courses.mjs?v=e1a47756';
-import { Sky, WORLDS, makeNoiseTexture } from './sky.mjs?v=e1a47756';
-import { Sea } from './sea.mjs?v=e1a47756';
-import { Post } from './post.mjs?v=e1a47756';
-import { Wake, Spray } from './fx.mjs?v=e1a47756';
-import { loadYacht, BoatVisual } from './boats.mjs?v=e1a47756';
-import { Scenery } from './scenery.mjs?v=e1a47756';
-import { RescueView } from './rescue-view.mjs?v=e1a47756';
-import { People, crewClip, tick } from './people.mjs?v=e1a47756';
-import { BossView } from './boss-view.mjs?v=e1a47756';
-import { LeviathanView } from './leviathan-view.mjs?v=e1a47756';
-import { FLEET } from './fleet.mjs?v=e1a47756';
-import { Dash } from './dash.mjs?v=e1a47756';
-import { makeJukung, tickJukung } from './jukung.mjs?v=e1a47756';
-import { BayView } from './bay-view.mjs?v=e1a47756';
+import * as W from '../sim/waves.mjs?v=281086e4';
+import { pointInto, wrapA } from '../sim/courses.mjs?v=281086e4';
+import { Sky, WORLDS, makeNoiseTexture } from './sky.mjs?v=281086e4';
+import { Sea } from './sea.mjs?v=281086e4';
+import { Post } from './post.mjs?v=281086e4';
+import { Wake, Spray } from './fx.mjs?v=281086e4';
+import { loadYacht, BoatVisual } from './boats.mjs?v=281086e4';
+import { Scenery } from './scenery.mjs?v=281086e4';
+import { RescueView } from './rescue-view.mjs?v=281086e4';
+import { People, crewClip, tick, JACK, CAST_H, SIT_HIP } from './people.mjs?v=281086e4';
+import { BossView } from './boss-view.mjs?v=281086e4';
+import { LeviathanView } from './leviathan-view.mjs?v=281086e4';
+import { FLEET } from './fleet.mjs?v=281086e4';
+import { Dash } from './dash.mjs?v=281086e4';
+import { makeJukung, tickJukung } from './jukung.mjs?v=281086e4';
+import { BayView } from './bay-view.mjs?v=281086e4';
 
 const clamp = (v, lo, hi) => (v < lo ? lo : v > hi ? hi : v);
 const smooth = (e0, e1, x) => { const t = clamp((x - e0) / (e1 - e0), 0, 1); return t * t * (3 - 2 * t); };
@@ -35,6 +35,8 @@ export const TIERS = {
 // roll: how much it leans with the hull; lead: how far it looks into a turn.
 // where a skipper stands on the yacht, as shares of its height (above the waterline) and its length (ahead of the middle)
 export const HELM = { y: 0.47, z: -0.02, drop: 0.44 };   // drop: how far a seated skipper is lowered onto the helm seat, metres
+export const BOW = { y: 0.6, z: 2.7 };                   // where the jukung's lookout sits: the height of his hips and how far ahead of the middle, metres
+export const KING_UP = 0.12;                             // the king's hips over a crew figure's at the same seat, metres
 export const CAMS = {
   chase: { label: 'Chase', back: 12.5, up: 4.3, look: 9, lookUp: 1.6, fov0: 60, fovK: 9, roll: 0, lead: 0.2 },
   high: { label: 'High', back: 17, up: 8.2, look: 14, lookUp: 0.6, fov0: 56, fovK: 5, roll: 0, lead: 0.4 },
@@ -71,6 +73,7 @@ export class Stage {
     this.cam = { key: 'chase', h: null, y: 0, fov: 60, shake: 0, drop: 0, dip: 0, motion: 1, orbit: 0, mode: 'chase', t: 0 };
     this.fx = { flash: 0, flashCol: [1, 1, 1], bloomPulse: 0, speed: 0, blur: 0 };
     this.time = 0; this.focus = 0; this.lookAt = null;   // lookAt: the bearing the jukung's lookout points at (radians from the bow), or null
+    this.jack = null; this.jackAt = null; this.jackId = null;   // Little Captain Jack of the voyages and where he is ('bow', 'boat', 'beach'): setJack
     this._v = new THREE.Vector3(); this._o = [0, 0, 0];
     this.stats = { calls: 0, triangles: 0 };
   }
@@ -144,13 +147,29 @@ export class Stage {
   // the rescue level's creatures (sim/rescue.mjs), or null for a race
   // returns a promise: the crew's models of this mission have arrived (the film waits for it, a player does not)
   setRescue(rescue, crew = []) { this.rescue = rescue || null; this.crewIds = this.rescue ? crew.slice() : []; this.trimPeople(); return this.rescueView.setRescue(this.rescue, crew); }
-  trimPeople() { this.people.keepOnly([...(this.skipperIds || []), ...(this.crewIds || []), this.bossId].filter(Boolean)); }
+  trimPeople() { this.people.keepOnly([...(this.skipperIds || []), ...(this.crewIds || []), this.bossId, this.jackId].filter(Boolean)); }
   // the boss level's fight and which of the crew is the boss, or null for none. The dragon's model must have arrived
   // (bossView.load). The promise: the boss's own model has arrived
   // the second boss level's fight, or null for none (its beast is made in code: nothing to load)
   setLevi(levi) { this.levi = levi || null; this.leviView.setLevi(this.levi); }
   // a rescue voyage in the bay, or null for none (everything of it is made in code: nothing to load)
-  setVoyage(v) { this.voyage = v || null; this.bayView.setVoyage(this.voyage, this.world); if (!this.voyage) this.lookAt = null; }
+  // (the promise: Little Captain Jack has arrived where this voyage has him; a film waits for it)
+  setVoyage(v) { this.voyage = v || null; this.bayView.setVoyage(this.voyage, this.world); if (!this.voyage) this.lookAt = null; return this.setJack(!v ? null : v.key === 'mk1' ? 'bow' : v.key === 'mk3' && !v.jack ? 'beach' : 'boat'); }
+  // Little Captain Jack (view/people.mjs): 'bow' = the lookout of the player's jukung, in the round monkey's place (the first
+  // voyage); 'boat' = at the helm of his own boat, the first of the bay's other boats (the second voyage, and the third when
+  // he comes with it); 'beach' = by his fire (the third, when he keeps it); null = nowhere. Until his model has arrived, and
+  // if it never does, the round monkey keeps the lookout and a fisher of round shapes sits in his boat.
+  setJack(where = null) {
+    this.jackAt = where; this.jackId = where ? JACK : null; this.trimPeople();
+    if (!where) { this.bayView.setJack(null); if (this.jack) { this.people.free(this.jack); this.jack = null; } return Promise.resolve(); }
+    return this.people.load(JACK).then((src) => { if (!src || this.jackAt !== where) return; if (!this.jack) { this.jack = this.people.make(JACK, CAST_H.jack); this.jack.n = 5; } this.placeJack(); });
+  }
+  placeJack() {
+    const J = this.jack; if (!J) return;
+    if (this.jackAt !== 'bow') { this.bayView.setJack(J, this.jackAt); return; }
+    this.bayView.setJack(null); const B = this.boats[this.focus]; if (!B) return;
+    B.vis.group.add(J.hold); J.hold.position.set(0, BOW.y - (J.act.watch ? J.hip : 0), BOW.z); J.hold.rotation.set(0, 0, 0);
+  }
   setBoss(boss, id = null) { this.boss = boss || null; this.bossId = this.boss ? id : null; this.trimPeople(); return this.bossView.setBoss(this.boss, this.bossId); }
   // a skipper at the helm of each yacht: ids[i] = the code of boat i's figure, or null for an empty helm. A figure appears when
   // its model has arrived; a boat that fades (a rival between the camera and the player) hides its skipper
@@ -182,9 +201,11 @@ export class Stage {
     this.scene.add(vis.group); this.scene.remove(old.group); old.dispose();
     B.vis = vis; B.key = key; B.wake.stern = this.fleet[key].length * 0.44;
     if (B.skipper) { vis.group.add(B.skipper.hold); this.seat(B, B.skipper); }
+    if (this.jack && this.jackAt === 'bow' && B === this.boats[this.focus]) this.placeJack();
   }
   // a seated figure on its boat's seat
-  seat(B, one) { const T = this.fleet[B.key] || this.yacht, s = FLEET[B.key].seat; one.hold.position.set(0, T.height * s.y - (one.act.sit ? s.drop : 0), T.length * s.z); }
+  // (the crew: lowered by the seat's drop; the two of the voyages: by their own hips, and the king a little higher, on the helm's thwart)
+  seat(B, one) { const T = this.fleet[B.key] || this.yacht, s = FLEET[B.key].seat, own = CAST_H[one.id] !== undefined; one.hold.position.set(0, T.height * s.y + (!one.act.sit ? 0 : own ? SIT_HIP + KING_UP - one.hip : -s.drop), T.length * s.z); }
   setSkippers(ids = []) {
     this.skipperIds = ids.slice(); this.trimPeople(); const waits = [];
     this.boats.forEach((B, i) => {
@@ -194,7 +215,7 @@ export class Stage {
       if (!id) return;
       waits.push(this.people.load(id).then((src) => {
         if (!src || this.skipperIds[i] !== id || B.skipper) return;
-        const one = this.people.make(id, 1.9); one.n = i; this.seat(B, one); B.vis.group.add(one.hold); B.skipper = one;
+        const one = this.people.make(id, CAST_H[id] || 1.9); one.n = i; this.seat(B, one); B.vis.group.add(one.hold); B.skipper = one;
       }));
     });
     return Promise.all(waits);       // the film waits for the figures, a player does not
@@ -251,11 +272,16 @@ export class Stage {
         if (!B.fw) B.fw = [-1, 1].map(() => new Wake(this.scene, this.sea.U, { n: 44, stern: 2.9, spread: 0.1, maxHalf: 3.2 }));
         const rx = -Math.cos(B.h), rz = -Math.sin(B.h); B.fw.forEach((w, k) => { const s = (k ? 1 : -1) * 2.75; w.mesh.visible = true; w.update(B.x + rx * s, B.z + rz * s, B.h, b.air ? 0 : B.u * 0.8, tSim, 0); });
       } else if (B.fw) for (const w of B.fw) w.mesh.visible = false;
-      if (B.key === 'jukung') tickJukung(B.vis.group, { t: this.time + i * 1.7, u: B.u, top: b.P.top, turn: clamp(b.r, -1, 1), look: i === this.focus ? this.lookAt : null });   // the sail, and the lookout's arm
+      if (B.key === 'jukung') tickJukung(B.vis.group, { t: this.time + i * 1.7, u: B.u, top: b.P.top, turn: clamp(b.r, -1, 1), look: i === this.focus ? this.lookAt : null, own: !(i === this.focus && this.jack && this.jackAt === 'bow'), see: i === this.focus && !this.relCam && !this.debugCam && this.cam.mode !== 'orbit' && !(CAMS[this.cam.key] || {}).eye ? 0.8 : 1 });   // the sail, and the lookout's arm
       const near = i === this.focus ? 1 : 0.5;
       this.spray.trail(i, B.x, B.y, B.z, B.h, B.u * (1 + 0.5 * b.boostLv), b.air, dt, T.spray * near, b.P.length * 0.26, b.P.beam * 0.46);
     }
     for (let i = 0; i < R.length; i++) { const one = this.boats[i].skipper; if (!one) continue; one.hold.visible = (this.boats[i].vis.opacity === undefined || this.boats[i].vis.opacity > 0.6); if (one.hold.visible) { crewClip(one, one.act.sit ? 'sit' : 'idle'); const B = this.boats[i], far = i !== this.focus && (B.x - this.camera.position.x) ** 2 + (B.z - this.camera.position.z) ** 2 > 2500; tick(one, dt, far ? 8 : 2); } }   // a far rival's skipper moves in coarse steps
+    if (this.jack && this.jackAt === 'bow') {     // the little captain on the bow: he turns to what the voyage names and points at it
+      const J = this.jack, B = this.boats[this.focus], P = B.vis.group.userData.jk, has = this.lookAt !== null && Number.isFinite(this.lookAt);
+      J.hold.visible = B.key === 'jukung' && (B.vis.opacity === undefined || B.vis.opacity > 0.6);
+      if (J.hold.visible) { J.hold.rotation.y = P ? P.a * 0.55 : 0; crewClip(J, has && J.act.point ? 'point' : J.act.watch ? 'watch' : 'idle'); tick(J, dt, 1); }
+    }
     this.spray.update(dt, this.camera, this.bufferH || 600);
     this.scenery.update(race, tSim, this.camera, me, dt);
     if (this.rescue) this.rescueView.update(dt, tSim, this.camera, M);

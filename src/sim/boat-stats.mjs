@@ -3,7 +3,7 @@
 // boat should feel different, not decide the race; a rival's pace is still held to what the player's boat can do (race-sim.mjs).
 // Pure. Chosen by this session on 2026-11-16 from what each boat is (a light RIB, a long jet racer, a twin-hulled boat); no
 // person has sailed them: PROPOSAL until the owner has. Tests: tests/boat-stats.test.mjs.
-import { TUNES } from './race-sim.mjs?v=e1a47756';
+import { TUNES } from './race-sim.mjs?v=281086e4';
 
 export const BOAT_STATS = {
   yacht: { top: 1, accel: 1, turnRate: 1, grip: 1, note: 'the all-rounder' },

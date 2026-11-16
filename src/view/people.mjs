@@ -5,27 +5,40 @@
 // llamas, in a race three sail the rival yachts. Written 2026-11-15 by the yacht project session. NOT_ASSESSED on a phone.
 // At a helm everybody sits in the same position (the owner's words of 2026-11-15 23:12): the "sit" clip is made here, in code,
 // from each figure's idle clip (research step A2, fact A2-04: thighs, calves and arms turned about their own z axis).
+// 0.10.0 (2026-11-16): the two figures of the voyages, king.glb and jack.glb (9,998 triangles, the same 78 joints, one idle
+// clip): characters of the client the voyages are made for, from his two character sheets (assets/SOURCES.md).
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { clone as cloneRig } from 'three/addons/utils/SkeletonUtils.js';
 
 export const OWNER = 'f01';                                                                    // at the player's own helm
 export const CREW = ['f02', 'f03', 'f06', 'f07', 'f08', 'f09', 'f10', 'f11', 'f12', 'f13', 'f14'];   // the others, in turn
+export const KING = 'king', JACK = 'jack';                                                      // the voyages' own two: the king at the helm, the little captain
+export const CAST_H = { king: 2.4, jack: 1.35 };                                                // how tall they stand, metres (the crew: 1.9; the king with his crown)
+// a seated crew figure's hips lie this far over the mark of its seat (hips 0.99 m over the soles at 1.9 m, lowered by the
+// seat's drop of 0.44: measured 2026-11-16 with the loader's own hip measure). The two of the voyages have other legs: they
+// are seated by their own hips (stage.mjs seat, placeJack; bay-view.mjs setJack)
+export const SIT_HIP = 0.55;
 // who plays this time: `count` codes for round n (the number of missions or races played before this one); offset shifts one
 // role's turn against another's, so the first race's rivals are not the first mission's swimmers
 // the seat: joint, radians about the joint's own z axis, laid over the idle clip (found with pictures, research A2: p1, p2)
 export const SEAT = [['L_Thigh', 1.45], ['R_Thigh', 1.45], ['L_Calf', -1.5], ['R_Calf', -1.5], ['L_Upperarm', 1.25], ['R_Upperarm', 1.25], ['L_Forearm', 0.8], ['R_Forearm', 0.8]];
+// the lookout: seated on the bow with his hands on his knees (WATCH), and with his right arm stretched ahead (POINT)
+export const WATCH = [['L_Thigh', 1.45], ['R_Thigh', 1.45], ['L_Calf', -1.5], ['R_Calf', -1.5], ['L_Upperarm', 0.55], ['R_Upperarm', 0.55], ['L_Forearm', 0.9], ['R_Forearm', 0.9]];
+export const POINT = [['L_Thigh', 1.45], ['R_Thigh', 1.45], ['L_Calf', -1.5], ['R_Calf', -1.5], ['L_Upperarm', 0.55], ['R_Upperarm', 1.5], ['L_Forearm', 0.9], ['R_Forearm', 0.08]];
 // a "sit" clip from an idle clip: the same tracks, with every key of the seat's joints turned by the seat's angle, so the
 // figure still breathes and sways. Null when the clip has none of those joints (another rig)
-export function seatClip(idle) {
+export function seatClip(idle) { return poseClip(idle, 'sit', SEAT); }
+// any such clip: `pose` is a list like SEAT, `name` the clip's name
+export function poseClip(idle, name, pose) {
   const q = new THREE.Quaternion(), r = new THREE.Quaternion(), Z = new THREE.Vector3(0, 0, 1); let turned = 0;
   const tracks = idle.tracks.map((t) => {
-    const c = t.clone(), s = SEAT.find(([j]) => t.name === j + '.quaternion'); if (!s) return c;
+    const c = t.clone(), s = pose.find(([j]) => t.name === j + '.quaternion'); if (!s) return c;
     r.setFromAxisAngle(Z, s[1]); turned++;
     for (let i = 0; i < c.values.length; i += 4) { q.fromArray(c.values, i).multiply(r).toArray(c.values, i); }
     return c;
   });
-  return turned ? new THREE.AnimationClip('sit', idle.duration, tracks) : null;
+  return turned ? new THREE.AnimationClip(name, idle.duration, tracks) : null;
 }
 export function crewFor(n, count, offset = 0) { const out = []; for (let k = 0; k < count; k++) out.push(CREW[((n * count + offset + k) % CREW.length + CREW.length) % CREW.length]); return out; }
 
@@ -41,7 +54,9 @@ export class People {
       g.scene.traverse((o) => { if (o.isSkinnedMesh) { o.computeBoundingBox(); box.union(o.boundingBox.clone().applyMatrix4(o.matrixWorld)); } });
       for (const c of g.animations) lightClip(c);
       const idle = g.animations.find((c) => c.name === 'idle'), sit = idle ? seatClip(idle) : null; if (sit) g.animations.push(sit);
-      const s = { id, scene: g.scene, clips: g.animations, height: box.max.y - box.min.y, minY: box.min.y };
+      if (idle && id === JACK) for (const [name, pose] of [['watch', WATCH], ['point', POINT]]) { const c = poseClip(idle, name, pose); if (c) g.animations.push(c); }   // the lookout's two
+      const hipBone = g.scene.getObjectByName('Hip'), hipAt = hipBone ? hipBone.getWorldPosition(new THREE.Vector3()).y - box.min.y : 0;   // how high the hips stand over the soles
+      const s = { id, scene: g.scene, clips: g.animations, height: box.max.y - box.min.y, minY: box.min.y, hip: hipAt };
       if (this.keep && !this.keep.has(id)) { disposeModel(s.scene); return null; }      // no longer wanted by the time it arrived
       this.src.set(id, s); return s;
     }).catch((e) => { this.failed.add(id); console.warn(`crew model ${id} not loaded: ${e && e.message}`); return null; }).finally(() => this.pending.delete(id));
@@ -55,7 +70,7 @@ export class People {
     root.scale.setScalar(k); root.position.y = -S0.minY * k; root.rotation.y = -Math.PI / 2; hold.add(root); hold.rotation.order = 'YXZ';
     root.traverse((o) => { if (o.isMesh) o.frustumCulled = false; });
     const mixer = new THREE.AnimationMixer(root), act = {}; for (const c of S0.clips) act[c.name] = mixer.clipAction(c);
-    return { id, hold, root, mixer, act, clip: '', until: 0, n: 0, acc: 0, skip: 0 };
+    return { id, h: height, hip: S0.hip * k, hold, root, mixer, act, clip: '', until: 0, n: 0, acc: 0, skip: 0 };   // hip: metres from the soles to the hips
   }
   // a figure that leaves the picture: its skeleton holds a texture of its own on the graphics card, which must be given back
   // (twelve race starts grew the card's textures by one a figure before this: the smoke test's memory check)
@@ -80,7 +95,7 @@ export function crewClip(one, name, speed = 1) {
   const a = one.act[name]; if (!a) return;
   if (one.clip !== name) {
     const old = one.act[one.clip]; if (old) old.fadeOut(0.2);
-    a.reset(); a.setLoop(name === 'idle' || name === 'sit' ? THREE.LoopPingPong : THREE.LoopRepeat, Infinity); a.fadeIn(0.2).play(); a.time = (one.n * 0.61) % a.getClip().duration; one.clip = name;
+    a.reset(); a.setLoop(name === 'idle' || name === 'sit' || name === 'watch' || name === 'point' ? THREE.LoopPingPong : THREE.LoopRepeat, Infinity); a.fadeIn(0.2).play(); a.time = (one.n * 0.61) % a.getClip().duration; one.clip = name;
   }
   a.timeScale = speed;
 }
