@@ -8,8 +8,8 @@
 // never by a person on a phone. Tests: tests/rescue.test.mjs.
 // World and headings as in race-sim.mjs: forward f = (-sin h, cos h), right r = (-cos h, -sin h); an angle a around the island
 // puts a point at (cos a, sin a) * radius, and a boat that circles with growing a has heading h = a and the island on its right.
-import { DT, BOOST, Race } from './race-sim.mjs?v=e0d5d047';
-import { buildCourse, wrapA } from './courses.mjs?v=e0d5d047';
+import { DT, BOOST, Race } from './race-sim.mjs?v=ccfb4efe';
+import { buildCourse, wrapA } from './courses.mjs?v=ccfb4efe';
 
 const DEG = Math.PI / 180;
 const clamp = (v, lo, hi) => (v < lo ? lo : v > hi ? hi : v);

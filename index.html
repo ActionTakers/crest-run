@@ -12,7 +12,7 @@
 <link rel="icon" href="./assets/icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="./assets/icon-180.png">
 <title>Crest Run</title>
-<link rel="stylesheet" href="./css/game.css?v=e0d5d047">
+<link rel="stylesheet" href="./css/game.css?v=ccfb4efe">
 <script type="importmap">{ "imports": { "three": "./vendor/three-0.186.1/build/three.module.js", "three/addons/": "./vendor/three-0.186.1/examples/jsm/" } }</script>
 </head>
 <body>
@@ -27,6 +27,7 @@
   <div id="h-pos"><b id="h-place">1</b><span id="h-of">/4</span><small id="h-lap">LAP 1/2</small></div>
   <div id="h-clock"><b id="h-time">0:00.0</b><small id="h-gap"></small></div>
   <div id="h-top">
+    <button id="h-view" class="hbtn" aria-label="Change the view"><svg viewBox="0 0 24 24"><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="12" r="3" fill="currentColor"/></svg></button>
     <button id="h-recentre" class="hbtn" aria-label="Recentre steering"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="12" r="2.2" fill="currentColor"/><path d="M12 1v5M12 18v5M1 12h5M18 12h5" stroke="currentColor" stroke-width="2"/></svg></button>
     <button id="h-pause" class="hbtn" aria-label="Pause"><svg viewBox="0 0 24 24"><rect x="6" y="5" width="4" height="14" rx="1" fill="currentColor"/><rect x="14" y="5" width="4" height="14" rx="1" fill="currentColor"/></svg></button>
   </div>
@@ -86,7 +87,7 @@
       <div class="menu-foot">
         <div class="pick" id="p-tune"><small>Tune</small><div id="m-tunes" class="chips one-line"></div></div>
         <div class="pick" id="m-diff-wrap"><small id="m-diff-label">Rivals</small><div id="m-diff" class="chips one-line"><button data-diff="easy">Easy</button><button data-diff="normal">Normal</button><button data-diff="hard">Hard</button></div></div>
-        <div class="pick" id="p-colour"><small>Colour</small><div id="m-liveries" class="dots"></div></div>
+        <div class="pick" id="p-colour"><small>Boat</small><div id="m-liveries" class="dots"></div></div>
         <p id="m-hint"></p>
         <button id="b-go" class="cta">RACE</button>
       </div>
@@ -181,6 +182,6 @@ window.addEventListener('error', function (e) {
   if (b) { b.classList.remove('hidden'); b.onclick = function () { location.reload(); }; }
 }, true);
 </script>
-<script type="module" src="./src/main.mjs?v=e0d5d047"></script>
+<script type="module" src="./src/main.mjs?v=ccfb4efe"></script>
 </body>
 </html>

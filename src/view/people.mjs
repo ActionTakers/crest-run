@@ -14,7 +14,7 @@ export const CREW = ['f02', 'f03', 'f06', 'f07', 'f08', 'f09', 'f10', 'f11', 'f1
 // who plays this time: `count` codes for round n (the number of missions or races played before this one); offset shifts one
 // role's turn against another's, so the first race's rivals are not the first mission's swimmers
 // the seat: joint, radians about the joint's own z axis, laid over the idle clip (found with pictures, research A2: p1, p2)
-export const SEAT = [['L_Thigh', 1.45], ['R_Thigh', 1.45], ['L_Calf', -1.5], ['R_Calf', -1.5], ['L_Upperarm', 1.0], ['R_Upperarm', 1.0], ['L_Forearm', 0.5], ['R_Forearm', 0.5]];
+export const SEAT = [['L_Thigh', 1.45], ['R_Thigh', 1.45], ['L_Calf', -1.5], ['R_Calf', -1.5], ['L_Upperarm', 1.25], ['R_Upperarm', 1.25], ['L_Forearm', 0.8], ['R_Forearm', 0.8]];
 // a "sit" clip from an idle clip: the same tracks, with every key of the seat's joints turned by the seat's angle, so the
 // figure still breathes and sways. Null when the clip has none of those joints (another rig)
 export function seatClip(idle) {

@@ -84,6 +84,8 @@ p { margin: 6px 0; }
 .dots button i { display: block; width: 28px; height: 28px; border-radius: 50%; border: 2px solid rgba(255, 255, 255, 0.6); box-sizing: border-box; }
 .dots button.on i { border-color: var(--gold); box-shadow: 0 0 0 3px var(--gold); }
 .dots button.locked i { opacity: 0.5; }
+/* the three other boats, beside the yacht's colours */
+.dots button.boat { width: 58px; padding: 0; font-size: 13px; font-weight: 800; color: #fff; border-radius: 999px; } .dots button.boat.on { color: #06121f; background: var(--gold); }
 .dots button .lock { position: absolute; left: 50%; top: 50%; margin: -2px 0 0 -5px; color: #fff; filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.9)); }
 .medal-dot { display: inline-block; width: 22px; height: 22px; border-radius: 50%; border: 2px solid rgba(255, 255, 255, 0.7); box-shadow: inset 0 -3px 0 rgba(0, 0, 0, 0.18); }
 .medal-dot.gold { background: radial-gradient(circle at 35% 30%, #fff3b0, #ffc832 55%, #c98a00); } .medal-dot.silver { background: radial-gradient(circle at 35% 30%, #ffffff, #cfd6de 55%, #8a94a0); }

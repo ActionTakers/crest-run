@@ -3,18 +3,19 @@
 // shows it, interpolated between the last two physics steps so the picture is smooth at any frame rate.
 // Written 2026-11-13 by the yacht project session.
 import * as THREE from 'three';
-import * as W from '../sim/waves.mjs?v=e0d5d047';
-import { pointInto, wrapA } from '../sim/courses.mjs?v=e0d5d047';
-import { Sky, WORLDS, makeNoiseTexture } from './sky.mjs?v=e0d5d047';
-import { Sea } from './sea.mjs?v=e0d5d047';
-import { Post } from './post.mjs?v=e0d5d047';
-import { Wake, Spray } from './fx.mjs?v=e0d5d047';
-import { loadYacht, BoatVisual } from './boats.mjs?v=e0d5d047';
-import { Scenery } from './scenery.mjs?v=e0d5d047';
-import { RescueView } from './rescue-view.mjs?v=e0d5d047';
-import { People, crewClip, tick } from './people.mjs?v=e0d5d047';
-import { BossView } from './boss-view.mjs?v=e0d5d047';
-import { LeviathanView } from './leviathan-view.mjs?v=e0d5d047';
+import * as W from '../sim/waves.mjs?v=ccfb4efe';
+import { pointInto, wrapA } from '../sim/courses.mjs?v=ccfb4efe';
+import { Sky, WORLDS, makeNoiseTexture } from './sky.mjs?v=ccfb4efe';
+import { Sea } from './sea.mjs?v=ccfb4efe';
+import { Post } from './post.mjs?v=ccfb4efe';
+import { Wake, Spray } from './fx.mjs?v=ccfb4efe';
+import { loadYacht, BoatVisual } from './boats.mjs?v=ccfb4efe';
+import { Scenery } from './scenery.mjs?v=ccfb4efe';
+import { RescueView } from './rescue-view.mjs?v=ccfb4efe';
+import { People, crewClip, tick } from './people.mjs?v=ccfb4efe';
+import { BossView } from './boss-view.mjs?v=ccfb4efe';
+import { LeviathanView } from './leviathan-view.mjs?v=ccfb4efe';
+import { FLEET } from './fleet.mjs?v=ccfb4efe';
 
 const clamp = (v, lo, hi) => (v < lo ? lo : v > hi ? hi : v);
 const smooth = (e0, e1, x) => { const t = clamp((x - e0) / (e1 - e0), 0, 1); return t * t * (3 - 2 * t); };
@@ -35,6 +36,8 @@ export const CAMS = {
   chase: { label: 'Chase', back: 12.5, up: 4.3, look: 9, lookUp: 1.6, fov0: 60, fovK: 9, roll: 0, lead: 0.2 },
   high: { label: 'High', back: 17, up: 8.2, look: 14, lookUp: 0.6, fov0: 56, fovK: 5, roll: 0, lead: 0.4 },
   low: { label: 'Low', back: 9.5, up: 2.5, look: 10, lookUp: 1.8, fov0: 68, fovK: 14, roll: 0.3, lead: 0.15 },
+  // from the driver's own eyes (0.6.0): the camera sits at the seated figure's head; without a figure it is the chase camera
+  helm: { label: 'Helm', back: 12.5, up: 4.3, look: 9, lookUp: 1.6, fov0: 60, fovK: 9, roll: 0, lead: 0.2, eye: { fov: 86, ahead: 0.0, up: 0.1, down: 0.5, roll: 0.6, near: 0.12 } },
 };
 
 export class Stage {
@@ -68,7 +71,8 @@ export class Stage {
     this.stats = { calls: 0, triangles: 0 };
   }
   async load(base = './assets/') {
-    this.yacht = await loadYacht(base + 'models/yacht-b04.glb');
+    this.base = base; this.yacht = await loadYacht(base + 'models/yacht-b04.glb'); this.yacht.key = 'yacht'; this.yacht.paint = true;
+    this.fleet = { yacht: this.yacht }; this.fleetLoads = new Map();          // the other boats' models arrive when a race needs them
     await this.scenery.load(base + 'models/kit.glb');
     // the rescue level's models load behind the title screen; a start of that level waits for them (main.mjs)
     this.rescueLoad = this.rescueView.load(base).catch((e) => { console.warn('rescue models not loaded: ' + (e && e.message)); return false; });
@@ -117,7 +121,7 @@ export class Stage {
     this.race = race; this.focus = focus;
     while (this.boats.length < race.boats.length) {
       const vis = new BoatVisual(this.yacht), wake = new Wake(this.scene, this.sea.U, { n: this.boats.length === 0 ? 120 : 80, stern: this.yacht.length * 0.44 });
-      this.scene.add(vis.group); this.boats.push({ vis, wake, x: 0, y: 0, z: 0, h: 0, pitch: 0, roll: 0, u: 0 });
+      this.scene.add(vis.group); this.boats.push({ vis, wake, key: 'yacht', want: 'yacht', x: 0, y: 0, z: 0, h: 0, pitch: 0, roll: 0, u: 0 });
     }
     this.boats.forEach((B, i) => {
       const on = i < race.boats.length; B.vis.group.visible = on; B.wake.mesh.visible = on && (i === focus || this.tier.rivalWakes); B.wake.reset();
@@ -143,6 +147,36 @@ export class Stage {
   setBoss(boss, id = null) { this.boss = boss || null; this.bossId = this.boss ? id : null; this.trimPeople(); return this.bossView.setBoss(this.boss, this.bossId); }
   // a skipper at the helm of each yacht: ids[i] = the code of boat i's figure, or null for an empty helm. A figure appears when
   // its model has arrived; a boat that fades (a rival between the camera and the player) hides its skipper
+  // ---------- the fleet (view/fleet.mjs): which boat each race boat is ----------
+  // the model of one boat; the promise gives null when the file does not arrive (that boat stays a yacht)
+  loadBoat(key) {
+    if (this.fleet[key]) return Promise.resolve(this.fleet[key]);
+    if (!FLEET[key]) return Promise.resolve(null);
+    if (!this.fleetLoads.has(key)) this.fleetLoads.set(key, loadYacht(this.base + 'models/' + FLEET[key].file, { length: FLEET[key].length, keel: FLEET[key].keel })
+      .then((t) => { t.key = key; t.paint = FLEET[key].paint; this.fleet[key] = t; return t; }).catch((e) => { console.warn(`boat ${key} not loaded: ${e && e.message}`); this.fleetLoads.delete(key); return null; }));
+    return this.fleetLoads.get(key);
+  }
+  // keys: a fleet key per race boat (missing: the yacht). A boat whose model is still on its way sails as it is until it
+  // arrives. The promise: every model asked for has arrived (a film waits for it)
+  setBoats(keys = []) {
+    const waits = [];
+    this.boats.forEach((B, i) => {
+      const key = FLEET[keys[i]] ? keys[i] : 'yacht'; B.want = key;
+      if (B.key === key) return;
+      if (this.fleet[key]) return this.swapBoat(B, key);
+      waits.push(this.loadBoat(key).then((t) => { if (t && B.want === key && B.key !== key) this.swapBoat(B, key); }));
+    });
+    return Promise.all(waits);
+  }
+  swapBoat(B, key) {
+    const old = B.vis, vis = new BoatVisual(this.fleet[key], old.liveryKey);
+    vis.group.position.copy(old.group.position); vis.group.rotation.copy(old.group.rotation); vis.group.visible = old.group.visible; if (old.opacity !== undefined) vis.setOpacity(old.opacity);
+    this.scene.add(vis.group); this.scene.remove(old.group); old.dispose();
+    B.vis = vis; B.key = key; B.wake.stern = this.fleet[key].length * 0.44;
+    if (B.skipper) { vis.group.add(B.skipper.hold); this.seat(B, B.skipper); }
+  }
+  // a seated figure on its boat's seat
+  seat(B, one) { const T = this.fleet[B.key] || this.yacht, s = FLEET[B.key].seat; one.hold.position.set(0, T.height * s.y - (one.act.sit ? s.drop : 0), T.length * s.z); }
   setSkippers(ids = []) {
     this.skipperIds = ids.slice(); this.trimPeople(); const waits = [];
     this.boats.forEach((B, i) => {
@@ -152,7 +186,7 @@ export class Stage {
       if (!id) return;
       waits.push(this.people.load(id).then((src) => {
         if (!src || this.skipperIds[i] !== id || B.skipper) return;
-        const one = this.people.make(id, 1.9); one.n = i; one.hold.position.set(0, this.yacht.height * HELM.y - (one.act.sit ? HELM.drop : 0), this.yacht.length * HELM.z); B.vis.group.add(one.hold); B.skipper = one;
+        const one = this.people.make(id, 1.9); one.n = i; this.seat(B, one); B.vis.group.add(one.hold); B.skipper = one;
       }));
     });
     return Promise.all(waits);       // the film waits for the figures, a player does not
@@ -233,6 +267,19 @@ export class Stage {
       cam.position.set(B.x + Math.sin(S.orbit) * rad, Math.max(1.6, B.y + hgt), B.z + Math.cos(S.orbit) * rad);
       this.look.set(B.x, B.y + 1.6, B.z); cam.up.set(0, 1, 0); cam.lookAt(this.look);
       if (Math.abs(cam.fov - 42) > 0.05) { cam.fov = 42; cam.updateProjectionMatrix(); }
+      S.h = null; return;
+    }
+    // from the driver's own eyes: at the seated figure's head, looking along the hull and a little down, leaning with the boat
+    const own = this.boats[this.focus] && this.boats[this.focus].skipper, eye = C.eye && own ? C.eye : null;
+    if (own) { const hb = own.headBone || (own.headBone = own.root.getObjectByName('Head')), k = eye ? 0.001 : 1; if (hb && hb.scale.x !== k) hb.scale.setScalar(k); }   // his own head is not drawn then
+    const near = eye ? eye.near : 0.5; if (cam.near !== near) { cam.near = near; cam.updateProjectionMatrix(); }
+    if (eye) {
+      own.hold.updateWorldMatrix(true, true); const hb = own.headBone, fx = -Math.sin(B.h), fz = Math.cos(B.h);
+      if (hb) hb.getWorldPosition(this._v); else own.hold.getWorldPosition(this._v);
+      S.shake = Math.max(0, S.shake - dt * 2.4); S.dip = Math.max(0, S.dip - dt * 3.2);
+      cam.position.set(this._v.x + fx * eye.ahead, this._v.y + eye.up, this._v.z + fz * eye.ahead);
+      this.look.set(cam.position.x + fx * 10, cam.position.y - 10 * eye.down, cam.position.z + fz * 10); cam.up.set(0, 1, 0); cam.lookAt(this.look); cam.rotateZ(-eye.roll * B.roll * mo);
+      const fovE = eye.fov + 5 * b.boostLv * (0.4 + 0.6 * mo); if (Math.abs(cam.fov - fovE) > 0.05) { cam.fov = fovE; cam.updateProjectionMatrix(); }
       S.h = null; return;
     }
     // the camera looks mostly along the hull and 40 % toward the direction of travel, so a slide shows without going side-on

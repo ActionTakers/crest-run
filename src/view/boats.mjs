@@ -1,4 +1,5 @@
-// boats.mjs: the yacht as the game shows it. One model (assets/models/yacht-b04.glb: the owner's flybridge yacht, made from his own
+// boats.mjs: a boat as the game shows it. Since 0.6.0 there are four models (view/fleet.mjs); the text below is of the first.
+// One model (assets/models/yacht-b04.glb: the owner's flybridge yacht, made from his own
 // turnaround picture with Tripo and re-baked to 11,998 triangles; see assets/SOURCES.md) serves the player and the rivals; a
 // livery colour tints the white parts of the hull in the shader, so every boat shares one geometry and one program.
 // Written 2026-11-13 by the yacht project session.
@@ -40,7 +41,7 @@ const TINT_MAIN = `
 `;
 export class BoatVisual {
   constructor(yacht, liveryKey = 'pearl') {
-    this.group = yacht.template.clone(true);
+    this.group = yacht.template.clone(true); this.paint = yacht.paint !== false;      // paint false: the boat keeps its own colours
     this.livery = { uLivery: { value: new THREE.Vector3(1, 1, 1) }, uLiveryAmt: { value: 0 } };
     this.materials = [];
     this.group.traverse((o) => {
@@ -60,7 +61,9 @@ export class BoatVisual {
     });
     this.setLivery(liveryKey);
   }
-  setLivery(key) { const L = LIVERIES[key] || LIVERIES.pearl; this.liveryKey = key; this.livery.uLivery.value.fromArray(L.color); this.livery.uLiveryAmt.value = L.amount; }
+  setLivery(key) { const L = LIVERIES[key] || LIVERIES.pearl; this.liveryKey = key; this.livery.uLivery.value.fromArray(L.color); this.livery.uLiveryAmt.value = this.paint ? L.amount : 0; }
+  // a visual that leaves the picture gives its materials back (they are its own copies; the pictures belong to the model)
+  dispose() { for (const m of this.materials) m.dispose(); }
   // pose from the simulation: y is the height of the boat's origin; draft is how far that origin sits above the waterline
   setPose(x, y, z, h, pitch, roll, draft) { this.group.position.set(x, y - draft, z); this.group.rotation.set(-pitch, -h, roll, 'YXZ'); }
   // 1 = solid; below that the boat fades (no depth written, so what lies behind it still shows); near 0 it is not drawn at all

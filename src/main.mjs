@@ -11,22 +11,25 @@
 // 0.4.1 (the same day): every skipper sits at the helm, in one pose made in code (view/people.mjs, seatClip).
 // 0.5.0 (the same day): a second boss level, The Leviathan (sim/leviathan.mjs, view/leviathan-view.mjs), built on what research
 // step A3 took from the boss fights of the Final Fantasy series: phases, marks, a stagger gauge, a ram, a cast to break.
-import { Stage, CAMS } from './view/stage.mjs?v=e0d5d047';
-import { LIVERIES, LIVERY_KEYS } from './view/boats.mjs?v=e0d5d047';
-import { OWNER, crewFor } from './view/people.mjs?v=e0d5d047';
-import { WORLDS } from './view/sky.mjs?v=e0d5d047';
-import { getCourse, COURSE_DEFS, COURSE_KEYS, pointInto, wrapA, wrapS } from './sim/courses.mjs?v=e0d5d047';
-import { Race, defaultSettings, DT, TUNES, TUNE_KEYS, BOOST, SIM_VERSION, encodeInputs, decodeInputs } from './sim/race-sim.mjs?v=e0d5d047';
-import { Rescue, arenaCourse, rescueSettings, ARENA, RESCUE, S as SHARK } from './sim/rescue.mjs?v=e0d5d047';
-import { Boss, dragonCourse, bossSettings, DRAGON, BOSS as FIGHT } from './sim/boss.mjs?v=e0d5d047';
-import { Leviathan, leviCourse, leviSettings, LEVI, FIGHT as LFIGHT, PHASES } from './sim/leviathan.mjs?v=e0d5d047';
-import { Governor, RefreshWatch, measureRefresh } from './sim/governor.mjs?v=e0d5d047';
-import * as PR from './sim/progress.mjs?v=e0d5d047';
-import { Controls } from './ui/controls.mjs?v=e0d5d047';
-import { Sound } from './ui/sound.mjs?v=e0d5d047';
-import * as PF from './ui/platform.mjs?v=e0d5d047';
+// 0.6.0 (2026-11-16): three more boats from the owner's sheets (view/fleet.mjs), one for each rival and a choice for the player;
+// a camera at the seated driver's head (the eye button in a race, or the C key).
+import { Stage, CAMS } from './view/stage.mjs?v=ccfb4efe';
+import { LIVERIES, LIVERY_KEYS } from './view/boats.mjs?v=ccfb4efe';
+import { OWNER, crewFor } from './view/people.mjs?v=ccfb4efe';
+import { WORLDS } from './view/sky.mjs?v=ccfb4efe';
+import { getCourse, COURSE_DEFS, COURSE_KEYS, pointInto, wrapA, wrapS } from './sim/courses.mjs?v=ccfb4efe';
+import { Race, defaultSettings, DT, TUNES, TUNE_KEYS, BOOST, SIM_VERSION, encodeInputs, decodeInputs } from './sim/race-sim.mjs?v=ccfb4efe';
+import { Rescue, arenaCourse, rescueSettings, ARENA, RESCUE, S as SHARK } from './sim/rescue.mjs?v=ccfb4efe';
+import { Boss, dragonCourse, bossSettings, DRAGON, BOSS as FIGHT } from './sim/boss.mjs?v=ccfb4efe';
+import { Leviathan, leviCourse, leviSettings, LEVI, FIGHT as LFIGHT, PHASES } from './sim/leviathan.mjs?v=ccfb4efe';
+import { FLEET, FLEET_KEYS, rivalBoats } from './view/fleet.mjs?v=ccfb4efe';
+import { Governor, RefreshWatch, measureRefresh } from './sim/governor.mjs?v=ccfb4efe';
+import * as PR from './sim/progress.mjs?v=ccfb4efe';
+import { Controls } from './ui/controls.mjs?v=ccfb4efe';
+import { Sound } from './ui/sound.mjs?v=ccfb4efe';
+import * as PF from './ui/platform.mjs?v=ccfb4efe';
 
-export const VERSION = 'crest-run 0.5.0', BUILD = '2026-11-16 #e0d5d047';
+export const VERSION = 'crest-run 0.6.0', BUILD = '2026-11-16 #ccfb4efe';
 const $ = (id) => document.getElementById(id);
 const Q = new URLSearchParams(location.search);
 // on a desk (a local address) the page takes two test switches from its address that a published page ignores: the computer at
@@ -53,7 +56,7 @@ const G = window.__game = { version: VERSION, build: BUILD, stage, controls, sou
   probe: { n: 0, deltas: [] }, probes: 0, lastRuns: [], storage: true, calT: 0, calTry: 0, calDone: 0, resultsAt: null, hudOn: Q.get('hud') !== '0', resumeLeft: 0, resumeShown: '', afterCal: null, dirty: true, filmT: 0, inputAt: performance.now(), draws: 0 };
 const settings = () => G.save.settings;
 G.sel = { mode: ['trial', 'rescue'].includes(G.save.last.mode) ? G.save.last.mode : 'race', course: COURSE_KEYS.includes(G.save.last.course) ? G.save.last.course : COURSE_KEYS[0],
-  tune: G.save.unlocked.tunes.includes(G.save.last.tune) ? G.save.last.tune : 'cruise', livery: G.save.unlocked.liveries.includes(G.save.last.livery) ? G.save.last.livery : 'pearl', difficulty: settings().difficulty, level: ARENA.key };
+  tune: G.save.unlocked.tunes.includes(G.save.last.tune) ? G.save.last.tune : 'cruise', livery: G.save.unlocked.liveries.includes(G.save.last.livery) ? G.save.last.livery : 'pearl', difficulty: settings().difficulty, level: ARENA.key, boat: FLEET[settings().boat] ? settings().boat : 'yacht' };
 window.addEventListener('error', (e) => { G.errors.push(String(e.message).slice(0, 200)); });
 window.addEventListener('unhandledrejection', (e) => { G.errors.push('rejection: ' + String(e.reason && e.reason.message || e.reason).slice(0, 200)); });
 // the elements the race display writes every frame, looked up once (T-10)
@@ -98,7 +101,7 @@ function startDemo(courseKey = G.sel.course) {
   stage.setWorld(Q.get('world') || def.world); stage.setCourse(c);
   const race = new Race({ ...defaultSettings(c, { rivals: 3, tune: G.sel.tune }), player: -1 }, c);
   G.race = race; G.rescue = null; G.ghost = null; G.mode = 'demo'; G.run = null; G.demoCourse = courseKey; G.timeScale = 1; G.acc = 0; G.paused = false; G.pausedBy = null; G.resumeLeft = 0;
-  stage.setSkippers([]); stage.setRescue(null); stage.setBoss(null); stage.setLevi(null); stage.setGhost(null); stage.setRace(race, [G.sel.livery, ...LIVERY_KEYS.filter((k) => k !== G.sel.livery)].slice(0, 4).reverse(), 3);
+  stage.setSkippers([]); stage.setRescue(null); stage.setBoss(null); stage.setLevi(null); stage.setGhost(null); stage.setRace(race, [G.sel.livery, ...LIVERY_KEYS.filter((k) => k !== G.sel.livery)].slice(0, 4).reverse(), 3); stage.setBoats(['yacht', 'yacht', 'yacht', G.sel.boat]);
   stage.setCameraMode('orbit');
   for (let i = 0; i < Math.round(5 / DT); i++) { race.step(0, 0, 0); race.events.length = 0; }   // past the countdown: boats already moving
 }
@@ -126,7 +129,9 @@ function startRace() {
   stage.setRace(race, liveries, race.player); stage.setGhost(G.ghost ? G.ghost.race : null);
   // at the helms: the player's own figure, and three of the crew on the rival yachts, others every race (view/people.mjs)
   const rivals = crewFor(G.save.stats.races, 3, 5); let rk = 0;
-  const crewReady = stage.setSkippers(race.boats.map((b, i) => (i === race.player ? OWNER : rivals[rk++ % 3])));
+  // the boats: the player's choice, and for each rival another boat of the fleet (view/fleet.mjs)
+  const fleet = rivalBoats(G.sel.boat), boatsReady = stage.setBoats(race.boats.map((b, i) => (i === race.player ? G.sel.boat : fleet[(i - (i > race.player ? 1 : 0)) % fleet.length])));
+  const crewReady = Promise.all([boatsReady, stage.setSkippers(race.boats.map((b, i) => (i === race.player ? OWNER : rivals[rk++ % 3])))]);
   stage.setCameraMode('chase'); controls.releaseAll();
   E.hud.classList.toggle('final', false); $('h-of').textContent = mode === 'race' ? '/' + n : ''; E.place.textContent = mode === 'race' ? n : ''; E.count.textContent = ''; E.warn.style.display = 'none';
   for (const k of Object.keys(H)) H[k] = null;
@@ -155,7 +160,7 @@ async function startRescue() {
       coach: !(G.save.stats.rescues > 0) && !G.film && !G.auto, coachAim: false, coachFollow: false, coachBoost: false };
     stage.setBoss(null); stage.setRace(race, [livery], 0); stage.setGhost(null); stage.setLevi(null); E.hud.classList.remove('bossfight');
     // three of the crew swim among the llamas, others every mission; a film waits for their models, a player does not
-    const crewReady = Promise.all([stage.setSkippers([OWNER]), stage.setRescue(rescue, crewFor(G.save.stats.rescues || 0, 3, 0))]); if (G.film) await crewReady;
+    const crewReady = Promise.all([stage.setBoats([G.sel.boat]), stage.setSkippers([OWNER]), stage.setRescue(rescue, crewFor(G.save.stats.rescues || 0, 3, 0))]); if (G.film) await crewReady;
     stage.setCameraMode('chase'); controls.releaseAll();
     E.hud.classList.toggle('final', false); E.hud.classList.add('rescue'); $('h-of').textContent = '/' + rescue.total; E.place.textContent = '0'; E.count.textContent = ''; E.warn.style.display = 'none';
     for (const k of Object.keys(H)) H[k] = null;
@@ -211,7 +216,7 @@ async function startBoss() {
       coach: !G.save.best[`${DRAGON.key}:rescue`] && !G.film && !G.auto, coachAim: false, coachFire: false };
     stage.setRescue(null); stage.setLevi(null); stage.setRace(race, [livery], 0); stage.setGhost(null);
     // the boss: one of the crew, another every time; a film waits for the models, a player does not
-    const ready = Promise.all([stage.setSkippers([OWNER]), stage.setBoss(boss, crewFor(G.save.stats.rescues || 0, 1, 8)[0])]); if (G.film) await ready;
+    const ready = Promise.all([stage.setBoats([G.sel.boat]), stage.setSkippers([OWNER]), stage.setBoss(boss, crewFor(G.save.stats.rescues || 0, 1, 8)[0])]); if (G.film) await ready;
     stage.setCameraMode('chase'); controls.releaseAll();
     E.hud.classList.remove('final', 'bossfight'); E.hud.classList.add('rescue'); $('h-of').textContent = '/' + boss.total; E.place.textContent = '0'; E.count.textContent = ''; E.warn.style.display = 'none';
     for (const k of Object.keys(H)) H[k] = null;
@@ -286,7 +291,7 @@ async function startLevi() {
       lastHud: 0, countShown: '', dots: [], trackW: 1, wake0: PF.wake.releases, marks: [new Float32Array(1)], markN: new Int32Array(1), gmarks: null, gmarkN: 0,
       coach: !G.save.best[`${LEVI.key}:rescue`] && !G.film && !G.auto, coachAim: false, named: false, bpm0: sound.bpm0 };
     stage.setRescue(null); stage.setBoss(null); stage.setRace(race, [livery], 0); stage.setGhost(null); stage.setLevi(levi);
-    const ready = stage.setSkippers([OWNER]); if (G.film) await ready;
+    const ready = Promise.all([stage.setBoats([G.sel.boat]), stage.setSkippers([OWNER])]); if (G.film) await ready;
     stage.setCameraMode('chase'); controls.releaseAll();
     E.hud.classList.remove('final'); E.hud.classList.add('rescue', 'bossfight'); $('h-of').textContent = '%'; E.place.textContent = '0'; E.count.textContent = ''; E.warn.style.display = 'none';
     for (const k of Object.keys(H)) H[k] = null;
@@ -358,6 +363,8 @@ function paintLevi(race, run, dt, me) {
   if (warn !== H.warn) { H.warn = warn; E.warn.textContent = warn; E.warn.style.display = warn ? 'block' : 'none'; }
   if (run.coach && race.racing && !B.over && !run.coachAim && race.lapT > 3.5) { run.coachAim = true; hudMsg('SHOOT THE GLOWING LURES ON ITS BACK: POINT YOUR BOW AT THEM', 'tip', 2, true); }
 }
+// the view in a race: the chase camera or the driver's own eyes (view/stage.mjs, CAMS.helm); kept with the settings
+function toggleView() { const s = settings(); s.camera = s.camera === 'helm' ? 'chase' : 'helm'; saveNow(); applySettings(); toast(s.camera === 'helm' ? 'View: from the helm' : 'View: behind the boat', 1400); }
 function paintControlsHint() {
   const m = controls.mode;
   $('h-steer').classList.toggle('hidden', m !== 'touch'); $('h-left').classList.toggle('hidden', m === 'keys' || m === 'none');
@@ -686,7 +693,8 @@ function paintMenu() {
   }).join('');
   $('m-tunes').innerHTML = TUNE_KEYS.map((k) => { const open = s.unlocked.tunes.includes(k); return `<button data-tune="${k}" class="${k === sel.tune ? 'on' : ''} ${open ? '' : 'locked'}">${open ? '' : lock}${TUNES[k].label}</button>`; }).join('');
   $('m-liveries').innerHTML = LIVERY_KEYS.map((k) => { const L = LIVERIES[k], col = L.amount ? `rgb(${L.color.map((v) => Math.round(255 * Math.sqrt(v))).join(',')})` : '#f6f6f2', open = s.unlocked.liveries.includes(k);
-    return `<button data-livery="${k}" aria-label="${L.label}" class="${k === sel.livery ? 'on' : ''} ${open ? '' : 'locked'}"><i style="background:${col}"></i>${open ? '' : '<span class="lock"></span>'}</button>`; }).join('');
+    return `<button data-livery="${k}" aria-label="${L.label}" class="${k === sel.livery && sel.boat === 'yacht' ? 'on' : ''} ${open ? '' : 'locked'}"><i style="background:${col}"></i>${open ? '' : '<span class="lock"></span>'}</button>`; }).join('')
+    + `<button data-boat="next" aria-label="Boat: ${FLEET[sel.boat].label}. Tap for the next boat" class="boat ${sel.boat !== 'yacht' ? 'on' : ''}">${FLEET[sel.boat].label}</button>`;   // the yacht's six colours, then one button that steps through the boats (three chips did not fit a phone: smoke part f)
   $('m-diff').querySelectorAll('button').forEach((b) => b.classList.toggle('on', b.dataset.diff === sel.difficulty));
   $('m-diff-wrap').classList.toggle('hidden', sel.mode === 'trial'); $('m-diff-label').textContent = rescue ? (sel.level === DRAGON.key ? 'Fire' : sel.level === LEVI.key ? 'Fury' : 'Sharks') : 'Rivals';
   $('b-go').textContent = sel.mode === 'race' ? 'RACE' : rescue ? (sel.level === DRAGON.key || sel.level === LEVI.key ? 'FIGHT' : 'RESCUE') : 'GO';
@@ -704,7 +712,8 @@ function menuClick(e) {
   else if (b.dataset.level) sel.level = b.dataset.level;
   else if (b.dataset.course) { if (!PR.courseOpen(s, COURSE_KEYS, b.dataset.course)) return toast(`Finish in the top 3 on ${COURSE_DEFS[COURSE_KEYS[COURSE_KEYS.indexOf(b.dataset.course) - 1]].name} to open this course.`); sel.course = b.dataset.course; if (G.demoCourse !== sel.course) startDemo(sel.course); }
   else if (b.dataset.tune) { if (!s.unlocked.tunes.includes(b.dataset.tune)) return toast(`${TUNES[b.dataset.tune].label} tune: ${PR.UNLOCKS.tunes[b.dataset.tune]}.`); sel.tune = b.dataset.tune; }
-  else if (b.dataset.livery) { if (!s.unlocked.liveries.includes(b.dataset.livery)) return toast(`${LIVERIES[b.dataset.livery].label}: ${PR.UNLOCKS.liveries[b.dataset.livery]}.`); sel.livery = b.dataset.livery; stage.boats[3] && stage.boats[3].vis.setLivery(sel.livery); }
+  else if (b.dataset.livery) { if (!s.unlocked.liveries.includes(b.dataset.livery)) return toast(`${LIVERIES[b.dataset.livery].label}: ${PR.UNLOCKS.liveries[b.dataset.livery]}.`); sel.livery = b.dataset.livery; sel.boat = 'yacht'; settings().boat = 'yacht'; saveNow(); stage.setBoats(['yacht', 'yacht', 'yacht', 'yacht']); stage.boats[3] && stage.boats[3].vis.setLivery(sel.livery); }
+  else if (b.dataset.boat) { sel.boat = FLEET_KEYS[(FLEET_KEYS.indexOf(sel.boat) + 1) % FLEET_KEYS.length]; settings().boat = sel.boat; saveNow(); stage.setBoats(['yacht', 'yacht', 'yacht', sel.boat]); }
   else if (b.dataset.diff) { sel.difficulty = b.dataset.diff; settings().difficulty = sel.difficulty; saveNow(); }
   paintMenu();
 }
@@ -844,6 +853,7 @@ function wire() {
   tap('b-nextcourse', () => { if (G.nextCourse && PR.courseOpen(G.save, COURSE_KEYS, G.nextCourse)) G.sel.course = G.nextCourse; startRace(); });
   tap('b-next', () => { startDemo(G.sel.course); paintMenu(); show('menu'); });
   tap('h-pause', () => pause('button'));
+  tap('h-view', toggleView);
   tap('h-recentre', () => { const r = controls.recentre(); toast(r.ok ? 'Straight ahead set again.' : 'Hold the phone still to recentre.', 1500); });
   tap('b-resume', resume); tap('b-resume2', resume); tap('b-resume3', resume);
   tap('b-sensors-tilt', () => { if (controls.tiltFresh()) { controls.setMode('tilt'); paintControlsHint(); resume(); } else toast('Still no motion data: steering stays on touch.'); });
@@ -856,6 +866,7 @@ function wire() {
   for (const ev of ['pointerup', 'pointercancel', 'lostpointercapture']) play.addEventListener(ev, (e) => controls.up(e.pointerId));
   window.addEventListener('keydown', (e) => {
     if (e.repeat) return;
+    if (e.code === 'KeyC' && G.screen === 'race') { toggleView(); return; }
     if (e.code === 'Escape' || e.code === 'KeyP') { if (['pause', 'resume', 'sensors'].includes(G.screen)) resume(); else if (G.screen === 'race') pause('button'); return; }
     if (controls.key(e.code, true)) { e.preventDefault(); if (controls.k.boost && (e.code === 'Space' || e.code === 'ArrowUp' || e.code === 'KeyW')) boostPressed(); }
   });
