@@ -12,7 +12,7 @@
 <link rel="icon" href="./assets/icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="./assets/icon-180.png">
 <title>Crest Run</title>
-<link rel="stylesheet" href="./css/game.css?v=ccfb4efe">
+<link rel="stylesheet" href="./css/game.css?v=e1a47756">
 <script type="importmap">{ "imports": { "three": "./vendor/three-0.186.1/build/three.module.js", "three/addons/": "./vendor/three-0.186.1/examples/jsm/" } }</script>
 </head>
 <body>
@@ -80,7 +80,7 @@
     <div class="menu">
       <div class="menu-head">
         <div class="logo small"><span>CREST</span> <span>RUN</span></div>
-        <div class="tabs" id="m-modes"><button data-mode="race" class="on">Race</button><button data-mode="trial">Time trial</button><button data-mode="rescue">Rescue</button></div>
+        <div class="tabs" id="m-modes"><button data-mode="race" class="on">Race</button><button data-mode="trial">Time trial</button><button data-mode="rescue">Rescue</button><button data-mode="voyage">Voyage</button></div>
         <button id="b-menu-settings" class="ghost">Settings</button>
       </div>
       <div id="m-courses" class="cards"></div>
@@ -111,6 +111,25 @@
       </div>
       <p id="r-tip" class="small"></p>
       <div class="row center sticky"><button id="b-nextcourse" class="cta hidden"></button><button id="b-retry" class="cta">RACE AGAIN</button><button id="b-next" class="ghost">Courses</button></div>
+    </div>
+  </section>
+
+  <!-- a rescue voyage: the three choices before leaving (Kies), and the telling on the beach afterwards (Veranker) -->
+  <section id="s-kies" class="screen">
+    <div class="panel wide kies">
+      <h2 id="k-title"></h2>
+      <p id="k-story" class="small"></p>
+      <p id="k-ask" class="small"></p>
+      <div id="k-rows"></div>
+      <div class="row center sticky"><button id="b-kies-go" class="cta">SAIL</button><button id="b-kies-book" class="ghost">Leaves</button><button id="b-kies-back" class="ghost">Back</button></div>
+    </div>
+  </section>
+  <section id="s-beach" class="screen">
+    <div class="panel wide beach">
+      <h2 id="v-title"></h2>
+      <div id="v-qs"></div>
+      <div id="v-leaves"></div>
+      <div class="row center sticky"><button id="b-beach-done" class="cta">DONE</button></div>
     </div>
   </section>
 
@@ -182,6 +201,6 @@ window.addEventListener('error', function (e) {
   if (b) { b.classList.remove('hidden'); b.onclick = function () { location.reload(); }; }
 }, true);
 </script>
-<script type="module" src="./src/main.mjs?v=ccfb4efe"></script>
+<script type="module" src="./src/main.mjs?v=e1a47756"></script>
 </body>
 </html>

@@ -34,6 +34,21 @@ export const WORLDS = {
   noon: { label: 'Tropical noon', sunAz: 150, sunEl: 52, sunCol: [1.0, 0.96, 0.88], sunPow: 3.2, zenith: [0.035, 0.20, 0.62], horizon: [0.50, 0.74, 0.92],
     haze: [0.85, 0.92, 1.0], cloud: [0.42, 0.22, 0.42, 0.003], cloudLit: [1.0, 1.0, 1.0], cloudShade: [0.52, 0.60, 0.74],
     deep: [0.005, 0.070, 0.130], scatter: [0.01, 0.44, 0.42], foam: [1.0, 1.0, 1.0], fog: 0.0011, exposure: 0.85, light: 3.2, ambient: 1.3 },
+  // the bay of the rescue voyages at first light (0.8.0): the sun low over the sea, the land behind the boat
+  dawn: { label: 'First light', sunAz: 8, sunEl: 7, sunCol: [1.0, 0.74, 0.44], sunPow: 5.5, zenith: [0.09, 0.19, 0.45], horizon: [1.0, 0.72, 0.48],
+    haze: [1.0, 0.68, 0.46], cloud: [0.44, 0.26, 0.5, 0.003], cloudLit: [1.0, 0.82, 0.68], cloudShade: [0.36, 0.3, 0.44],
+    deep: [0.008, 0.05, 0.085], scatter: [0.02, 0.33, 0.34], foam: [1.0, 0.95, 0.9], fog: 0.0010, exposure: 0.95, light: 2.6, ambient: 1.15 },
+  // the third voyage begins as the sun goes down behind the volcano (0.8.0)
+  agung: { label: 'Under the volcano', sunAz: 187, sunEl: 5, sunCol: [1.0, 0.5, 0.26], sunPow: 6.5, zenith: [0.03, 0.06, 0.2], horizon: [1.0, 0.46, 0.2],
+    haze: [1.0, 0.42, 0.2], cloud: [0.5, 0.3, 0.52, 0.004], cloudLit: [1.0, 0.56, 0.4], cloudShade: [0.14, 0.1, 0.22],
+    deep: [0.006, 0.02, 0.05], scatter: [0.02, 0.14, 0.2], foam: [1.0, 0.86, 0.8], fog: 0.0014, exposure: 0.98, light: 2.3, ambient: 0.85 },
+  // the squall of the second voyage and the night of the third (0.8.0)
+  squall: { label: 'Squall', sunAz: 150, sunEl: 30, sunCol: [0.75, 0.8, 0.86], sunPow: 1.2, zenith: [0.05, 0.07, 0.1], horizon: [0.3, 0.36, 0.42],
+    haze: [0.36, 0.42, 0.48], cloud: [0.72, 0.4, 0.6, 0.012], cloudLit: [0.55, 0.6, 0.66], cloudShade: [0.1, 0.12, 0.16],
+    deep: [0.004, 0.022, 0.034], scatter: [0.02, 0.16, 0.18], foam: [0.9, 0.95, 1.0], fog: 0.0030, exposure: 0.9, light: 1.3, ambient: 0.95 },
+  night: { label: 'Night', sunAz: 200, sunEl: 24, sunCol: [0.55, 0.66, 0.92], sunPow: 1.0, zenith: [0.004, 0.008, 0.03], horizon: [0.03, 0.05, 0.11],
+    haze: [0.04, 0.06, 0.12], cloud: [0.5, 0.3, 0.5, 0.004], cloudLit: [0.16, 0.2, 0.3], cloudShade: [0.01, 0.012, 0.03],
+    deep: [0.001, 0.004, 0.012], scatter: [0.004, 0.03, 0.06], foam: [0.6, 0.7, 0.9], fog: 0.0020, exposure: 1.1, light: 0.55, ambient: 0.5 },
   dusk: { label: 'Neon dusk', sunAz: 12, sunEl: 3, sunCol: [1.0, 0.36, 0.30], sunPow: 7.0, zenith: [0.012, 0.014, 0.085], horizon: [0.95, 0.30, 0.26],
     haze: [1.0, 0.34, 0.30], cloud: [0.46, 0.32, 0.50, 0.005], cloudLit: [1.0, 0.44, 0.46], cloudShade: [0.05, 0.04, 0.13],
     deep: [0.006, 0.010, 0.040], scatter: [0.02, 0.10, 0.26], foam: [0.95, 0.82, 0.95], fog: 0.0017, exposure: 1.05, light: 2.0, ambient: 0.75 },

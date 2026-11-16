@@ -55,7 +55,7 @@ export function applyResult(save, result, courseKeys, medalTimes = null) {
   const key = `${result.course}:${result.mode}`, old = s.best[key];
   if (!old || result.time < old.time) {
     s.best[key] = { time: result.time, tune: result.tune, sim: result.sim, place: result.place ?? null };
-    if (result.mode === 'trial' && result.inputs) s.best[key].ghost = { inputs: result.inputs, tune: result.tune, sim: result.sim };
+    if (result.mode === 'trial' && result.inputs) s.best[key].ghost = { inputs: result.inputs, tune: result.tune, sim: result.sim, boat: result.boat || 'yacht' };   // the boat too: each handles its own way (0.7.0)
     news.push({ type: 'best', time: result.time, was: old ? old.time : null });
   }
   const medal = medalFor(result, medalTimes), had = s.medals[key] || null, now = better(medal, had);
@@ -81,7 +81,10 @@ export function applyRescue(save, result) {
   s.last = { ...s.last, tune: result.tune, livery: result.livery || s.last.livery, mode: 'rescue' };
   if (!result.finished) return { save: s, news };
   // a boss fight (result.boss) counts its win, not its crystals as llamas
-  if (result.boss) { if (result.won) s.stats.bosses = (s.stats.bosses || 0) + 1; } else s.stats.llamas = (s.stats.llamas || 0) + result.saved;
+  if (result.boss) { if (result.won) s.stats.bosses = (s.stats.bosses || 0) + 1; } else if (result.voyage) s.stats.guests = (s.stats.guests || 0) + (result.home || 0); else s.stats.llamas = (s.stats.llamas || 0) + result.saved;
+  // a voyage's lesson leaves (0.8.0): nine a voyage, kept once earned
+  if (result.voyage && Array.isArray(result.leaves)) { s.leaves = s.leaves && typeof s.leaves === 'object' ? s.leaves : {}; const old = Array.isArray(s.leaves[result.course]) ? s.leaves[result.course] : [], now = []; let fresh = 0;
+    for (let i = 0; i < 9; i++) { now.push(!!old[i] || !!result.leaves[i]); if (now[i] && !old[i]) fresh++; } s.leaves[result.course] = now; if (fresh) news.push({ type: 'leaf', n: fresh, have: now.filter(Boolean).length }); }
   const key = `${result.course}:rescue`, old = s.best[key];
   if (!old || result.saved > old.saved || (result.saved === old.saved && result.time < old.time)) {
     s.best[key] = { saved: result.saved, total: result.total, time: result.time, tune: result.tune, difficulty: result.difficulty };
@@ -90,6 +93,13 @@ export function applyRescue(save, result) {
   const had = s.medals[key] || null, now = better(result.medal || null, had);
   if (now !== had) { s.medals[key] = now; news.push({ type: 'medal', medal: now }); }
   return { save: s, news };
+}
+// Leaves earned outside a run (the three answered on the beach): idx = their places among a voyage's nine. Returns { save, fresh }.
+export function addLeaves(save, course, idx) {
+  const s = JSON.parse(JSON.stringify(save)); s.leaves = s.leaves && typeof s.leaves === 'object' ? s.leaves : {};
+  const now = Array.from({ length: 9 }, (_, i) => !!(s.leaves[course] || [])[i]); let fresh = 0;
+  for (const i of idx) if (i >= 0 && i < 9 && !now[i]) { now[i] = true; fresh++; }
+  s.leaves[course] = now; return { save: s, fresh };
 }
 export const courseOpen = (save, courseKeys, key) => courseKeys.indexOf(key) === 0 || save.unlocked.courses.includes(key);
 export function fmtTime(t) { if (typeof t !== 'number' || !(t >= 0)) return '-:--.--'; const m = Math.floor(t / 60), s = t - 60 * m; return `${m}:${s.toFixed(2).padStart(5, '0')}`; }

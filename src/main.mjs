@@ -13,23 +13,31 @@
 // step A3 took from the boss fights of the Final Fantasy series: phases, marks, a stagger gauge, a ram, a cast to break.
 // 0.6.0 (2026-11-16): three more boats from the owner's sheets (view/fleet.mjs), one for each rival and a choice for the player;
 // a camera at the seated driver's head (the eye button in a race, or the C key).
-import { Stage, CAMS } from './view/stage.mjs?v=ccfb4efe';
-import { LIVERIES, LIVERY_KEYS } from './view/boats.mjs?v=ccfb4efe';
-import { OWNER, crewFor } from './view/people.mjs?v=ccfb4efe';
-import { WORLDS } from './view/sky.mjs?v=ccfb4efe';
-import { getCourse, COURSE_DEFS, COURSE_KEYS, pointInto, wrapA, wrapS } from './sim/courses.mjs?v=ccfb4efe';
-import { Race, defaultSettings, DT, TUNES, TUNE_KEYS, BOOST, SIM_VERSION, encodeInputs, decodeInputs } from './sim/race-sim.mjs?v=ccfb4efe';
-import { Rescue, arenaCourse, rescueSettings, ARENA, RESCUE, S as SHARK } from './sim/rescue.mjs?v=ccfb4efe';
-import { Boss, dragonCourse, bossSettings, DRAGON, BOSS as FIGHT } from './sim/boss.mjs?v=ccfb4efe';
-import { Leviathan, leviCourse, leviSettings, LEVI, FIGHT as LFIGHT, PHASES } from './sim/leviathan.mjs?v=ccfb4efe';
-import { FLEET, FLEET_KEYS, rivalBoats } from './view/fleet.mjs?v=ccfb4efe';
-import { Governor, RefreshWatch, measureRefresh } from './sim/governor.mjs?v=ccfb4efe';
-import * as PR from './sim/progress.mjs?v=ccfb4efe';
-import { Controls } from './ui/controls.mjs?v=ccfb4efe';
-import { Sound } from './ui/sound.mjs?v=ccfb4efe';
-import * as PF from './ui/platform.mjs?v=ccfb4efe';
+// 0.8.0 (the same day, plan PLAN-MONKEYKING.md of the project): a sixth boat made wholly in code, the jukung (view/jukung.mjs),
+// and the rescue voyages in the bay (sim/voyage.mjs, view/bay-view.mjs): three choices before leaving, the rescue, the telling
+// on the beach with nine lesson leaves a voyage; a Voyage tab in the menu; a film camera that travels with the boat.
+// 0.7.0 (the same day): each boat handles its own way (sim/boat-stats.mjs), a display inside the cockpit for the view from the
+// helm (view/dash.mjs), a fifth boat (the red catamaran without its lettering), and a ghost that remembers its boat.
+import { Stage, CAMS } from './view/stage.mjs?v=e1a47756';
+import { LIVERIES, LIVERY_KEYS } from './view/boats.mjs?v=e1a47756';
+import { OWNER, crewFor } from './view/people.mjs?v=e1a47756';
+import { WORLDS } from './view/sky.mjs?v=e1a47756';
+import { getCourse, COURSE_DEFS, COURSE_KEYS, pointInto, wrapA, wrapS } from './sim/courses.mjs?v=e1a47756';
+import { Race, defaultSettings, DT, TUNES, TUNE_KEYS, BOOST, SIM_VERSION, encodeInputs, decodeInputs } from './sim/race-sim.mjs?v=e1a47756';
+import { Rescue, arenaCourse, rescueSettings, ARENA, RESCUE, S as SHARK } from './sim/rescue.mjs?v=e1a47756';
+import { Boss, dragonCourse, bossSettings, DRAGON, BOSS as FIGHT } from './sim/boss.mjs?v=e1a47756';
+import { Leviathan, leviCourse, leviSettings, LEVI, FIGHT as LFIGHT, PHASES } from './sim/leviathan.mjs?v=e1a47756';
+import { makeVoyage, bayCourse, voyageSettings, voyageChoices, VOYAGES, VOYAGES_READY as VOYAGE_KEYS } from './sim/voyages.mjs?v=e1a47756';
+const VOYAGES_READY_ALL = VOYAGE_KEYS;
+import { FLEET, FLEET_KEYS, rivalBoats } from './view/fleet.mjs?v=e1a47756';
+import { BOAT_STATS, boatTweak } from './sim/boat-stats.mjs?v=e1a47756';
+import { Governor, RefreshWatch, measureRefresh } from './sim/governor.mjs?v=e1a47756';
+import * as PR from './sim/progress.mjs?v=e1a47756';
+import { Controls } from './ui/controls.mjs?v=e1a47756';
+import { Sound } from './ui/sound.mjs?v=e1a47756';
+import * as PF from './ui/platform.mjs?v=e1a47756';
 
-export const VERSION = 'crest-run 0.6.0', BUILD = '2026-11-16 #ccfb4efe';
+export const VERSION = 'crest-run 0.8.0', BUILD = '2026-11-16 #e1a47756';
 const $ = (id) => document.getElementById(id);
 const Q = new URLSearchParams(location.search);
 // on a desk (a local address) the page takes two test switches from its address that a published page ignores: the computer at
@@ -51,7 +59,7 @@ function bootFail(e, text) {
 function makeStage() { try { return new Stage(canvas); } catch (e) { bootFail(e, 'This browser gave the game no 3D picture (WebGL 2). Close other tabs, or allow WebGL for this page (Lockdown Mode switches it off), then reload.'); throw e; } }
 const stage = makeStage(), controls = new Controls(), sound = new Sound();
 const gov = new Governor({ tier: 'mid', auto: true }), watch = new RefreshWatch();
-const G = window.__game = { version: VERSION, build: BUILD, stage, controls, sound, gov, watch, save: PR.migrate(PF.loadJSON(PR.SAVE_KEY)), screen: 'boot', mode: 'demo', race: null, ghost: null, run: null,
+const G = window.__game = { version: VERSION, build: BUILD, stage, controls, sound, gov, watch, choices: {}, recalled: {}, save: PR.migrate(PF.loadJSON(PR.SAVE_KEY)), screen: 'boot', mode: 'demo', race: null, ghost: null, run: null,
   sel: null, paused: false, pausedBy: null, timeScale: 1, slowLeft: 0, slowArmed: false, auto: DEV && Q.get('auto') === '1', film: Q.get('film') === '1', frames: 0, errors: [], refresh: null,
   probe: { n: 0, deltas: [] }, probes: 0, lastRuns: [], storage: true, calT: 0, calTry: 0, calDone: 0, resultsAt: null, hudOn: Q.get('hud') !== '0', resumeLeft: 0, resumeShown: '', afterCal: null, dirty: true, filmT: 0, inputAt: performance.now(), draws: 0 };
 const settings = () => G.save.settings;
@@ -65,7 +73,7 @@ for (const [k, id] of Object.entries({ fill: 'h-boost-fill', boost: 'h-boost', b
   edge: 'h-edge', calWheel: 'cal-wheel', calNeedle: 'cal-needle', toast: 'toast', hud: 'hud', play: 'play', nextCourse: 'b-nextcourse', retry: 'b-retry' })) E[k] = $(id);
 
 // ---------- screens ----------
-const SCREENS = ['boot', 'title', 'cal', 'menu', 'results', 'pause', 'settings', 'card', 'resume', 'sensors', 'rotate'];
+const SCREENS = ['boot', 'title', 'cal', 'menu', 'results', 'pause', 'settings', 'card', 'resume', 'sensors', 'rotate', 'kies', 'beach'];
 function show(name) {
   G.screen = name;
   for (const s of SCREENS) $('s-' + s).classList.toggle('show', s === name);
@@ -101,18 +109,23 @@ function startDemo(courseKey = G.sel.course) {
   stage.setWorld(Q.get('world') || def.world); stage.setCourse(c);
   const race = new Race({ ...defaultSettings(c, { rivals: 3, tune: G.sel.tune }), player: -1 }, c);
   G.race = race; G.rescue = null; G.ghost = null; G.mode = 'demo'; G.run = null; G.demoCourse = courseKey; G.timeScale = 1; G.acc = 0; G.paused = false; G.pausedBy = null; G.resumeLeft = 0;
-  stage.setSkippers([]); stage.setRescue(null); stage.setBoss(null); stage.setLevi(null); stage.setGhost(null); stage.setRace(race, [G.sel.livery, ...LIVERY_KEYS.filter((k) => k !== G.sel.livery)].slice(0, 4).reverse(), 3); stage.setBoats(['yacht', 'yacht', 'yacht', G.sel.boat]);
+  stage.setSkippers([]); stage.setRescue(null); stage.setBoss(null); stage.setLevi(null); stage.setVoyage(null); stage.setGhost(null); stage.setRace(race, [G.sel.livery, ...LIVERY_KEYS.filter((k) => k !== G.sel.livery)].slice(0, 4).reverse(), 3); stage.setBoats(['yacht', 'yacht', 'yacht', G.sel.boat]);
   stage.setCameraMode('orbit');
   for (let i = 0; i < Math.round(5 / DT); i++) { race.step(0, 0, 0); race.events.length = 0; }   // past the countdown: boats already moving
 }
 
+// the player's own boat in a level's settings: its way of handling (sim/boat-stats.mjs)
+function mine(set) { const b = set.boats[set.player]; b.tweak = boatTweak(b.tune, G.sel.boat); return set; }
 // ---------- a race the player steers ----------
 function startRace() {
   if (G.sel.mode === 'rescue') return startRescue();
   const { mode, course: key, tune, livery, difficulty } = G.sel, c = getCourse(key), def = COURSE_DEFS[key];
-  G.rescue = null; stage.setRescue(null); E.hud.classList.remove('rescue'); stage.setBoss(null); stage.setLevi(null); E.hud.classList.remove('bossfight');
+  G.rescue = null; stage.setRescue(null); E.hud.classList.remove('rescue'); stage.setBoss(null); stage.setLevi(null); stage.setVoyage(null); E.hud.classList.remove('bossfight');
   stage.setWorld(Q.get('world') || def.world); stage.setCourse(c);
   const set = defaultSettings(c, { tune, rivals: mode === 'race' ? 3 : 0, difficulty });
+  // the boats: the player's choice, and for each rival another boat of the fleet, others every race; each handles its own way
+  const fleet = rivalBoats(G.sel.boat, 3, G.save.stats.races || 0), boatKeys = set.boats.map((b, i) => (i === set.player ? G.sel.boat : fleet[i % fleet.length]));
+  set.boats.forEach((b, i) => { b.tweak = boatTweak(b.tune, boatKeys[i]); });
   if (DEV && Q.get('seed')) set.sea.seed = +Q.get('seed');
   const race = new Race(set, c), n = race.boats.length;
   const others = LIVERY_KEYS.filter((k) => k !== livery), liveries = race.boats.map((b, i) => (i === race.player ? livery : others[i % others.length]));
@@ -120,7 +133,7 @@ function startRace() {
   // the ghost of the best time trial on this course: the recorded inputs through the same simulation, one boat, no contact
   G.ghost = null;
   const best = G.save.best[`${key}:trial`];
-  if (mode === 'trial' && best && best.ghost && best.ghost.sim === SIM_VERSION && best.ghost.tune === tune) { const d = decodeInputs(best.ghost.inputs); G.ghost = { race: new Race(set, c), steer: d.steer, flags: d.flags }; }
+  if (mode === 'trial' && best && best.ghost && best.ghost.sim === SIM_VERSION && best.ghost.tune === tune && (best.ghost.boat || 'yacht') === G.sel.boat) { const d = decodeInputs(best.ghost.inputs); G.ghost = { race: new Race(set, c), steer: d.steer, flags: d.flags }; }
   const nm = Math.ceil(set.laps * c.len / GAP_M) + 2;
   G.run = { mode, course: key, tune, livery, difficulty, at: new Date().toISOString(), frames: 0, late: 0, worst: 0, sumMs: 0, mot0: controls.tilt.counts.mot, th0: performance.now(), steerMode: controls.mode, recentres0: controls.recentres,
     lastHud: 0, countShown: '', wrongT: 0, place0: n, placeT: -9, dots: [], trackW: 1, wake0: PF.wake.releases,
@@ -129,8 +142,7 @@ function startRace() {
   stage.setRace(race, liveries, race.player); stage.setGhost(G.ghost ? G.ghost.race : null);
   // at the helms: the player's own figure, and three of the crew on the rival yachts, others every race (view/people.mjs)
   const rivals = crewFor(G.save.stats.races, 3, 5); let rk = 0;
-  // the boats: the player's choice, and for each rival another boat of the fleet (view/fleet.mjs)
-  const fleet = rivalBoats(G.sel.boat), boatsReady = stage.setBoats(race.boats.map((b, i) => (i === race.player ? G.sel.boat : fleet[(i - (i > race.player ? 1 : 0)) % fleet.length])));
+  const boatsReady = stage.setBoats(boatKeys);
   const crewReady = Promise.all([boatsReady, stage.setSkippers(race.boats.map((b, i) => (i === race.player ? OWNER : rivals[rk++ % 3])))]);
   stage.setCameraMode('chase'); controls.releaseAll();
   E.hud.classList.toggle('final', false); $('h-of').textContent = mode === 'race' ? '/' + n : ''; E.place.textContent = mode === 'race' ? n : ''; E.count.textContent = ''; E.warn.style.display = 'none';
@@ -147,18 +159,19 @@ function startRace() {
 async function startRescue() {
   if (G.sel.level === DRAGON.key) return startBoss();
   if (G.sel.level === LEVI.key) return startLevi();
+  if (VOYAGES[G.sel.level]) return startVoyage();
   if (G.rescueStarting) return; G.rescueStarting = true;
   try {
     if (!stage.rescueView.ready) { toast('Loading the island...', 6000); await stage.rescueLoad; }
     if (!stage.rescueView.ready) return toast('The island did not load. Check the connection, then try again.', 5000);
     const { tune, livery, difficulty } = G.sel, c = arenaCourse(), seed = DEV && Q.get('seed') ? +Q.get('seed') : 5;
     stage.setWorld(Q.get('world') || ARENA.world); stage.setCourse(c);
-    const race = new Race(rescueSettings(c, { tune }), c), rescue = new Rescue(race, { difficulty, seed });
+    const race = new Race(mine(rescueSettings(c, { tune })), c), rescue = new Rescue(race, { difficulty, seed });
     G.race = race; G.rescue = rescue; G.ghost = null; G.mode = 'race'; G.acc = 0; G.timeScale = 1; G.slowLeft = 0; G.slowArmed = false; G.paused = false; G.pausedBy = null; G.resultsAt = null; G.resumeLeft = 0;
     G.run = { mode: 'rescue', course: ARENA.key, tune, livery, difficulty, at: new Date().toISOString(), frames: 0, late: 0, worst: 0, sumMs: 0, mot0: controls.tilt.counts.mot, th0: performance.now(), steerMode: controls.mode, recentres0: controls.recentres,
       lastHud: 0, countShown: '', dots: [], trackW: 1, wake0: PF.wake.releases, marks: [new Float32Array(1)], markN: new Int32Array(1), gmarks: null, gmarkN: 0,
       coach: !(G.save.stats.rescues > 0) && !G.film && !G.auto, coachAim: false, coachFollow: false, coachBoost: false };
-    stage.setBoss(null); stage.setRace(race, [livery], 0); stage.setGhost(null); stage.setLevi(null); E.hud.classList.remove('bossfight');
+    stage.setBoss(null); stage.setRace(race, [livery], 0); stage.setGhost(null); stage.setLevi(null); stage.setVoyage(null); E.hud.classList.remove('bossfight');
     // three of the crew swim among the llamas, others every mission; a film waits for their models, a player does not
     const crewReady = Promise.all([stage.setBoats([G.sel.boat]), stage.setSkippers([OWNER]), stage.setRescue(rescue, crewFor(G.save.stats.rescues || 0, 3, 0))]); if (G.film) await crewReady;
     stage.setCameraMode('chase'); controls.releaseAll();
@@ -172,6 +185,7 @@ async function startRescue() {
 }
 function endRescue() {
   if (G.rescue.kind === 'levi') return endLevi();
+  if (G.rescue.kind === 'voyage') return endVoyage();
   if (G.rescue.kind === 'boss') return endBoss();
   const race = G.race, run = G.run, R = G.rescue, sm = R.summary(), rs = race.summary();
   const result = { mode: 'rescue', course: ARENA.key, tune: run.tune, livery: run.livery, difficulty: run.difficulty, finished: sm.finished, saved: sm.saved, total: sm.total, time: sm.time, medal: sm.medal };
@@ -209,12 +223,12 @@ async function startBoss() {
     if (!stage.bossView.ready) return toast('The dragon did not load. Check the connection, then try again.', 5000);
     const { tune, livery, difficulty } = G.sel, c = dragonCourse(), seed = DEV && Q.get('seed') ? +Q.get('seed') : 9;
     stage.setWorld(Q.get('world') || DRAGON.world); stage.setCourse(c);
-    const race = new Race(bossSettings(c, { tune }), c), boss = new Boss(race, { difficulty, seed });
+    const race = new Race(mine(bossSettings(c, { tune })), c), boss = new Boss(race, { difficulty, seed });
     G.race = race; G.rescue = boss; G.ghost = null; G.mode = 'race'; G.acc = 0; G.timeScale = 1; G.slowLeft = 0; G.slowArmed = false; G.paused = false; G.pausedBy = null; G.resultsAt = null; G.resumeLeft = 0;
     G.run = { mode: 'boss', course: DRAGON.key, tune, livery, difficulty, at: new Date().toISOString(), frames: 0, late: 0, worst: 0, sumMs: 0, mot0: controls.tilt.counts.mot, th0: performance.now(), steerMode: controls.mode, recentres0: controls.recentres,
       lastHud: 0, countShown: '', dots: [], trackW: 1, wake0: PF.wake.releases, marks: [new Float32Array(1)], markN: new Int32Array(1), gmarks: null, gmarkN: 0,
       coach: !G.save.best[`${DRAGON.key}:rescue`] && !G.film && !G.auto, coachAim: false, coachFire: false };
-    stage.setRescue(null); stage.setLevi(null); stage.setRace(race, [livery], 0); stage.setGhost(null);
+    stage.setRescue(null); stage.setLevi(null); stage.setVoyage(null); stage.setRace(race, [livery], 0); stage.setGhost(null);
     // the boss: one of the crew, another every time; a film waits for the models, a player does not
     const ready = Promise.all([stage.setBoats([G.sel.boat]), stage.setSkippers([OWNER]), stage.setBoss(boss, crewFor(G.save.stats.rescues || 0, 1, 8)[0])]); if (G.film) await ready;
     stage.setCameraMode('chase'); controls.releaseAll();
@@ -285,12 +299,12 @@ async function startLevi() {
   try {
     const { tune, livery, difficulty } = G.sel, c = leviCourse(), seed = DEV && Q.get('seed') ? +Q.get('seed') : 2;
     stage.setWorld(Q.get('world') || LEVI.world); stage.setCourse(c);
-    const race = new Race(leviSettings(c, { tune }), c), levi = new Leviathan(race, { difficulty, seed });
+    const race = new Race(mine(leviSettings(c, { tune })), c), levi = new Leviathan(race, { difficulty, seed });
     G.race = race; G.rescue = levi; G.ghost = null; G.mode = 'race'; G.acc = 0; G.timeScale = 1; G.slowLeft = 0; G.slowArmed = false; G.paused = false; G.pausedBy = null; G.resultsAt = null; G.resumeLeft = 0;
     G.run = { mode: 'levi', course: LEVI.key, tune, livery, difficulty, at: new Date().toISOString(), frames: 0, late: 0, worst: 0, sumMs: 0, mot0: controls.tilt.counts.mot, th0: performance.now(), steerMode: controls.mode, recentres0: controls.recentres,
       lastHud: 0, countShown: '', dots: [], trackW: 1, wake0: PF.wake.releases, marks: [new Float32Array(1)], markN: new Int32Array(1), gmarks: null, gmarkN: 0,
       coach: !G.save.best[`${LEVI.key}:rescue`] && !G.film && !G.auto, coachAim: false, named: false, bpm0: sound.bpm0 };
-    stage.setRescue(null); stage.setBoss(null); stage.setRace(race, [livery], 0); stage.setGhost(null); stage.setLevi(levi);
+    stage.setRescue(null); stage.setBoss(null); stage.setVoyage(null); stage.setRace(race, [livery], 0); stage.setGhost(null); stage.setLevi(levi);
     const ready = Promise.all([stage.setBoats([G.sel.boat]), stage.setSkippers([OWNER])]); if (G.film) await ready;
     stage.setCameraMode('chase'); controls.releaseAll();
     E.hud.classList.remove('final'); E.hud.classList.add('rescue', 'bossfight'); $('h-of').textContent = '%'; E.place.textContent = '0'; E.count.textContent = ''; E.warn.style.display = 'none';
@@ -363,6 +377,106 @@ function paintLevi(race, run, dt, me) {
   if (warn !== H.warn) { H.warn = warn; E.warn.textContent = warn; E.warn.style.display = warn ? 'block' : 'none'; }
   if (run.coach && race.racing && !B.over && !run.coachAim && race.lapT > 3.5) { run.coachAim = true; hudMsg('SHOOT THE GLOWING LURES ON ITS BACK: POINT YOUR BOW AT THEM', 'tip', 2, true); }
 }
+// ---------- the rescue voyages in the bay (sim/voyage.mjs; PLAN-MONKEYKING.md). The same frame again: G.rescue holds the voyage,
+// its kind is 'voyage'. The boat is the jukung, whatever boat the races use; nothing is fought. The display shows who is home
+// and aboard, what the lookout points at, and a warning when the boat is too fast where it must be gentle. ----------
+async function startVoyage() {
+  if (G.rescueStarting) return; G.rescueStarting = true;
+  try {
+    const { tune, livery, difficulty } = G.sel, key = G.sel.level, D = VOYAGES[key], c = bayCourse(), seed = DEV && Q.get('seed') ? +Q.get('seed') : 3;
+    stage.setWorld(Q.get('world') || D.world); stage.setCourse(c);
+    const race = new Race(voyageSettings(c, { tune }), c), voy = makeVoyage(race, { level: key, difficulty, seed, choices: G.choices[key] || {} });
+    G.race = race; G.rescue = voy; G.ghost = null; G.mode = 'race'; G.acc = 0; G.timeScale = 1; G.slowLeft = 0; G.slowArmed = false; G.paused = false; G.pausedBy = null; G.resultsAt = null; G.resumeLeft = 0;
+    G.run = { mode: 'voyage', course: key, tune, livery, difficulty, at: new Date().toISOString(), frames: 0, late: 0, worst: 0, sumMs: 0, mot0: controls.tilt.counts.mot, th0: performance.now(), steerMode: controls.mode, recentres0: controls.recentres,
+      lastHud: 0, countShown: '', dots: [], trackW: 1, wake0: PF.wake.releases, marks: [new Float32Array(1)], markN: new Int32Array(1), gmarks: null, gmarkN: 0,
+      coach: !G.save.best[`${key}:rescue`] && !G.film && !G.auto, coached: {}, bpm0: sound.bpm0 };
+    stage.setRescue(null); stage.setBoss(null); stage.setLevi(null); stage.setRace(race, [livery], 0); stage.setGhost(null); stage.setVoyage(voy);
+    const ready = Promise.all([stage.setBoats(['jukung']), stage.setSkippers([OWNER])]); if (G.film) await ready;
+    stage.setCameraMode('chase'); controls.releaseAll();
+    E.hud.classList.remove('final', 'bossfight'); E.hud.classList.add('rescue'); if (voy.storm !== undefined) E.hud.classList.add('bossfight'); $('h-of').textContent = `/${voy.total}`; E.place.textContent = '0'; E.count.textContent = ''; E.warn.style.display = 'none';
+    for (const k of Object.keys(H)) H[k] = null;
+    clearTimeout(msgT); E.msg.className = ''; msgPri = 0; msgUntil = 0;
+    E.prog.querySelectorAll('i.rv').forEach((e) => e.remove());
+    clearTimeout(toastT); E.toast.classList.remove('show');
+    paintControlsHint(); show('race'); sound.music('race'); keepAwake();
+  } finally { G.rescueStarting = false; }
+}
+const STAR_NAMES = [['thanks', 'Thanks given'], ['people', 'People home'], ['sea', 'The sea left well']];
+// Kies: the three choices before a voyage (place, time, agreement). What is chosen is kept for this session.
+function openKies() { const key = G.sel.level; G.choices[key] = voyageChoices(key, G.choices[key]); G.kies = { recall: VOYAGES[key].recall && !G.recalled[key] ? -1 : null }; paintKies(); show('kies'); }
+function paintKies() {
+  const key = G.sel.level, D = VOYAGES[key], C = G.choices[key];
+  const have = VOYAGES_READY_ALL.reduce((n, k) => n + ((G.save.leaves || {})[k] || []).filter(Boolean).length, 0); $('b-kies-book').textContent = `Leaves ${have}/27`;
+  // first one question from the voyage before; its answer is shown, then the choices come
+  const R = D.recall, asking = !!R && G.kies && G.kies.recall !== null;
+  $('k-title').textContent = asking ? `${D.name}: before you sail` : `${D.name}: choose your way`; $('k-story').textContent = D.story; $('k-ask').textContent = ''; $('b-kies-go').classList.toggle('hidden', asking);
+  if (asking) { const a = G.kies.recall; $('k-rows').innerHTML = `<div class="vq"><span>RECALL<small>${R.from}</small></span><p>${R.q}</p><div class="opts">` + R.a.map((t, j) => `<button data-recall="${j}" class="${a === j ? 'on' : ''}">${t}</button>`).join('')
+    + (a >= 0 ? '<button data-recall="go" class="next">To the choices</button>' : '') + `</div><div class="told">${a >= 0 ? (a === R.right ? 'Yes. ' : 'Not quite. ') + R.said : ''}</div></div>`; return; }
+  $('k-rows').innerHTML = D.rows.map((r, i) => `<div class="krow"><span>${r.label}</span>` + r.opts.map(([v, name, note], j) => `<button data-row="${i}" data-opt="${j}" class="${C[r.key] === v ? 'on' : ''}"><b>${name}</b><small>${note}</small></button>`).join('') + '</div>').join('');
+}
+// Veranker: the telling on the beach. Three questions, one for each ring; an answer is a view, not a mark: it earns its leaf and
+// shows what the run itself measured. Under them the voyage's nine leaves: Denken, Doen, Delen by Zelf, Samen, Systeem.
+function openBeach() { if (!G.beach) return; paintBeach(); show('beach'); }
+function paintBeach() {
+  const Bc = G.beach, D = VOYAGES[Bc.key], have = (G.save.leaves || {})[Bc.key] || [];
+  // the book: the 27 leaves, nine a voyage, one voyage at a time
+  if (Bc.book) { const n = (k) => ((G.save.leaves || {})[k] || []).filter(Boolean).length, all = VOYAGES_READY_ALL.reduce((a, k) => a + n(k), 0);
+    $('v-title').textContent = `The leaves: ${all} of 27`;
+    $('v-qs').innerHTML = '<div class="vq"><span>3 x 3 x 3</span><p></p><div class="opts">' + VOYAGES_READY_ALL.map((k) => `<button data-book="${k}" class="tab ${k === Bc.key ? 'on' : ''}">${VOYAGES[k].depth.toUpperCase()}: ${VOYAGES[k].name}, ${n(k)} of 9</button>`).join('') + '</div><div class="told"></div></div>'; }
+  else {
+  const told = D.tell(Bc.sm); $('v-title').textContent = `On the beach: ${D.name}`;
+  const i = Math.min(Bc.step, D.ask.length - 1), q = D.ask[i], done = Bc.ans[i] >= 0;   // one question at a time: the nine leaves stay in sight under it
+  $('v-qs').innerHTML = `<div class="vq"><span>${q.ring}<small>${i + 1} of ${D.ask.length}</small></span><p>${q.q}</p><div class="opts">` + q.a.map((a, j) => `<button data-q="${i}" data-a="${j}" class="${Bc.ans[i] === j ? 'on' : ''}">${a}</button>`).join('')
+    + (done && i < D.ask.length - 1 ? '<button data-next="1" class="next">Next question</button>' : '') + `</div><div class="told">${done ? told[i] : ''}</div></div>`; }
+  const rows = [['DENKEN', 'think'], ['DOEN', 'do'], ['DELEN', 'share']], cols = [['ZELF', 'me'], ['SAMEN', 'us'], ['SYSTEEM', 'the bay']];
+  $('v-leaves').innerHTML = '<div class="leaves"><span></span>' + cols.map(([c, e]) => `<span class="hd">${c}<small>${e}</small></span>`).join('')
+    + rows.map(([r, e], i) => `<span class="hd">${r}<small>${e}</small></span>` + [0, 1, 2].map((j) => `<span class="leaf ${have[3 * i + j] ? 'on' : ''}">${D.leaves[3 * i + j]}</span>`).join('')).join('') + '</div>';
+}
+function endVoyage() {
+  const race = G.race, run = G.run, Vg = G.rescue, sm = Vg.summary(), rs = race.summary(), D = Vg.def;
+  const result = { mode: 'rescue', course: D.key, tune: run.tune, livery: run.livery, difficulty: run.difficulty, finished: sm.finished, saved: sm.nStars, total: 3, time: sm.time, medal: sm.medal, voyage: true, home: sm.saved, leaves: [...sm.leaves, false, false, false] };
+  const old = G.save.best[`${D.key}:rescue`], r = PR.applyRescue(G.save, result);
+  G.save = r.save; saveNow();
+  const dur = Math.max(0.001, (performance.now() - run.th0) / 1000);
+  G.lastRuns.push({ at: run.at, course: D.key, mode: 'voyage', tune: run.tune, steer: run.steerMode, difficulty: run.difficulty, saved: sm.saved, total: sm.total, stars: sm.nStars, time: sm.time, scares: sm.scares, reefFast: sm.reefFast, freed: sm.freed, net: sm.netAboard, leaves: sm.leaves.filter(Boolean).length,
+    topKmh: rs.topKmh, why: !sm.finished ? 'left early' : sm.time >= Vg.capS ? 'time up' : 'all home', frames: run.frames, latePct: run.frames ? +(100 * run.late / run.frames).toFixed(1) : null, meanMs: run.frames ? +(run.sumMs / run.frames).toFixed(1) : null, worstMs: Math.round(run.worst),
+    motPerS: +((controls.tilt.counts.mot - run.mot0) / dur).toFixed(0), recentres: controls.recentres - run.recentres0, tier: stage.tierKey, scale: stage.scale, render: stage.renderSize(), wake: PF.wake.state, wakeLost: PF.wake.releases - run.wake0 });
+  if (G.lastRuns.length > 6) G.lastRuns.shift();
+  $('r-place').innerHTML = `${sm.nStars}<small>/3</small>`;
+  $('r-title').textContent = `${D.name}: ${D.trip}`;
+  $('r-time').textContent = !sm.finished ? 'Left before the end' : sm.time >= Vg.capS ? 'Time ran out' : D.endLine(sm);
+  $('r-best').textContent = !sm.finished ? '' : old ? (sm.nStars > old.saved ? 'More harmony than before' : `Best so far: ${old.saved} of 3`) : 'First voyage on the board';
+  $('r-medal').innerHTML = sm.medal ? `<span class="medal-dot ${sm.medal}"></span><span class="name">${sm.medal}</span>` : '';
+  const NEWS = { best: () => 'New best voyage', medal: (n) => `${n.medal[0].toUpperCase() + n.medal.slice(1)} medal`, leaf: (n) => `${n.n} new ${n.n === 1 ? 'leaf' : 'leaves'}: ${n.have} of 9` };
+  $('r-news').innerHTML = r.news.map((n, i) => `<li style="animation-delay:${(0.9 + 0.4 * i).toFixed(1)}s">${NEWS[n.type](n)}</li>`).join('');
+  r.news.forEach((n, i) => setTimeout(() => { if (G.screen === 'results' && G.race === race) sound.sfx('chip', i); }, 900 + 400 * i));
+  $('r-table').innerHTML = [...STAR_NAMES.map(([k, name]) => [name, sm.stars[k] ? 'yes' : 'not yet']), [D.unit, `${sm.saved} of ${sm.total}`]].map(([k, v]) => `<span></span><span>${k}</span><span>${v}</span>`).join('');
+  $('r-stats').innerHTML = [`time ${sm.time === null ? '-' : PR.fmtTime(sm.time)}`, ...D.stats(sm)].map((t) => `<span>${t}</span>`).join('');
+  $('r-tip').textContent = !sm.finished ? '' : D.tip(sm);
+  G.beach = sm.finished ? { key: D.key, sm, ans: [-1, -1, -1], step: 0 } : null;
+  G.nextCourse = G.beach ? ':beach' : null; E.nextCourse.classList.toggle('hidden', !G.beach); E.nextCourse.textContent = 'ON THE BEACH'; E.retry.textContent = 'SAIL AGAIN'; E.retry.className = G.beach ? 'ghost' : 'cta';
+  if (sm.medal && r.news.some((n) => n.type === 'medal')) setTimeout(() => { if (G.screen === 'results' && G.race === race) sound.sfx('medal'); }, 450);
+  race.afterglow = true;
+  G.mode = 'after'; G.acc = 0; stage.setCameraMode('orbit'); sound.music('menu'); show('results'); PF.releaseWake();
+}
+function paintVoyage(race, run, dt, me) {
+  const Vg = G.rescue;
+  const left = race.go - race.t, ct = left > 0 ? String(Math.ceil(left)) : left > -0.8 ? 'GO' : '';
+  if (ct !== run.countShown) { run.countShown = ct; E.count.textContent = ct; if (ct && ct !== 'GO') sound.sfx('count'); }
+  run.lastHud += dt; if (run.lastHud < 0.09) return; run.lastHud = 0;
+  const t = race.lapT, u = Math.hypot(me.vx, me.vz); setText('h-time', 'time', `${Math.floor(t / 60)}:${(t % 60).toFixed(1).padStart(4, '0')}`);
+  setText('h-place', 'place', String(Vg.home)); setText('h-lap', 'lap', 'HOME');
+  const Hd = Vg.hud(me, u); setText('h-gap', 'gap', Vg.over ? '' : Hd.gap);
+  if (Hd.gauge) { setText('bb-name', 'bbname', Hd.gauge.name + ': calm'); if (H.bbhp !== Hd.gauge.calm) { H.bbhp = Hd.gauge.calm; $('bb-hp-fill').style.width = Hd.gauge.calm + '%'; } if (H.bbst !== 0) { H.bbst = 0; $('bb-st-fill').style.width = '0%'; } setText('bb-cast', 'bbcast', Vg.over ? '' : Hd.gauge.note); }
+  setText('h-kmh', 'kmh', fmtSpeed(Math.max(0, me.u)));
+  const K = Vg.look; setText('h-chain', 'chain', Vg.over || !K ? '' : Vg.def.look[K.kind] || '');
+  const ang = K ? wrapA(Math.atan2(-(K.x - me.x), K.z - me.z) - me.h) : 0, far = !!K && Math.abs(ang) > 0.42 && race.racing && !Vg.over;
+  if (far !== H.arrowOn) { H.arrowOn = far; E.arrow.style.opacity = far ? '1' : '0'; }
+  if (far) { const a = Math.round(ang * 180 / Math.PI / 3) * 3; if (a !== H.arrow) { H.arrow = a; E.arrow.style.transform = `rotate(${a}deg)`; } }
+  const warn = Vg.over ? '' : controls.mode === 'tilt' && controls.flat ? 'Tip the screen up towards you' : Math.abs(me.lat) > race.c.halfWidth ? 'Open sea: turn back' : Hd.warn;
+  if (warn !== H.warn) { H.warn = warn; E.warn.textContent = warn; E.warn.style.display = warn ? 'block' : 'none'; }
+  if (run.coach && race.racing && !Vg.over && !run.coached.first && race.lapT > 2.5) { run.coached.first = true; hudMsg(Vg.def.first, 'tip', 2, true); }
+}
 // the view in a race: the chase camera or the driver's own eyes (view/stage.mjs, CAMS.helm); kept with the settings
 function toggleView() { const s = settings(); s.camera = s.camera === 'helm' ? 'chase' : 'helm'; saveNow(); applySettings(); toast(s.camera === 'helm' ? 'View: from the helm' : 'View: behind the boat', 1400); }
 function paintControlsHint() {
@@ -373,7 +487,7 @@ function paintControlsHint() {
 function endRace() {
   if (G.rescue) return endRescue();
   const race = G.race, run = G.run, me = race.boats[race.player], sm = race.summary(), st = race.standings(), key = run.course;
-  const result = { mode: run.mode, course: key, tune: run.tune, livery: run.livery, finished: me.finished, place: sm.place, time: sm.time, sim: SIM_VERSION, summary: sm,
+  const result = { mode: run.mode, course: key, tune: run.tune, livery: run.livery, finished: me.finished, place: sm.place, time: sm.time, sim: SIM_VERSION, boat: G.sel.boat, summary: sm,
     inputs: run.mode === 'trial' && me.finished ? encodeInputs(race.rec.steer, race.rec.flags) : null };
   const old = G.save.best[`${key}:${run.mode}`], r = PR.applyResult(G.save, result, COURSE_KEYS, COURSE_DEFS[key].medals || null);
   G.save = r.save; saveNow();
@@ -439,7 +553,7 @@ function paintHud(race, run, dt) {
   const ready = me.boostE >= BOOST.minStart || me.boosting, bs = me.boosting ? 2 : ready ? 1 : 0;
   if (bs !== H.bs) { H.bs = bs; E.boost.classList.toggle('ready', bs === 1); E.boost.classList.toggle('on', bs === 2); E.btn.classList.toggle('ready', bs >= 1); E.btn.classList.toggle('on', bs === 2); }
   if (controls.mode === 'touch') { const kx = Math.round(78 * controls.steer); if (kx !== H.knob) { H.knob = kx; E.knob.style.transform = `translateX(${kx}px)`; } }
-  if (G.rescue) return G.rescue.kind === 'levi' ? paintLevi(race, run, dt, me) : G.rescue.kind === 'boss' ? paintBoss(race, run, dt, me) : paintRescue(race, run, dt, me, ready);
+  if (G.rescue) return G.rescue.kind === 'voyage' ? paintVoyage(race, run, dt, me) : G.rescue.kind === 'levi' ? paintLevi(race, run, dt, me) : G.rescue.kind === 'boss' ? paintBoss(race, run, dt, me) : paintRescue(race, run, dt, me, ready);
   const total = laps * c.len, tw = run.trackW, px = Math.round(tw * clamp(me.prog / total, 0, 1));
   if (px !== H.me) { H.me = px; E.progMe.style.transform = `translateX(${px}px)`; }
   for (let k = 0; k < run.dots.length; k++) { const d = run.dots[k], x = Math.round(tw * clamp(race.boats[d.i].prog / total, 0, 1)); if (x !== d.x) { d.x = x; d.el.style.transform = `translateX(${x}px)`; } }
@@ -537,6 +651,32 @@ function onRescueEvent(e) {
     case 'castStart': sound.sfx('alarm'); hudMsg(`IT CASTS THE TIDE WALL: ${e.need} HITS BREAK IT`, 'bad', 6, true); break;
     case 'tide': sound.sfx('ram'); hudMsg(`THE TIDE WALL: HULL ${Math.max(0, e.hull)} OF ${LFIGHT.hull}`, 'bad', 6); pulse(E.edge, 'hit'); break;
     case 'surface': sound.sfx('jump'); break;
+    case 'vNight': stage.setWorld('night'); hudMsg('NIGHT. LOOK FOR ONE LAMP THAT BLINKS', 'tip', 5, true); break;
+    case 'vFound': sound.sfx('count'); hudMsg('THERE: THE OVERDUE BOAT', 'good', 5, true); break;
+    case 'vJackLoad': sound.sfx('chip', e.n); hudMsg(`IN JACK'S BOAT: ${e.n}`, 'good', 3); break;
+    case 'vBroach': sound.sfx('miss'); sound.sfx('ram'); hudMsg('BROACHED: SMALLER MOVES OF THE WHEEL', 'bad', 7, true); break;
+    case 'vLamp': sound.sfx('chip', 2); hudMsg('A LAMP OF THE FLEET: THE SEA EASES', 'good', 2); break;
+    case 'vHelm': sound.sfx('finish'); hudMsg('THE LOOKOUT TAKES THE HELM: HE KNOWS THE WAY NOW', 'good', 6, true); break;
+    case 'vCall': sound.sfx('count'); hudMsg('CAPTAIN JACK\'S ENGINE IS DEAD, NEAR THE WRECK', 'tip', 6, true); break;
+    case 'vTow': sound.sfx('finish'); hudMsg('JACK IS ON THE LINE', 'good', 5, true); break;
+    case 'vSnap': sound.sfx('miss'); hudMsg(e.why === 'gust' ? 'THE LINE PARTED: TAKE THE GUST ON THE BOW' : 'THE LINE PARTED: EASY ON IT', 'bad', 6, true); break;
+    case 'vHeld': sound.sfx('chip', 2); hudMsg('THE LINE HELD: JACK HAD IT', 'good', 5); break;
+    case 'vJoin': sound.sfx('chip', e.n); hudMsg(`IN THE LINE: ${e.n}`, 'good', 4); break;
+    case 'vDropped': sound.sfx('miss'); hudMsg('A BOAT LOST THE LINE', 'bad', 5); break;
+    case 'vSquall': sound.sfx('count'); stage.setWorld('squall'); hudMsg('THE SQUALL IS HERE EARLY: GATHER THE FLEET', 'tip', 6, true); break;
+    case 'vRode': if (e.i === undefined) { sound.sfx('chip', 1); hudMsg(e.lee ? 'THE LAND BREAKS THE GUST' : 'RODE IT', 'good', 2); } break;
+    case 'vBuried': sound.sfx('miss'); hudMsg('A FLOAT WENT UNDER: BOW OR STERN TO THE GUST', 'bad', 5); break;
+    case 'vAboard': sound.sfx('chip', e.aboard); hudMsg(`ABOARD: ${e.aboard}`, 'good', 3); break;
+    case 'vFull': hudMsg(`THE BOAT IS FULL: ${e.seats} AND NO MORE`, 'bad', 4); break;
+    case 'vScare': sound.sfx('miss'); hudMsg('TOO FAST: YOU SCARED A SWIMMER', 'bad', 4); break;
+    case 'vReef': sound.sfx('miss'); hudMsg('SLOW OVER THE REEF', 'bad', 4); break;
+    case 'vTwist': sound.sfx('count'); hudMsg('LOOKOUT: A TURTLE IN A NET, DRIFTING OUT', 'tip', 6, true); break;
+    case 'vFreed': sound.sfx('finish'); hudMsg('THE TURTLE IS FREE', 'good', 6, true); break;
+    case 'vNet': sound.sfx('chip', 3); hudMsg('THE NET IS ABOARD', 'good', 5); break;
+    case 'vNetGone': sound.sfx('miss'); hudMsg(e.freed ? 'THE NET DRIFTED OUT TO SEA' : 'THE NET AND ITS TURTLE ARE GONE', 'bad', 6, true); break;
+    case 'vLost': sound.sfx('miss'); hudMsg('A GUEST DRIFTED OUT OF THE BAY', 'bad', 6, true); break;
+    case 'vHome': sound.sfx('finish'); hudMsg(`HOME: ${e.home} OF ${e.total}`, 'good', 5); break;
+    case 'vEnd': sound.sfx(e.stars >= 2 ? 'finish' : 'miss'); hudMsg(e.home === e.total ? 'EVERYONE IS HOME' : 'THE VOYAGE IS OVER', e.stars >= 2 ? 'good' : 'bad', 7, true); G.resultsAt = performance.now() + (G.film ? 1e9 : 2600); break;
     case 'leviEnd': sound.sfx(e.won ? 'finish' : 'miss'); hudMsg(e.won ? 'THE LEVIATHAN IS BEATEN' : e.hull <= 0 ? 'YOUR YACHT IS SUNK' : 'TIME IS UP', e.won ? 'good' : 'bad', 7, true); G.resultsAt = performance.now() + 3000; stage.setCameraMode('orbit'); break;
     // the boss level
     case 'throw': sound.sfx('alarm'); break;
@@ -674,14 +814,16 @@ function stepCal(th) {
 // ---------- menu ----------
 function paintMenu() {
   const s = G.save, sel = G.sel, lock = '<i class="lock"></i>';
-  $('m-modes').querySelectorAll('button').forEach((b) => b.classList.toggle('on', b.dataset.mode === sel.mode));
+  const voyTab = sel.mode === 'rescue' && !!VOYAGES[sel.level];
+  $('m-modes').querySelectorAll('button').forEach((b) => b.classList.toggle('on', b.dataset.mode === 'voyage' ? voyTab : b.dataset.mode === sel.mode && !voyTab));
   const rescue = sel.mode === 'rescue';
   if (rescue) {
     const rgb = (a) => `rgb(${a.map((v) => Math.round(255 * Math.min(1, Math.sqrt(v)))).join(',')})`;
     const card = (Lv, line, bestText) => { const best = s.best[`${Lv.key}:rescue`], medal = s.medals[`${Lv.key}:rescue`], w = WORLDS[Lv.world] || WORLDS.sunset;
       return `<button class="card ${sel.level === Lv.key ? 'on' : ''}" data-level="${Lv.key}"><span class="sw" style="background:linear-gradient(180deg, ${rgb(w.zenith)} 0%, ${rgb(w.horizon)} 78%, ${rgb(w.scatter)} 100%)"></span>`
         + `<span class="medal"><span class="medal-dot ${medal || 'none'}"></span></span><b>${Lv.name}</b><small>${line}</small><small>${best ? bestText(best) : 'Not played yet'}</small></button>`; };
-    $('m-courses').innerHTML = card(ARENA, 'Nine llamas and three of the crew leave the ship', (b) => `Best: ${b.saved} of ${b.total} safe`)
+    if (voyTab) $('m-courses').innerHTML = VOYAGE_KEYS.map((k) => card(VOYAGES[k], `${VOYAGES[k].depth}: ${VOYAGES[k].trip}`, (b) => `Best: ${b.saved} of 3 harmonies, ${((s.leaves || {})[k] || []).filter(Boolean).length} of 9 leaves`)).join('');
+    else $('m-courses').innerHTML = card(ARENA, 'Nine llamas and three of the crew leave the ship', (b) => `Best: ${b.saved} of ${b.total} safe`)
       + card(DRAGON, 'A boss on a dragon the size of an island', (b) => `Best: ${b.saved} of ${b.total} crystals`)
       + card(LEVI, 'A sea guardian in three phases', (b) => `Best: ${b.saved} % of its health`);
   } else
@@ -696,9 +838,10 @@ function paintMenu() {
     return `<button data-livery="${k}" aria-label="${L.label}" class="${k === sel.livery && sel.boat === 'yacht' ? 'on' : ''} ${open ? '' : 'locked'}"><i style="background:${col}"></i>${open ? '' : '<span class="lock"></span>'}</button>`; }).join('')
     + `<button data-boat="next" aria-label="Boat: ${FLEET[sel.boat].label}. Tap for the next boat" class="boat ${sel.boat !== 'yacht' ? 'on' : ''}">${FLEET[sel.boat].label}</button>`;   // the yacht's six colours, then one button that steps through the boats (three chips did not fit a phone: smoke part f)
   $('m-diff').querySelectorAll('button').forEach((b) => b.classList.toggle('on', b.dataset.diff === sel.difficulty));
-  $('m-diff-wrap').classList.toggle('hidden', sel.mode === 'trial'); $('m-diff-label').textContent = rescue ? (sel.level === DRAGON.key ? 'Fire' : sel.level === LEVI.key ? 'Fury' : 'Sharks') : 'Rivals';
-  $('b-go').textContent = sel.mode === 'race' ? 'RACE' : rescue ? (sel.level === DRAGON.key || sel.level === LEVI.key ? 'FIGHT' : 'RESCUE') : 'GO';
+  $('m-diff-wrap').classList.toggle('hidden', sel.mode === 'trial'); $('m-diff-label').textContent = rescue ? (sel.level === DRAGON.key ? 'Fire' : sel.level === LEVI.key ? 'Fury' : VOYAGES[sel.level] ? 'Current' : 'Sharks') : 'Rivals';
+  $('b-go').textContent = sel.mode === 'race' ? 'RACE' : rescue ? (sel.level === DRAGON.key || sel.level === LEVI.key ? 'FIGHT' : VOYAGES[sel.level] ? 'SAIL' : 'RESCUE') : 'GO';
   const T = TUNES[sel.tune];
+  if (rescue && VOYAGES[sel.level]) { $('m-hint').innerHTML = 'The lookout points the way. A guest comes aboard when the boat lies close and slow.<span class="more"> You sail the jukung; nothing is fought.</span>'; return; }
   if (rescue && sel.level === LEVI.key) { $('m-hint').innerHTML = 'Shoot the glowing lures on its back while it is up.<span class="more"> Stagger it, then ram it at full boost.</span>'; return; }
   if (rescue && sel.level === DRAGON.key) { $('m-hint').innerHTML = 'Point your bow at the glowing crystal and the cannon fires.<span class="more"> Keep turning: the fire lands where you were heading.</span>'; return; }
   if (rescue) { $('m-hint').innerHTML = 'Point your bow at a shark and the cannon fires; ram one at speed.<span class="more"> Swimmers near your yacht follow its wake to the shore.</span>'; return; }
@@ -708,12 +851,13 @@ function paintMenu() {
 }
 function menuClick(e) {
   const b = e.target.closest('button'); if (!b) return; const s = G.save, sel = G.sel; sound.resume(); sound.sfx('click');
-  if (b.dataset.mode) sel.mode = b.dataset.mode;
+  if (b.dataset.mode === 'voyage') { sel.mode = 'rescue'; if (!VOYAGES[sel.level]) { sel.fight = sel.level; sel.level = sel.voyage || VOYAGE_KEYS[0]; } }
+  else if (b.dataset.mode) { sel.mode = b.dataset.mode; if (VOYAGES[sel.level]) { sel.voyage = sel.level; sel.level = sel.fight || ARENA.key; } }
   else if (b.dataset.level) sel.level = b.dataset.level;
   else if (b.dataset.course) { if (!PR.courseOpen(s, COURSE_KEYS, b.dataset.course)) return toast(`Finish in the top 3 on ${COURSE_DEFS[COURSE_KEYS[COURSE_KEYS.indexOf(b.dataset.course) - 1]].name} to open this course.`); sel.course = b.dataset.course; if (G.demoCourse !== sel.course) startDemo(sel.course); }
   else if (b.dataset.tune) { if (!s.unlocked.tunes.includes(b.dataset.tune)) return toast(`${TUNES[b.dataset.tune].label} tune: ${PR.UNLOCKS.tunes[b.dataset.tune]}.`); sel.tune = b.dataset.tune; }
   else if (b.dataset.livery) { if (!s.unlocked.liveries.includes(b.dataset.livery)) return toast(`${LIVERIES[b.dataset.livery].label}: ${PR.UNLOCKS.liveries[b.dataset.livery]}.`); sel.livery = b.dataset.livery; sel.boat = 'yacht'; settings().boat = 'yacht'; saveNow(); stage.setBoats(['yacht', 'yacht', 'yacht', 'yacht']); stage.boats[3] && stage.boats[3].vis.setLivery(sel.livery); }
-  else if (b.dataset.boat) { sel.boat = FLEET_KEYS[(FLEET_KEYS.indexOf(sel.boat) + 1) % FLEET_KEYS.length]; settings().boat = sel.boat; saveNow(); stage.setBoats(['yacht', 'yacht', 'yacht', sel.boat]); }
+  else if (b.dataset.boat) { sel.boat = FLEET_KEYS[(FLEET_KEYS.indexOf(sel.boat) + 1) % FLEET_KEYS.length]; settings().boat = sel.boat; saveNow(); stage.setBoats(['yacht', 'yacht', 'yacht', sel.boat]); toast(`${FLEET[sel.boat].label}: ${BOAT_STATS[sel.boat].note}.`, 3200); }
   else if (b.dataset.diff) { sel.difficulty = b.dataset.diff; settings().difficulty = sel.difficulty; saveNow(); }
   paintMenu();
 }
@@ -753,7 +897,7 @@ let last = null;
 const AUTO = { steer: 0, brake: 0, boost: 0 };
 // one physics step of the player's race: the player's inputs (or the computer's, for tests and film), the ghost in step, events
 function stepRace(race, run) {
-  if (G.auto) { if (G.rescue) G.rescue.pilot(AUTO); else race.drive(race.boats[race.player], AUTO); race.step(AUTO.steer, AUTO.brake, AUTO.boost); }
+  if (G.auto || (G.rescue && G.rescue.handover && !G.rescue.over)) { if (G.rescue) G.rescue.pilot(AUTO); else race.drive(race.boats[race.player], AUTO); race.step(AUTO.steer, AUTO.brake, AUTO.boost); }
   else race.step(controls.steer, controls.brake, controls.boost);
   if (G.rescue) G.rescue.step();
   if (G.ghost && !G.ghost.race.done) { const gh = G.ghost, k = gh.race.step_; if (k < gh.steer.length) gh.race.step(gh.steer[k] / 100, gh.flags[k] & 1, (gh.flags[k] >> 1) & 1); gh.race.events.length = 0; }
@@ -778,6 +922,8 @@ function simulate(dt) {
     while (G.acc >= DT) { stepRace(race, run); G.acc -= DT; if (race.done) break; }
     if (G.resultsAt !== null && (performance.now() >= G.resultsAt || race.done) || race.done) { endRace(); return; }
     paintHud(race, run, dt);
+    // the display inside the cockpit shows what the flat display shows (view/dash.mjs; drawn only in the view from the helm)
+    stage.dash.set({ speed: E.kmh ? E.kmh.textContent : $('h-kmh').textContent, unit: settings().units === 'kn' ? 'kn' : 'km/h', boost: me.boostE / BOOST.max, place: E.place.textContent + $('h-of').textContent });
     sound.frame({ speed: me.u / me.P.top, boost: me.boostLv, air: me.air, active: !me.finished });
   } else if (G.mode === 'demo' || G.mode === 'after') {
     // behind the menus and the result screen every boat sails under the computer; a finished demo starts again, a finished race
@@ -848,9 +994,14 @@ function wire() {
   $('set-grid').addEventListener('click', settingsClick);
   $('set-maxdeg').addEventListener('input', (e) => { settings().maxDeg = +e.target.value; $('set-maxdeg-v').textContent = e.target.value; controls.setOptions({ maxDeg: settings().maxDeg, invert: !!settings().invert }); });
   $('set-maxdeg').addEventListener('change', saveNow);
-  tap('b-go', () => { if (!PR.courseOpen(G.save, COURSE_KEYS, G.sel.course)) return; startRace(); });
+  tap('b-go', () => { if (G.sel.mode === 'rescue' && VOYAGES[G.sel.level]) return openKies(); if (!PR.courseOpen(G.save, COURSE_KEYS, G.sel.course)) return; startRace(); });
+  tap('b-kies-go', startRace); tap('b-kies-back', () => { paintMenu(); show('menu'); });
+  $('k-rows').addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b) return; sound.resume(); sound.sfx('click'); if (b.dataset.recall !== undefined) { if (b.dataset.recall === 'go') { G.kies.recall = null; G.recalled[G.sel.level] = true; } else G.kies.recall = +b.dataset.recall; return paintKies(); } const key = G.sel.level, C = G.choices[key] = voyageChoices(key, G.choices[key]); const row = VOYAGES[key].rows[+b.dataset.row]; C[row.key] = row.opts[+b.dataset.opt][0]; paintKies(); });
+  tap('b-beach-done', () => { if (G.beach && G.beach.book) { G.beach = G.beach.keep; paintKies(); return show('kies'); } show('results'); });
+  tap('b-kies-book', () => { G.beach = { book: true, key: G.sel.level, keep: G.beach }; paintBeach(); show('beach'); });
+  $('v-qs').addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b || !G.beach) return; sound.resume(); if (b.dataset.book) { sound.sfx('click'); G.beach.key = b.dataset.book; return paintBeach(); } if (b.dataset.next) { sound.sfx('click'); G.beach.step++; return paintBeach(); } sound.sfx('chip', +b.dataset.q); G.beach.ans[+b.dataset.q] = +b.dataset.a; const r = PR.addLeaves(G.save, G.beach.key, [6 + +b.dataset.q]); if (r.fresh) { G.save = r.save; saveNow(); } paintBeach(); });
   tap('b-retry', startRace);
-  tap('b-nextcourse', () => { if (G.nextCourse && PR.courseOpen(G.save, COURSE_KEYS, G.nextCourse)) G.sel.course = G.nextCourse; startRace(); });
+  tap('b-nextcourse', () => { if (G.nextCourse === ':beach') return openBeach(); if (G.nextCourse && PR.courseOpen(G.save, COURSE_KEYS, G.nextCourse)) G.sel.course = G.nextCourse; startRace(); });
   tap('b-next', () => { startDemo(G.sel.course); paintMenu(); show('menu'); });
   tap('h-pause', () => pause('button'));
   tap('h-view', toggleView);
@@ -939,7 +1090,7 @@ try {
   $('title-build').textContent = `${VERSION}, built ${BUILD}`;
   show('title'); checkRotation();
   // film: no menus; the race starts at once with the computer at the wheel and the caller owns the clock (G.filmStep)
-  if (G.film) { G.started = true; G.auto = true; controls.mode = 'keys'; if (Q.get('course') && COURSE_KEYS.includes(Q.get('course'))) G.sel.course = Q.get('course'); if (Q.get('mode') === 'trial') G.sel.mode = 'trial'; if (Q.get('mode') === 'rescue') G.sel.mode = 'rescue'; if (Q.get('level') === DRAGON.key) G.sel.level = DRAGON.key; if (Q.get('level') === LEVI.key) G.sel.level = LEVI.key; await startRace(); }
+  if (G.film) { G.started = true; G.auto = true; controls.mode = 'keys'; if (Q.get('course') && COURSE_KEYS.includes(Q.get('course'))) G.sel.course = Q.get('course'); if (Q.get('mode') === 'trial') G.sel.mode = 'trial'; if (Q.get('mode') === 'rescue') G.sel.mode = 'rescue'; if (Q.get('level') === DRAGON.key) G.sel.level = DRAGON.key; if (Q.get('level') === LEVI.key) G.sel.level = LEVI.key; if (VOYAGES[Q.get('level')]) G.sel.level = Q.get('level'); await startRace(); }
   if (!G.film) requestAnimationFrame(frame);
   window.__ready = true;
 } catch (e) { bootFail(e, 'The game could not start: ' + String((e && e.message) || e)); }
