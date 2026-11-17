@@ -230,3 +230,57 @@ pre { text-align: left; white-space: pre-wrap; word-break: break-word; font-size
   .grid { grid-template-columns: 1fr 1fr; } .grid .chips { flex-wrap: wrap; } }
 @media (orientation: portrait) { .grid { grid-template-columns: 1fr; } .cards { flex-direction: column; } .card { max-width: none; } .res-cols { grid-template-columns: 1fr; } .res-side { border-left: 0; padding-left: 0; }
   .menu-foot { display: flex; flex-wrap: wrap; } }
+
+/* Sailing practice has its own instruments and touch surface. It shares only steering and pause with the races. */
+#sail-wind, #sail-controls { display: none; }
+.sailing #h-prog, .sailing #h-pos, .sailing #h-clock, .sailing #h-chain, .sailing #h-boost, .sailing #h-boostbtn, .sailing #h-arrow { display: none; }
+.sailing #h-dash { right: auto; left: calc(16px + var(--sl)); bottom: calc(92px + var(--sb)); text-align: left; }
+.sailing #h-speed { justify-content: flex-start; }
+.sailing #h-speed b { font-size: 36px; }
+.sailing #h-speed small { font-size: 12px; }
+.sailing #h-warn { top: calc(118px + var(--st)); left: calc(14px + var(--sl)); right: auto; transform: none; max-width: 190px; white-space: normal; text-align: left; font-size: 12px; }
+.sailing #sail-wind { display: block; position: absolute; top: calc(12px + var(--st)); left: calc(14px + var(--sl)); width: 198px; padding: 11px 12px; box-sizing: border-box; border: 1px solid var(--line); border-radius: 14px; background: rgba(6,18,31,.86); }
+.sail-eyebrow { color: var(--teal); font-size: 10px; font-weight: 800; letter-spacing: .12em; }
+.sail-wind-row { display: flex; align-items: center; gap: 9px; margin-top: 6px; }
+.sail-compass { width: 54px; height: 54px; flex: none; color: var(--teal); }
+#sail-wind-arrow { transform-origin: 32px 32px; }
+.sail-wind-row small, .sail-wind-row strong, .sail-wind-row span { display: block; }
+.sail-wind-row small { font-size: 9px; letter-spacing: .07em; opacity: .76; }
+.sail-wind-row strong { font-size: 21px; font-weight: 700; margin: 2px 0; font-variant-numeric: tabular-nums; }
+.sail-wind-row span { font-size: 11px; line-height: 1.2; opacity: .86; }
+.sailing #sail-controls { display: block; position: absolute; right: calc(14px + var(--sr)); bottom: calc(14px + var(--sb)); width: 238px; max-height: calc(100% - 82px - var(--st) - var(--sb)); padding: 4px 14px 0; box-sizing: border-box; background: rgba(6,18,31,.91); border: 1px solid var(--line); border-radius: 16px; pointer-events: auto; overflow-y: auto; overscroll-behavior: contain; touch-action: pan-y; scrollbar-width: thin; }
+.sail-control-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.sail-control-head strong { font-size: 14px; }
+#sail-auto { min-width: 96px; min-height: 44px; font-size: 12px; font-weight: 800; color: var(--teal); }
+#sail-auto[aria-pressed="false"] { color: var(--gold); }
+#sail-auto:focus-visible, #sail-balance summary:focus-visible { outline: 2px solid var(--teal); outline-offset: -2px; border-radius: 6px; }
+.sail-range-label { display: flex; align-items: center; justify-content: space-between; gap: 6px; font-size: 10px; opacity: .8; }
+#sail-controls input[type=range] { display: block; width: 100%; min-height: 44px; height: 44px; margin: -2px 0; accent-color: var(--teal); touch-action: none; }
+#sail-controls p { margin: 2px 0 8px; line-height: 1.3; font-size: 11px; }
+#sail-trim-state { min-height: 28px; color: var(--teal); }
+#sail-controls.luffing #sail-trim-state { color: var(--gold); }
+.sail-floats { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.sail-floats span { display: block; font-size: 10px; opacity: .75; margin-bottom: 5px; }
+.sail-floats i { display: block; height: 4px; background: rgba(255,255,255,.14); border-radius: 4px; overflow: hidden; }
+.sail-floats b { display: block; height: 100%; background: var(--teal); transform: scaleX(0); transform-origin: left; }
+#sail-load-state { min-height: 14px; opacity: .8; padding-top: 3px; }
+#sail-balance { border-top: 1px solid var(--line); }
+#sail-balance summary { min-height: 44px; display: flex; align-items: center; justify-content: space-between; font-size: 12px; font-weight: 700; cursor: pointer; list-style: none; }
+#sail-balance summary::-webkit-details-marker { display: none; }
+#sail-balance summary::after { content: '+'; font-size: 20px; color: var(--teal); }
+#sail-balance[open] summary::after { content: '−'; }
+#sail-balance label { display: flex; justify-content: space-between; font-size: 12px; margin-top: 8px; }
+#sail-balance label span { color: var(--teal); font-size: 11px; }
+#sail-balance .sail-range-label { margin: -4px 0 10px; }
+#sail-balance #sail-control-help { padding-top: 10px; border-top: 1px solid var(--line); opacity: .8; margin-bottom: 13px; }
+.sailing-card { width: min(760px, 100%); display: flex; align-items: center; justify-content: space-between; gap: 28px; text-align: left; border: 1px solid rgba(63,224,208,.4); border-radius: 18px; padding: 18px 26px; background: linear-gradient(125deg, rgba(8,51,62,.93), rgba(6,18,31,.83)); box-sizing: border-box; }
+.sailing-card h2 { font-size: clamp(22px,4vw,38px); margin: 8px 0; letter-spacing: -.03em; }
+.sailing-card p { max-width: 350px; line-height: 1.35; }
+.sailing-card-notes { display: flex; flex-direction: column; gap: 16px; white-space: nowrap; font-size: 12px; }
+.sailing-card-notes b { color: var(--teal); font-size: 11px; margin-right: 9px; }
+.sailing-menu .menu-foot { display: flex; justify-content: space-between; gap: 20px; min-height: 52px; }
+.sailing-menu #m-hint { max-width: 480px; }
+.sailing-menu #b-go { min-width: 140px; }
+@media (max-width: 920px) { .tabs button { padding: 0 12px; font-size: 12px; } .menu-head { gap: 8px; } }
+@media (max-width: 730px) { .menu-head .logo { display: none; } .tabs { flex: 1; justify-content: space-around; } .tabs button { padding: 0 10px; } .sailing-card { padding: 14px 18px; gap: 18px; } .sailing-card-notes { font-size: 11px; gap: 12px; } .sailing #sail-controls { width: 216px; } .sailing #sail-wind { width: 184px; } }
+@media (max-height: 370px) { .sailing #sail-controls { max-height: calc(100% - 68px - var(--st) - var(--sb)); } #sail-trim-state { min-height: 14px; } .sailing-card h2 { margin: 4px 0; font-size: 24px; } .sailing-card .small { font-size: 11px; } .sailing-card-notes { gap: 10px; } .sailing #h-dash { bottom: calc(78px + var(--sb)); } }

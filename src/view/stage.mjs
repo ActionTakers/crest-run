@@ -3,22 +3,24 @@
 // shows it, interpolated between the last two physics steps so the picture is smooth at any frame rate.
 // Written 2026-11-13 by the yacht project session.
 import * as THREE from 'three';
-import * as W from '../sim/waves.mjs?v=ecb8b720';
-import { pointInto, wrapA } from '../sim/courses.mjs?v=ecb8b720';
-import { Sky, WORLDS, makeNoiseTexture } from './sky.mjs?v=ecb8b720';
-import { Sea } from './sea.mjs?v=ecb8b720';
-import { Post } from './post.mjs?v=ecb8b720';
-import { Wake, Spray } from './fx.mjs?v=ecb8b720';
-import { loadYacht, BoatVisual } from './boats.mjs?v=ecb8b720';
-import { Scenery } from './scenery.mjs?v=ecb8b720';
-import { RescueView } from './rescue-view.mjs?v=ecb8b720';
-import { People, crewClip, tick, JACK, CAST_H, SIT_HIP } from './people.mjs?v=ecb8b720';
-import { BossView } from './boss-view.mjs?v=ecb8b720';
-import { LeviathanView } from './leviathan-view.mjs?v=ecb8b720';
-import { FLEET } from './fleet.mjs?v=ecb8b720';
-import { Dash } from './dash.mjs?v=ecb8b720';
-import { makeJukung, tickJukung } from './jukung.mjs?v=ecb8b720';
-import { BayView } from './bay-view.mjs?v=ecb8b720';
+import * as W from '../sim/waves.mjs?v=be984f14';
+import { pointInto, wrapA } from '../sim/courses.mjs?v=be984f14';
+import { Sky, WORLDS, makeNoiseTexture } from './sky.mjs?v=be984f14';
+import { Sea } from './sea.mjs?v=be984f14';
+import { Post } from './post.mjs?v=be984f14';
+import { Wake, Spray } from './fx.mjs?v=be984f14';
+import { loadYacht, BoatVisual } from './boats.mjs?v=be984f14';
+import { Scenery } from './scenery.mjs?v=be984f14';
+import { RescueView } from './rescue-view.mjs?v=be984f14';
+import { People, crewClip, tick, JACK, CAST_H, SIT_HIP } from './people.mjs?v=be984f14';
+import { BossView } from './boss-view.mjs?v=be984f14';
+import { LeviathanView } from './leviathan-view.mjs?v=be984f14';
+import { FLEET } from './fleet.mjs?v=be984f14';
+import { Dash } from './dash.mjs?v=be984f14';
+import { makeJukung, tickJukung } from './jukung.mjs?v=be984f14';
+import { makeRacingJukung, tickRacingJukung } from './jukung-racing.mjs?v=be984f14';
+import { JUKUNG_SPEC } from '../sim/jukung-spec.mjs?v=be984f14';
+import { BayView } from './bay-view.mjs?v=be984f14';
 
 const clamp = (v, lo, hi) => (v < lo ? lo : v > hi ? hi : v);
 const smooth = (e0, e1, x) => { const t = clamp((x - e0) / (e1 - e0), 0, 1); return t * t * (3 - 2 * t); };
@@ -179,6 +181,7 @@ export class Stage {
     if (this.fleet[key]) return Promise.resolve(this.fleet[key]);
     if (!FLEET[key]) return Promise.resolve(null);
     if (FLEET[key].make === 'jukung') { const t = makeJukung(); t.key = key; t.paint = false; this.fleet[key] = t; return Promise.resolve(t); }   // made in code: nothing to wait for
+    if (FLEET[key].make === 'jukung-racer') { const t = makeRacingJukung({ lookout: false }); t.key = key; t.paint = false; this.fleet[key] = t; return Promise.resolve(t); }
     if (!this.fleetLoads.has(key)) this.fleetLoads.set(key, loadYacht(this.base + 'models/' + FLEET[key].file, { length: FLEET[key].length, keel: FLEET[key].keel })
       .then((t) => { t.key = key; t.paint = FLEET[key].paint; this.fleet[key] = t; return t; }).catch((e) => { console.warn(`boat ${key} not loaded: ${e && e.message}`); this.fleetLoads.delete(key); return null; }));
     return this.fleetLoads.get(key);
@@ -205,7 +208,12 @@ export class Stage {
   }
   // a seated figure on its boat's seat
   // (the crew: lowered by the seat's drop; the two of the voyages: by their own hips, and the king a little higher, on the helm's thwart)
-  seat(B, one) { const T = this.fleet[B.key] || this.yacht, s = FLEET[B.key].seat, own = CAST_H[one.id] !== undefined; one.hold.position.set(0, T.height * s.y + (!one.act.sit ? 0 : own ? SIT_HIP + KING_UP - one.hip : -s.drop), T.length * s.z); }
+  seat(B, one) {
+    const T = this.fleet[B.key] || this.yacht, s = FLEET[B.key].seat, own = CAST_H[one.id] !== undefined;
+    // The racing craft's seat names the hips directly, just above its low thwart. Voyage seating keeps its existing pose.
+    if (B.key === 'jukung-racer') { one.hold.position.set(0, T.height * s.y - (one.act.sit ? one.hip : 0), T.length * s.z); return; }
+    one.hold.position.set(0, T.height * s.y + (!one.act.sit ? 0 : own ? SIT_HIP + KING_UP - one.hip : -s.drop), T.length * s.z);
+  }
   setSkippers(ids = []) {
     this.skipperIds = ids.slice(); this.trimPeople(); const waits = [];
     this.boats.forEach((B, i) => {
@@ -270,9 +278,21 @@ export class Stage {
       if (B.wake.mesh.visible) B.wake.update(B.x, B.z, B.h, b.air ? 0 : B.u, tSim, b.boostLv);
       if (B.key === 'jukung' && B.wake.mesh.visible) {
         if (!B.fw) B.fw = [-1, 1].map(() => new Wake(this.scene, this.sea.U, { n: 44, stern: 2.9, spread: 0.1, maxHalf: 3.2 }));
-        const rx = -Math.cos(B.h), rz = -Math.sin(B.h); B.fw.forEach((w, k) => { const s = (k ? 1 : -1) * 2.75; w.mesh.visible = true; w.update(B.x + rx * s, B.z + rz * s, B.h, b.air ? 0 : B.u * 0.8, tSim, 0); });
+        const rx = -Math.cos(B.h), rz = -Math.sin(B.h); B.fw.forEach((w, k) => { const s = (k ? 1 : -1) * 2.75; w.stern = 2.9; w.mesh.visible = true; w.update(B.x + rx * s, B.z + rz * s, B.h, b.air ? 0 : B.u * 0.8, tSim, 0); });
+      } else if (B.key === 'jukung-racer' && B.wake.mesh.visible) {
+        const stern = JUKUNG_SPEC.floatLength * 0.44;
+        if (!B.fw) B.fw = [-1, 1].map(() => new Wake(this.scene, this.sea.U, { n: 44, stern, spread: 0.1, maxHalf: 3.2 }));
+        const rx = -Math.cos(B.h), rz = -Math.sin(B.h); B.fw.forEach((w, k) => {
+          const s = (k ? 1 : -1) * JUKUNG_SPEC.floatOffset, load = b.sailing ? (k ? b.sailing.starboardLoad : b.sailing.portLoad) : 0.8;
+          w.stern = stern; w.mesh.visible = !b.air && load > 0.06;
+          w.update(B.x + rx * s, B.z + rz * s, B.h, b.air ? 0 : B.u * clamp(load, 0, 1), tSim, 0);
+        });
       } else if (B.fw) for (const w of B.fw) w.mesh.visible = false;
       if (B.key === 'jukung') tickJukung(B.vis.group, { t: this.time + i * 1.7, u: B.u, top: b.P.top, turn: clamp(b.r, -1, 1), look: i === this.focus ? this.lookAt : null, own: !(i === this.focus && this.jack && this.jackAt === 'bow'), see: i === this.focus && !this.relCam && !this.debugCam && this.cam.mode !== 'orbit' && !(CAMS[this.cam.key] || {}).eye ? 0.8 : 1 });   // the sail, and the lookout's arm
+      if (B.key === 'jukung-racer') {
+        tickRacingJukung(B.vis.group, { t: this.time + i * 1.7, u: B.u, top: b.P.top, turn: clamp(b.r, -1, 1), look: null, own: false, sailing: b.sailing || null });
+        if (B.skipper) B.skipper.hold.position.x = -0.12 * clamp(b.sailing ? b.sailing.crewBalance || 0 : 0, -1, 1);
+      }
       const near = i === this.focus ? 1 : 0.5;
       this.spray.trail(i, B.x, B.y, B.z, B.h, B.u * (1 + 0.5 * b.boostLv), b.air, dt, T.spray * near, b.P.length * 0.26, b.P.beam * 0.46);
     }

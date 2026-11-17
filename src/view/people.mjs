@@ -5,7 +5,8 @@
 // llamas, in a race three sail the rival yachts. Written 2026-11-15 by the yacht project session. NOT_ASSESSED on a phone.
 // At a helm everybody sits in the same position (the owner's words of 2026-11-15 23:12): the "sit" clip is made here, in code,
 // from each figure's idle clip (research step A2, fact A2-04: thighs, calves and arms turned about their own z axis).
-// 0.10.0 (2026-11-16): the two figures of the voyages, king.glb and jack.glb (9,998 triangles, the same 78 joints, one idle
+// 0.10.0 (2026-11-16): the two figures of the voyages, king.glb and jack.glb (9,874 / 9,760 triangles after removing duplicate
+// orphan tail fragments; the same 78 joints and one idle
 // clip): characters of the client the voyages are made for, from his two character sheets (assets/SOURCES.md).
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
@@ -15,6 +16,7 @@ export const OWNER = 'f01';                                                     
 export const CREW = ['f02', 'f03', 'f06', 'f07', 'f08', 'f09', 'f10', 'f11', 'f12', 'f13', 'f14'];   // the others, in turn
 export const KING = 'king', JACK = 'jack';                                                      // the voyages' own two: the king at the helm, the little captain
 export const CAST_H = { king: 2.4, jack: 1.35 };                                                // how tall they stand, metres (the crew: 1.9; the king with his crown)
+const CAST_ASSET_REV = new URL(import.meta.url).search;                                       // the module build also invalidates repaired cast GLBs
 // a seated crew figure's hips lie this far over the mark of its seat (hips 0.99 m over the soles at 1.9 m, lowered by the
 // seat's drop of 0.44: measured 2026-11-16 with the loader's own hip measure). The two of the voyages have other legs: they
 // are seated by their own hips (stage.mjs seat, placeJack; bay-view.mjs setJack)
@@ -26,9 +28,15 @@ export const SEAT = [['L_Thigh', 1.45], ['R_Thigh', 1.45], ['L_Calf', -1.5], ['R
 // the lookout: seated on the bow with his hands on his knees (WATCH), and with his right arm stretched ahead (POINT)
 export const WATCH = [['L_Thigh', 1.45], ['R_Thigh', 1.45], ['L_Calf', -1.5], ['R_Calf', -1.5], ['L_Upperarm', 0.55], ['R_Upperarm', 0.55], ['L_Forearm', 0.9], ['R_Forearm', 0.9]];
 export const POINT = [['L_Thigh', 1.45], ['R_Thigh', 1.45], ['L_Calf', -1.5], ['R_Calf', -1.5], ['L_Upperarm', 0.55], ['R_Upperarm', 1.5], ['L_Forearm', 0.9], ['R_Forearm', 0.08]];
+// King and Jack's exported joint axes run the other way around: positive local z moves both knees and elbows toward -x,
+// behind the figure. Measured from their GLB idle transforms; their +x is the holder's +z after make() turns the model.
+// Keep the existing crew poses intact and reverse only the new cast's offsets, including the compensating knee/elbow bends.
+export const CAST_SEAT = SEAT.map(([joint, angle]) => [joint, -angle]);
+export const CAST_WATCH = WATCH.map(([joint, angle]) => [joint, -angle]);
+export const CAST_POINT = POINT.map(([joint, angle]) => [joint, -angle]);
 // a "sit" clip from an idle clip: the same tracks, with every key of the seat's joints turned by the seat's angle, so the
 // figure still breathes and sways. Null when the clip has none of those joints (another rig)
-export function seatClip(idle) { return poseClip(idle, 'sit', SEAT); }
+export function seatClip(idle, pose = SEAT) { return poseClip(idle, 'sit', pose); }
 // any such clip: `pose` is a list like SEAT, `name` the clip's name
 export function poseClip(idle, name, pose) {
   const q = new THREE.Quaternion(), r = new THREE.Quaternion(), Z = new THREE.Vector3(0, 0, 1); let turned = 0;
@@ -48,13 +56,13 @@ export class People {
   load(id) {
     if (this.src.has(id)) return Promise.resolve(this.src.get(id));
     if (this.pending.has(id)) return this.pending.get(id);
-    const p = this.loader.loadAsync(`${this.base}models/people/${id}.glb`).then((g) => {
+    const p = this.loader.loadAsync(`${this.base}models/people/${id}.glb${CAST_H[id] !== undefined ? CAST_ASSET_REV : ''}`).then((g) => {
       g.scene.traverse((o) => { if (o.isMesh) { o.frustumCulled = false; o.material.envMapIntensity = 1; o.material.metalness = 0; o.material.roughness = 0.85; } });
       g.scene.updateMatrixWorld(true); const box = new THREE.Box3();
       g.scene.traverse((o) => { if (o.isSkinnedMesh) { o.computeBoundingBox(); box.union(o.boundingBox.clone().applyMatrix4(o.matrixWorld)); } });
       for (const c of g.animations) lightClip(c);
-      const idle = g.animations.find((c) => c.name === 'idle'), sit = idle ? seatClip(idle) : null; if (sit) g.animations.push(sit);
-      if (idle && id === JACK) for (const [name, pose] of [['watch', WATCH], ['point', POINT]]) { const c = poseClip(idle, name, pose); if (c) g.animations.push(c); }   // the lookout's two
+      const idle = g.animations.find((c) => c.name === 'idle'), sit = idle ? seatClip(idle, CAST_H[id] !== undefined ? CAST_SEAT : SEAT) : null; if (sit) g.animations.push(sit);
+      if (idle && id === JACK) for (const [name, pose] of [['watch', CAST_WATCH], ['point', CAST_POINT]]) { const c = poseClip(idle, name, pose); if (c) g.animations.push(c); }   // the lookout's two
       const hipBone = g.scene.getObjectByName('Hip'), hipAt = hipBone ? hipBone.getWorldPosition(new THREE.Vector3()).y - box.min.y : 0;   // how high the hips stand over the soles
       const s = { id, scene: g.scene, clips: g.animations, height: box.max.y - box.min.y, minY: box.min.y, hip: hipAt };
       if (this.keep && !this.keep.has(id)) { disposeModel(s.scene); return null; }      // no longer wanted by the time it arrived

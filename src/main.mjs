@@ -16,6 +16,7 @@
 // 0.9.0 (the same day, after the owner's six pictures of 14:14: the project's research/A7-target-pictures): the jukung's look
 // follows the pictures (view/jukung.mjs), the telling on the beach has a table of planks with nine palm leaves and their signs,
 // the slopes are forested, a village is lit at night, rain falls under the squall, the overdue boat has a canopy.
+// 0.11.0 (2026-11-17): Jack's separate sailing practice, researched racing geometry, trim/balance controls and corrected cast poses.
 // 0.10.1 (2026-11-17): the same game with lighter model files (tools/slim-assets.mjs): nothing that is shown has changed.
 // 0.10.0 (the same day): the two figures of the voyages (view/people.mjs, KING and JACK): the king at the helm of the jukung,
 // the little captain as its lookout, in his own boat or by his fire; and the artwork on the sail (view/jukung.mjs).
@@ -24,26 +25,26 @@
 // on the beach with nine lesson leaves a voyage; a Voyage tab in the menu; a film camera that travels with the boat.
 // 0.7.0 (the same day): each boat handles its own way (sim/boat-stats.mjs), a display inside the cockpit for the view from the
 // helm (view/dash.mjs), a fifth boat (the red catamaran without its lettering), and a ghost that remembers its boat.
-import { Stage, CAMS } from './view/stage.mjs?v=ecb8b720';
-import { LIVERIES, LIVERY_KEYS } from './view/boats.mjs?v=ecb8b720';
-import { OWNER, KING, crewFor } from './view/people.mjs?v=ecb8b720';
-import { WORLDS } from './view/sky.mjs?v=ecb8b720';
-import { getCourse, COURSE_DEFS, COURSE_KEYS, pointInto, wrapA, wrapS } from './sim/courses.mjs?v=ecb8b720';
-import { Race, defaultSettings, DT, TUNES, TUNE_KEYS, BOOST, SIM_VERSION, encodeInputs, decodeInputs } from './sim/race-sim.mjs?v=ecb8b720';
-import { Rescue, arenaCourse, rescueSettings, ARENA, RESCUE, S as SHARK } from './sim/rescue.mjs?v=ecb8b720';
-import { Boss, dragonCourse, bossSettings, DRAGON, BOSS as FIGHT } from './sim/boss.mjs?v=ecb8b720';
-import { Leviathan, leviCourse, leviSettings, LEVI, FIGHT as LFIGHT, PHASES } from './sim/leviathan.mjs?v=ecb8b720';
-import { makeVoyage, bayCourse, voyageSettings, voyageChoices, VOYAGES, VOYAGES_READY as VOYAGE_KEYS } from './sim/voyages.mjs?v=ecb8b720';
+import { Stage, CAMS } from './view/stage.mjs?v=be984f14';
+import { LIVERIES, LIVERY_KEYS } from './view/boats.mjs?v=be984f14';
+import { OWNER, KING, JACK, crewFor } from './view/people.mjs?v=be984f14';
+import { WORLDS } from './view/sky.mjs?v=be984f14';
+import { getCourse, COURSE_DEFS, COURSE_KEYS, pointInto, wrapA, wrapS } from './sim/courses.mjs?v=be984f14';
+import { Race, defaultSettings, DT, TUNES, TUNE_KEYS, BOOST, SIM_VERSION, encodeInputs, decodeInputs } from './sim/race-sim.mjs?v=be984f14';
+import { Rescue, arenaCourse, rescueSettings, ARENA, RESCUE, S as SHARK } from './sim/rescue.mjs?v=be984f14';
+import { Boss, dragonCourse, bossSettings, DRAGON, BOSS as FIGHT } from './sim/boss.mjs?v=be984f14';
+import { Leviathan, leviCourse, leviSettings, LEVI, FIGHT as LFIGHT, PHASES } from './sim/leviathan.mjs?v=be984f14';
+import { makeVoyage, bayCourse, voyageSettings, voyageChoices, VOYAGES, VOYAGES_READY as VOYAGE_KEYS } from './sim/voyages.mjs?v=be984f14';
 const VOYAGES_READY_ALL = VOYAGE_KEYS;
-import { FLEET, FLEET_KEYS, rivalBoats } from './view/fleet.mjs?v=ecb8b720';
-import { BOAT_STATS, boatTweak } from './sim/boat-stats.mjs?v=ecb8b720';
-import { Governor, RefreshWatch, measureRefresh } from './sim/governor.mjs?v=ecb8b720';
-import * as PR from './sim/progress.mjs?v=ecb8b720';
-import { Controls } from './ui/controls.mjs?v=ecb8b720';
-import { Sound } from './ui/sound.mjs?v=ecb8b720';
-import * as PF from './ui/platform.mjs?v=ecb8b720';
+import { FLEET, FLEET_KEYS, rivalBoats } from './view/fleet.mjs?v=be984f14';
+import { BOAT_STATS, boatTweak } from './sim/boat-stats.mjs?v=be984f14';
+import { Governor, RefreshWatch, measureRefresh } from './sim/governor.mjs?v=be984f14';
+import * as PR from './sim/progress.mjs?v=be984f14';
+import { Controls } from './ui/controls.mjs?v=be984f14';
+import { Sound } from './ui/sound.mjs?v=be984f14';
+import * as PF from './ui/platform.mjs?v=be984f14';
 
-export const VERSION = 'crest-run 0.10.1', BUILD = '2026-11-17 #ecb8b720';
+export const VERSION = 'crest-run 0.11.0', BUILD = '2026-11-17 #be984f14';
 const $ = (id) => document.getElementById(id);
 const Q = new URLSearchParams(location.search);
 // on a desk (a local address) the page takes two test switches from its address that a published page ignores: the computer at
@@ -70,7 +71,9 @@ const G = window.__game = { version: VERSION, build: BUILD, stage, controls, sou
   probe: { n: 0, deltas: [] }, probes: 0, lastRuns: [], storage: true, calT: 0, calTry: 0, calDone: 0, resultsAt: null, hudOn: Q.get('hud') !== '0', resumeLeft: 0, resumeShown: '', afterCal: null, dirty: true, filmT: 0, inputAt: performance.now(), draws: 0 };
 const settings = () => G.save.settings;
 G.sel = { mode: ['trial', 'rescue'].includes(G.save.last.mode) ? G.save.last.mode : 'race', course: COURSE_KEYS.includes(G.save.last.course) ? G.save.last.course : COURSE_KEYS[0],
-  tune: G.save.unlocked.tunes.includes(G.save.last.tune) ? G.save.last.tune : 'cruise', livery: G.save.unlocked.liveries.includes(G.save.last.livery) ? G.save.last.livery : 'pearl', difficulty: settings().difficulty, level: ARENA.key, boat: FLEET[settings().boat] ? settings().boat : 'yacht' };
+  tune: G.save.unlocked.tunes.includes(G.save.last.tune) ? G.save.last.tune : 'cruise', livery: G.save.unlocked.liveries.includes(G.save.last.livery) ? G.save.last.livery : 'pearl', difficulty: settings().difficulty, level: ARENA.key, boat: FLEET_KEYS.includes(settings().boat) ? settings().boat : 'yacht' };
+if (Q.get('sailing') === '1') G.sel.mode = 'sailing';
+G.sailInput = { sheet: 0.5, autoTrim: true, rigBalance: 0, crewBalance: 0 };
 window.addEventListener('error', (e) => { G.errors.push(String(e.message).slice(0, 200)); });
 window.addEventListener('unhandledrejection', (e) => { G.errors.push('rejection: ' + String(e.reason && e.reason.message || e.reason).slice(0, 200)); });
 // the elements the race display writes every frame, looked up once (T-10)
@@ -96,7 +99,7 @@ function pulse(el, cls) { el.classList.remove(cls); void el.offsetWidth; el.clas
 
 function applySettings() {
   const s = settings();
-  stage.setCamera(s.camera, s.motion === 'full' ? 1 : 0.4);
+  stage.setCamera(controls.sailing ? (G.sailingCamera || 'chase') : s.camera, s.motion === 'full' ? 1 : 0.4);
   controls.setOptions({ maxDeg: s.maxDeg, invert: !!s.invert }); controls.prefer = s.steering;
   sound.setLevels({ sound: !!s.sound, music: !!s.music, volume: s.volume });
   gov.auto = s.quality === 'auto'; if (!gov.auto) gov.tier = s.quality;
@@ -111,6 +114,8 @@ function keepAwake() { PF.requestWake().then((ok) => { if (!ok && !G.wakeTold &&
 
 // ---------- the demo behind the menus: a race with every boat computer-steered, the camera circling the leader ----------
 function startDemo(courseKey = G.sel.course) {
+  controls.sailing = false; E.hud.classList.remove('sailing');
+  stage.setCamera(settings().camera, settings().motion === 'full' ? 1 : 0.4);
   const c = getCourse(courseKey), def = COURSE_DEFS[courseKey];
   stage.setWorld(Q.get('world') || def.world); stage.setCourse(c);
   const race = new Race({ ...defaultSettings(c, { rivals: 3, tune: G.sel.tune }), player: -1 }, c);
@@ -124,6 +129,9 @@ function startDemo(courseKey = G.sel.course) {
 function mine(set) { const b = set.boats[set.player]; b.tweak = boatTweak(b.tune, G.sel.boat); return set; }
 // ---------- a race the player steers ----------
 function startRace() {
+  if (G.sel.mode === 'sailing') return startSailingTrial();
+  controls.sailing = false; E.hud.classList.remove('sailing');
+  stage.setCamera(settings().camera, settings().motion === 'full' ? 1 : 0.4);
   if (G.sel.mode === 'rescue') return startRescue();
   const { mode, course: key, tune, livery, difficulty } = G.sel, c = getCourse(key), def = COURSE_DEFS[key];
   G.rescue = null; stage.setRescue(null); E.hud.classList.remove('rescue'); stage.setBoss(null); stage.setLevi(null); stage.setVoyage(null); E.hud.classList.remove('bossfight');
@@ -160,6 +168,69 @@ function startRace() {
   paintControlsHint(); show('race'); G.run.trackW = E.prog.clientWidth || 1; sound.music('race'); keepAwake();
   return crewReady;       // the figures at the helms have arrived: the film waits for this, a player does not
 }
+// A separate, unranked practice boat. The research-informed sail model is deliberately opt-in: existing races, records,
+// missions and their controls retain their own rules. Its tuning is a game prototype, not a measured polar of Jack's boat.
+async function startSailingTrial() {
+  const c = bayCourse(), wind = { x: 4, z: -3 }, set = voyageSettings(c, { tune: 'cruise', boat: 'jukung-racer' });
+  set.sailing = { wind };
+  const race = new Race(set, c), me = race.boats[0];
+  // Start across the breeze, so the first lesson is how a filled sail and the floats feel together.
+  me.h = me.ph = Math.atan2(wind.z, wind.x); me.vx = me.vz = me.r = 0;
+  G.race = race; G.rescue = null; G.ghost = null; G.mode = 'race'; G.acc = 0; G.timeScale = 1;
+  G.slowLeft = 0; G.slowArmed = false; G.paused = false; G.pausedBy = null; G.resultsAt = null; G.resumeLeft = 0;
+  G.sailInput = { sheet: 0.5, autoTrim: true, rigBalance: 0, crewBalance: 0 };
+  G.run = { mode: 'sailing', course: c.key, tune: 'cruise', livery: 'pearl', difficulty: 'practice', at: new Date().toISOString(),
+    frames: 0, late: 0, worst: 0, sumMs: 0, mot0: controls.tilt.counts.mot, th0: performance.now(), steerMode: controls.mode,
+    recentres0: controls.recentres, lastHud: 0, countShown: '', wake0: PF.wake.releases, trackW: 1, dots: [], coach: false };
+  stage.setRescue(null); stage.setBoss(null); stage.setLevi(null); stage.setVoyage(null); stage.setGhost(null);
+  stage.setWorld(Q.get('world') || 'dawn'); stage.setCourse(c); stage.setRace(race, ['pearl'], 0);
+  const ready = Promise.all([stage.setBoats(['jukung-racer']), stage.setSkippers([JACK])]);
+  stage.setCameraMode('chase'); controls.releaseAll(); controls.sailing = true;
+  G.sailingCamera = 'chase'; stage.setCamera('chase', settings().motion === 'full' ? 1 : 0.4);
+  E.hud.classList.remove('final', 'rescue', 'bossfight'); E.hud.classList.add('sailing');
+  E.count.textContent = ''; E.warn.style.display = 'none'; E.arrow.style.opacity = '0';
+  for (const k of Object.keys(H)) H[k] = null;
+  clearTimeout(msgT); E.msg.className = ''; msgPri = 0; msgUntil = 0;
+  clearTimeout(toastT); E.toast.classList.remove('show');
+  $('sail-balance').open = false; paintSailControls(); paintControlsHint();
+  show('race'); sound.music('menu'); sound.frame({ active: false, sailing: true }); keepAwake();
+  if (G.film) await ready;
+  return ready;
+}
+
+function paintSailControls() {
+  const input = G.sailInput;
+  $('sail-auto').textContent = input.autoTrim ? 'Assist ON' : 'Assist OFF';
+  $('sail-auto').setAttribute('aria-pressed', String(input.autoTrim));
+  $('sail-sheet').value = Math.round(input.sheet * 100);
+  $('sail-rig').value = Math.round(input.rigBalance * 100); $('sail-crew').value = Math.round(input.crewBalance * 100);
+  $('sail-rig-value').textContent = Math.abs(input.rigBalance) < 0.04 ? 'Centred' : input.rigBalance > 0 ? 'Forward' : 'Aft';
+  $('sail-crew-value').textContent = Math.abs(input.crewBalance) < 0.04 ? 'Centred' : input.crewBalance > 0 ? 'Starboard' : 'Port';
+}
+
+function paintSailing(race, run, dt, me) {
+  const left = race.go - race.t, ct = left > 0 ? String(Math.ceil(left)) : '';
+  if (ct !== run.countShown) { run.countShown = ct; E.count.textContent = ct; }
+  run.lastHud += dt; if (run.lastHud < 0.09) return; run.lastHud = 0;
+  const s = me.sailing;
+  setText('h-kmh', 'kmh', fmtSpeed(Math.max(0, me.u)));
+  if (!s) return;
+  const angle = Math.abs(s.awa), side = s.awa >= 0 ? 'starboard' : 'port';
+  $('sail-wind-arrow').style.transform = `rotate(${s.awa * 180 / Math.PI}deg)`;
+  $('sail-wind-speed').textContent = `${(Math.max(0, s.aws) * 1.94384).toFixed(1)} kn`;
+  $('sail-wind-from').textContent = angle < 0.15 ? 'From ahead' : angle > Math.PI - 0.2 ? 'From astern' : `From ${side}${angle < 1.05 ? ' bow' : angle > 2.1 ? ' quarter' : ''}`;
+  const trim = s.noGo ? 'Head off the wind to fill the sail' : s.aws < 0.7 ? 'Waiting for the breeze' : s.luffing || s.fill < 0.25 ? 'Sail luffing — adjust the sheet' : s.trimEfficiency < 0.55 ? 'Try a little ease or trim' : G.sailInput.autoTrim ? 'Assist is keeping the sail filled' : 'Sail drawing well';
+  $('sail-trim-state').textContent = trim;
+  $('sail-controls').classList.toggle('luffing', !!s.noGo || !!s.luffing);
+  if (G.sailInput.autoTrim) { G.sailInput.sheet = s.sheet; $('sail-sheet').value = Math.round(s.sheet * 100); }
+  $('sail-load-port').style.transform = `scaleX(${clamp(s.portLoad, 0, 1)})`;
+  $('sail-load-starboard').style.transform = `scaleX(${clamp(s.starboardLoad, 0, 1)})`;
+  const high = Math.max(s.portLoad, s.starboardLoad), difference = s.starboardLoad - s.portLoad;
+  $('sail-load-state').textContent = high > 0.9 ? 'Float pressed down — ease or balance' : Math.abs(difference) < 0.12 ? 'Floats sharing the load' : `${difference > 0 ? 'Starboard' : 'Port'} float taking the load`;
+  const warn = controls.mode === 'tilt' && controls.flat ? 'Tip the screen up towards you' : Math.abs(me.lat) > Math.max(10, race.c.halfWidth - 35) ? 'Near the edge of the sailing water' : '';
+  E.warn.textContent = warn; E.warn.style.display = warn ? 'block' : 'none';
+}
+
 // ---------- the rescue level: the yacht roams around the island, llamas swim from the ship to the shore, sharks come for them
 // (sim/rescue.mjs). The same boat, controls, camera and display frame as a race; no laps, no rivals. ----------
 async function startRescue() {
@@ -496,13 +567,22 @@ function paintVoyage(race, run, dt, me) {
   if (run.coach && race.racing && !Vg.over && !run.coached.first && race.lapT > 2.5) { run.coached.first = true; hudMsg(Vg.def.first, 'tip', 2, true); }
 }
 // the view in a race: the chase camera or the driver's own eyes (view/stage.mjs, CAMS.helm); kept with the settings
-function toggleView() { const s = settings(); s.camera = s.camera === 'helm' ? 'chase' : 'helm'; saveNow(); applySettings(); toast(s.camera === 'helm' ? 'View: from the helm' : 'View: behind the boat', 1400); }
+function toggleView() {
+  if (G.run && G.run.mode === 'sailing') {
+    G.sailingCamera = G.sailingCamera === 'high' ? 'chase' : 'high';
+    stage.setCamera(G.sailingCamera, settings().motion === 'full' ? 1 : 0.4);
+    toast(G.sailingCamera === 'high' ? 'View: above the sail' : 'View: behind the boat', 1400); return;
+  }
+  const s = settings(); s.camera = s.camera === 'helm' ? 'chase' : 'helm'; saveNow(); applySettings(); toast(s.camera === 'helm' ? 'View: from the helm' : 'View: behind the boat', 1400);
+}
 function paintControlsHint() {
-  const m = controls.mode;
+  const m = controls.mode, sailing = !!(G.run && G.run.mode === 'sailing' && G.mode === 'race');
   $('h-steer').classList.toggle('hidden', m !== 'touch'); $('h-left').classList.toggle('hidden', m === 'keys' || m === 'none');
-  $('h-left-label').textContent = m === 'tilt' ? 'HOLD: DRIFT' : 'SLIDE TO STEER'; $('h-recentre').classList.toggle('hidden', m !== 'tilt');
+  $('h-left-label').textContent = m === 'tilt' ? (sailing ? 'TILT TO STEER' : 'HOLD: DRIFT') : 'SLIDE TO STEER'; $('h-recentre').classList.toggle('hidden', m !== 'tilt');
+  $('sail-control-help').textContent = m === 'keys' ? 'A/D or arrows steer. Q eases, E sheets in, T toggles assist. C changes view.' : m === 'tilt' ? 'Tilt to steer. Move the sheet to take over from assist.' : 'Slide your left thumb to steer. Move the sheet to take over from assist.';
 }
 function endRace() {
+  if (G.run && G.run.mode === 'sailing') return; // practice never enters scoring or the results screen
   if (G.rescue) return endRescue();
   const race = G.race, run = G.run, me = race.boats[race.player], sm = race.summary(), st = race.standings(), key = run.course;
   const result = { mode: run.mode, course: key, tune: run.tune, livery: run.livery, finished: me.finished, place: sm.place, time: sm.time, sim: SIM_VERSION, boat: G.sel.boat, summary: sm,
@@ -565,6 +645,10 @@ function gapS(aMarks, aN, bMarks, bN) { const k = Math.min(aN, bN) - 1; return k
 const fmtGap = (g, name) => (g === null ? '' : `${Math.min(99.9, Math.abs(g)).toFixed(1)} s ${g >= 0 ? 'behind' : 'ahead of'} ${name}`);
 function paintHud(race, run, dt) {
   const me = race.boats[race.player], c = race.c, laps = race.settings.laps;
+  if (run.mode === 'sailing') {
+    if (controls.mode === 'touch') { const kx = Math.round(78 * controls.steer); if (kx !== H.knob) { H.knob = kx; E.knob.style.transform = `translateX(${kx}px)`; } }
+    return paintSailing(race, run, dt, me);
+  }
   // every frame, written only when the shown value changes: the boost bar, the button, the steering knob, the progress dots
   const fill = Math.round(500 * me.boostE / BOOST.max);
   if (fill !== H.fill) { H.fill = fill; E.fill.style.transform = `scaleX(${fill / 500})`; }
@@ -707,6 +791,7 @@ function onRescueEvent(e) {
 }
 function onRaceEvent(e, race, run) {
   stage.onEvent(e);
+  if (run.mode === 'sailing') return;
   if (G.rescue && onRescueEvent(e)) return;
   const mine = e.i === race.player || e.j === race.player, me = race.boats[race.player], laps = race.settings.laps;
   if (e.type === 'go') { sound.sfx('go'); if (run.coach) hudMsg('PASS BETWEEN THE LIT BUOYS', 'tip', 2, true); }
@@ -726,7 +811,7 @@ function onRaceEvent(e, race, run) {
   }
 }
 // the boost was asked for with too little in the bar: say so (P6)
-function boostPressed() { const r = G.race; if (G.mode !== 'race' || G.paused || !r || !r.racing) return; const me = r.boats[r.player]; if (!me.boosting && !me.finished && me.boostE < BOOST.minStart) { sound.sfx('empty'); pulse(E.btn, 'no'); } }
+function boostPressed() { const r = G.race; if (G.mode !== 'race' || G.paused || !r || !r.racing || G.run.mode === 'sailing') return; const me = r.boats[r.player]; if (!me.boosting && !me.finished && me.boostE < BOOST.minStart) { sound.sfx('empty'); pulse(E.btn, 'no'); } }
 
 // ---------- pause, background, rotation ----------
 // by: 'button', 'hidden' (the page went to the background), 'away' (the window lost the focus: a system panel over the game,
@@ -786,7 +871,7 @@ function onStart() {
   const audio = sound.start();
   const p = controls.start();
   sound.music('menu'); if (audio) setTimeout(() => sound.sfx('check'), 250);
-  G.started = true; G.afterCal = null;
+  G.started = true; G.afterCal = Q.get('sailing') === '1' ? 'sailing' : null;
   beginCal();
   return p;
 }
@@ -804,7 +889,9 @@ function finishCal(mode, note) {
   controls.setMode(mode);
   const back = G.afterCal; G.afterCal = null;
   if (back === 'pause' && G.mode === 'race' && G.paused) { paintControlsHint(); show('pause'); }
+  else if (back === 'sailing') { G.sel.mode = 'sailing'; startRace(); }
   else { paintMenu(); show('menu'); }
+  if (note && G.sel.mode === 'sailing') note = PF.env.touch ? 'Steer with your left thumb or tilt. Move the sheet to trim the sail.' : 'A/D or arrows steer. Q eases, E sheets in, T toggles trim assist.';
   if (note) toast(note, 4200);
 }
 function stepCal(th) {
@@ -832,8 +919,17 @@ function stepCal(th) {
 // ---------- menu ----------
 function paintMenu() {
   const s = G.save, sel = G.sel, lock = '<i class="lock"></i>';
+  const sailing = sel.mode === 'sailing';
+  $('s-menu').classList.toggle('sailing-menu', sailing);
+  $('p-tune').classList.toggle('hidden', sailing); $('p-colour').classList.toggle('hidden', sailing);
   const voyTab = sel.mode === 'rescue' && !!VOYAGES[sel.level];
   $('m-modes').querySelectorAll('button').forEach((b) => b.classList.toggle('on', b.dataset.mode === 'voyage' ? voyTab : b.dataset.mode === sel.mode && !voyTab));
+  if (sailing) {
+    $('m-diff-wrap').classList.add('hidden');
+    $('m-courses').innerHTML = '<article class="sailing-card"><div><span class="sail-eyebrow">OPEN WATER · JUKUNG</span><h2>Jack’s sailing trial</h2><p>Read the breeze. Feel the floats. Find the balance.</p><p class="dim small">A sailing practice inspired by traditional boat craft, ready for Jack to put through its paces.</p></div><div class="sailing-card-notes"><span><b>01</b> Steer across the wind</span><span><b>02</b> Ease and trim the sheet</span><span><b>03</b> Balance rig and crew</span></div></article>';
+    $('m-hint').textContent = 'Trim assist starts on. Move the sheet for manual control; open Balance the boat to adjust rig and crew weight.';
+    $('b-go').textContent = 'SAIL'; return;
+  }
   const rescue = sel.mode === 'rescue';
   if (rescue) {
     const rgb = (a) => `rgb(${a.map((v) => Math.round(255 * Math.min(1, Math.sqrt(v)))).join(',')})`;
@@ -915,6 +1011,11 @@ let last = null;
 const AUTO = { steer: 0, brake: 0, boost: 0 };
 // one physics step of the player's race: the player's inputs (or the computer's, for tests and film), the ghost in step, events
 function stepRace(race, run) {
+  if (run.mode === 'sailing') {
+    race.step(controls.steer, 0, 0, G.sailInput);
+    for (const e of race.events) onRaceEvent(e, race, run);
+    race.events.length = 0; return;
+  }
   if (G.auto || (G.rescue && G.rescue.handover && !G.rescue.over)) { if (G.rescue) G.rescue.pilot(AUTO); else race.drive(race.boats[race.player], AUTO); race.step(AUTO.steer, AUTO.brake, AUTO.boost); }
   else race.step(controls.steer, controls.brake, controls.boost);
   if (G.rescue) G.rescue.step();
@@ -938,11 +1039,12 @@ function simulate(dt) {
     if (G.paused) return;                                  // the sensors stopped in this very frame: the race is paused now (P5)
     G.acc += dt * G.timeScale;
     while (G.acc >= DT) { stepRace(race, run); G.acc -= DT; if (race.done) break; }
-    if (G.resultsAt !== null && (performance.now() >= G.resultsAt || race.done) || race.done) { endRace(); return; }
+    if (run.mode !== 'sailing' && (G.resultsAt !== null && (performance.now() >= G.resultsAt || race.done) || race.done)) { endRace(); return; }
     paintHud(race, run, dt);
     // the display inside the cockpit shows what the flat display shows (view/dash.mjs; drawn only in the view from the helm)
     stage.dash.set({ speed: E.kmh ? E.kmh.textContent : $('h-kmh').textContent, unit: settings().units === 'kn' ? 'kn' : 'km/h', boost: me.boostE / BOOST.max, place: E.place.textContent + $('h-of').textContent });
-    sound.frame({ speed: me.u / me.P.top, boost: me.boostLv, air: me.air, active: !me.finished });
+    sound.frame({ speed: run.mode === 'sailing' ? me.u / 6 : me.u / me.P.top, boost: me.boostLv, air: me.air, active: !me.finished,
+      sailing: run.mode === 'sailing', wind: me.sailing ? me.sailing.aws : 0 });
   } else if (G.mode === 'demo' || G.mode === 'after') {
     // behind the menus and the result screen every boat sails under the computer; a finished demo starts again, a finished race
     // of the player's sails on (afterglow) so the sea never stands still (T-07)
@@ -1012,7 +1114,7 @@ function wire() {
   $('set-grid').addEventListener('click', settingsClick);
   $('set-maxdeg').addEventListener('input', (e) => { settings().maxDeg = +e.target.value; $('set-maxdeg-v').textContent = e.target.value; controls.setOptions({ maxDeg: settings().maxDeg, invert: !!settings().invert }); });
   $('set-maxdeg').addEventListener('change', saveNow);
-  tap('b-go', () => { if (G.sel.mode === 'rescue' && VOYAGES[G.sel.level]) return openKies(); if (!PR.courseOpen(G.save, COURSE_KEYS, G.sel.course)) return; startRace(); });
+  tap('b-go', () => { if (G.sel.mode === 'rescue' && VOYAGES[G.sel.level]) return openKies(); if (G.sel.mode !== 'sailing' && !PR.courseOpen(G.save, COURSE_KEYS, G.sel.course)) return; startRace(); });
   tap('b-kies-go', startRace); tap('b-kies-back', () => { paintMenu(); show('menu'); });
   $('k-rows').addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b) return; sound.resume(); sound.sfx('click'); if (b.dataset.recall !== undefined) { if (b.dataset.recall === 'go') { G.kies.recall = null; G.recalled[G.sel.level] = true; } else G.kies.recall = +b.dataset.recall; return paintKies(); } const key = G.sel.level, C = G.choices[key] = voyageChoices(key, G.choices[key]); const row = VOYAGES[key].rows[+b.dataset.row]; C[row.key] = row.opts[+b.dataset.opt][0]; paintKies(); });
   tap('b-beach-done', () => { if (G.beach && G.beach.book) { G.beach = G.beach.keep; paintKies(); return show('kies'); } show('results'); });
@@ -1029,12 +1131,27 @@ function wire() {
   tap('b-sensors-tilt', () => { if (controls.tiltFresh()) { controls.setMode('tilt'); paintControlsHint(); resume(); } else toast('Still no motion data: steering stays on touch.'); });
   tap('b-restart', () => { G.paused = false; startRace(); });
   tap('b-quit', () => { G.paused = false; sound.music('menu'); startDemo(G.sel.course); paintMenu(); show('menu'); });
+  tap('sail-auto', () => { G.sailInput.autoTrim = !G.sailInput.autoTrim; paintSailControls(); });
+  $('sail-sheet').addEventListener('input', (e) => { G.sailInput.sheet = +e.target.value / 100; G.sailInput.autoTrim = false; paintSailControls(); });
+  $('sail-rig').addEventListener('input', (e) => { G.sailInput.rigBalance = +e.target.value / 100; paintSailControls(); });
+  $('sail-crew').addEventListener('input', (e) => { G.sailInput.crewBalance = +e.target.value / 100; paintSailControls(); });
+  // The controls are their own touch surface: a range drag never becomes a helm gesture or a held boost.
+  for (const ev of ['pointerdown', 'pointermove', 'pointerup', 'pointercancel']) $('sail-controls').addEventListener(ev, (e) => e.stopPropagation());
   // the play layer: thumbs
   const play = E.play;
   play.addEventListener('pointerdown', (e) => { e.preventDefault(); try { play.setPointerCapture(e.pointerId); } catch (x) { /* older browsers */ } const k = controls.down(e.pointerId, e.clientX, window.innerWidth); if (k === 'boost') { PF.haptic(); boostPressed(); } });
   play.addEventListener('pointermove', (e) => controls.move(e.pointerId, e.clientX));
   for (const ev of ['pointerup', 'pointercancel', 'lostpointercapture']) play.addEventListener(ev, (e) => controls.up(e.pointerId));
   window.addEventListener('keydown', (e) => {
+    const editing = e.target instanceof Element && e.target.closest('input, textarea, select, [contenteditable="true"]');
+    // A focused slider keeps its native navigation keys; the sailing shortcuts still work after a drag.
+    if (editing && (!editing.matches('input[type="range"]') || ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End', 'PageUp', 'PageDown'].includes(e.code))) return;
+    if (G.screen === 'race' && G.run && G.run.mode === 'sailing' && !G.paused && ['KeyQ', 'KeyE', 'KeyT'].includes(e.code)) {
+      e.preventDefault();
+      if (e.code === 'KeyT') { if (e.repeat) return; G.sailInput.autoTrim = !G.sailInput.autoTrim; }
+      else { G.sailInput.autoTrim = false; G.sailInput.sheet = clamp(G.sailInput.sheet + (e.code === 'KeyE' ? 0.035 : -0.035), 0, 1); }
+      paintSailControls(); return;
+    }
     if (e.repeat) return;
     if (e.code === 'KeyC' && G.screen === 'race') { toggleView(); return; }
     if (e.code === 'Escape' || e.code === 'KeyP') { if (['pause', 'resume', 'sensors'].includes(G.screen)) resume(); else if (G.screen === 'race') pause('button'); return; }
@@ -1107,6 +1224,11 @@ try {
   $('title-note').textContent = !PF.env.touch ? 'Keys: A and D or the arrows steer, space boosts, S brakes.'
     : (PF.env.secure ? 'Hold the phone sideways. START asks for motion access and turns the sound on.' : 'This page is not on https, so the phone gives it no motion data: you steer by touch.') + (PF.env.ios && !PF.env.standalone ? ' Tip: Share, Add to Home Screen gives full screen.' : '');
   $('title-build').textContent = `${VERSION}, built ${BUILD}`;
+  if (Q.get('sailing') === '1') {
+    $('b-start').textContent = 'SAILING TRIAL';
+    document.querySelector('#s-title .tag').textContent = 'Read the wind. Feel the floats. Find the balance.';
+    $('title-note').textContent = PF.env.touch ? 'Hold the phone sideways. Start sets up steering and sound.' : 'A/D or arrows steer · Q/E trim · T toggles trim assist';
+  }
   show('title'); checkRotation();
   // film: no menus; the race starts at once with the computer at the wheel and the caller owns the clock (G.filmStep)
   if (G.film) { G.started = true; G.auto = true; controls.mode = 'keys'; if (Q.get('course') && COURSE_KEYS.includes(Q.get('course'))) G.sel.course = Q.get('course'); if (Q.get('mode') === 'trial') G.sel.mode = 'trial'; if (Q.get('mode') === 'rescue') G.sel.mode = 'rescue'; if (Q.get('level') === DRAGON.key) G.sel.level = DRAGON.key; if (Q.get('level') === LEVI.key) G.sel.level = LEVI.key; if (VOYAGES[Q.get('level')]) G.sel.level = Q.get('level'); await startRace(); }

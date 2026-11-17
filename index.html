@@ -12,7 +12,7 @@
 <link rel="icon" href="./assets/icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="./assets/icon-180.png">
 <title>Crest Run</title>
-<link rel="stylesheet" href="./css/game.css?v=ecb8b720">
+<link rel="stylesheet" href="./css/game.css?v=be984f14">
 <script type="importmap">{ "imports": { "three": "./vendor/three-0.186.1/build/three.module.js", "three/addons/": "./vendor/three-0.186.1/examples/jsm/" } }</script>
 </head>
 <body>
@@ -44,6 +44,38 @@
   </div>
   <div id="h-left"><div id="h-steer"><i id="h-knob"></i></div><span id="h-left-label">HOLD: DRIFT</span></div>
   <div id="h-boostbtn"><span>BOOST</span></div>
+  <section id="sail-wind" aria-label="Sailing feedback">
+    <div class="sail-eyebrow">JACK'S SAILING TRIAL</div>
+    <div class="sail-wind-row">
+      <svg class="sail-compass" viewBox="0 0 64 64" aria-hidden="true">
+        <circle cx="32" cy="32" r="29" fill="none" stroke="currentColor" opacity=".28"/>
+        <path d="M32 22l6 20H26z" fill="currentColor" opacity=".6"/>
+        <g id="sail-wind-arrow"><path d="M32 4v13m-4-4l4 5 4-5" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></g>
+      </svg>
+      <div><small>APPARENT WIND</small><strong id="sail-wind-speed">Finding the breeze</strong><span id="sail-wind-from">Wind felt aboard</span></div>
+    </div>
+  </section>
+  <section id="sail-controls" aria-label="Sail controls">
+    <div class="sail-control-head"><strong>Sail trim</strong><button id="sail-auto" type="button" aria-pressed="true">Assist ON</button></div>
+    <label for="sail-sheet" class="sail-range-label"><span>Ease out</span><span>Sheet in</span></label>
+    <input id="sail-sheet" type="range" min="0" max="100" step="1" value="50" aria-label="Sail sheet, from fully eased to sheeted in"/>
+    <p id="sail-trim-state">Assist follows the wind</p>
+    <div class="sail-floats" aria-label="Outrigger loading">
+      <div><span>Port float</span><i><b id="sail-load-port"></b></i></div>
+      <div><span>Starboard float</span><i><b id="sail-load-starboard"></b></i></div>
+    </div>
+    <p id="sail-load-state">Balanced</p>
+    <details id="sail-balance">
+      <summary>Balance the boat</summary>
+      <label for="sail-rig">Rig balance <span id="sail-rig-value">Centred</span></label>
+      <input id="sail-rig" type="range" min="-100" max="100" step="1" value="0" aria-label="Rig balance, effort aft to forward"/>
+      <div class="sail-range-label"><span>Effort aft</span><span>Effort forward</span></div>
+      <label for="sail-crew">Crew weight <span id="sail-crew-value">Centred</span></label>
+      <input id="sail-crew" type="range" min="-100" max="100" step="1" value="0" aria-label="Crew weight, port to starboard"/>
+      <div class="sail-range-label"><span>Port</span><span>Starboard</span></div>
+      <p id="sail-control-help">Slide left to steer. Move the sheet to take over.</p>
+    </details>
+  </section>
 </div>
 
 <div id="screens">
@@ -80,7 +112,7 @@
     <div class="menu">
       <div class="menu-head">
         <div class="logo small"><span>CREST</span> <span>RUN</span></div>
-        <div class="tabs" id="m-modes"><button data-mode="race" class="on">Race</button><button data-mode="trial">Time trial</button><button data-mode="rescue">Rescue</button><button data-mode="voyage">Voyage</button></div>
+        <div class="tabs" id="m-modes"><button data-mode="race" class="on">Race</button><button data-mode="trial">Time trial</button><button data-mode="rescue">Rescue</button><button data-mode="voyage">Voyage</button><button id="b-sailing" data-mode="sailing">Sailing trial</button></div>
         <button id="b-menu-settings" class="ghost">Settings</button>
       </div>
       <div id="m-courses" class="cards"></div>
@@ -200,6 +232,6 @@ window.addEventListener('error', function (e) {
   if (b) { b.classList.remove('hidden'); b.onclick = function () { location.reload(); }; }
 }, true);
 </script>
-<script type="module" src="./src/main.mjs?v=ecb8b720"></script>
+<script type="module" src="./src/main.mjs?v=be984f14"></script>
 </body>
 </html>

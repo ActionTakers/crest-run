@@ -65,14 +65,14 @@ export class Sound {
     this.engBus.gain.setTargetAtTime(sound ? BUS.eng : 0, t, 0.05); this.sfxBus.gain.setTargetAtTime(sound ? BUS.sfx : 0, t, 0.05); this.musBus.gain.setTargetAtTime(music ? BUS.mus : 0, t, 0.05);
   }
   // once per frame. speed: share of top speed (above 1 with the boost); boost 0..1; air; active: a race is running
-  frame({ speed = 0, boost = 0, air = false, active = false } = {}) {
+  frame({ speed = 0, boost = 0, air = false, active = false, sailing = false, wind = 0 } = {}) {
     if (!this.ctx) return; this.state = this.ctx.state;
     const t = this.ctx.currentTime, u = Math.max(0, speed), a = air ? 1.22 : 1, f = (42 + 105 * u + 30 * boost) * a;
     this.o1.frequency.setTargetAtTime(f, t, 0.06); this.o2.frequency.setTargetAtTime(f * 1.012, t, 0.06); this.o3.frequency.setTargetAtTime(f * 2.0, t, 0.06); this.o4.frequency.setTargetAtTime(f * 0.5, t, 0.06); this.o5.frequency.setTargetAtTime(f * 3.0, t, 0.06);
     this.lp.frequency.setTargetAtTime(480 + 2100 * u + 1200 * boost, t, 0.08);
-    this.engGain.gain.setTargetAtTime(active ? 0.10 + 0.13 * Math.min(1.2, u) + 0.06 * boost : 0, t, 0.1);
-    this.water.g.gain.setTargetAtTime(active && !air ? 0.25 * u * u : 0, t, 0.12); this.water.b.frequency.setTargetAtTime(700 + 900 * u, t, 0.2);
-    this.jet.g.gain.setTargetAtTime(active ? 0.10 * boost : 0, t, 0.08);
+    this.engGain.gain.setTargetAtTime(active && !sailing ? 0.10 + 0.13 * Math.min(1.2, u) + 0.06 * boost : 0, t, 0.1);
+    this.water.g.gain.setTargetAtTime(active && !air ? 0.25 * u * u + (sailing ? Math.min(0.045, Math.max(0, wind) * 0.005) : 0) : 0, t, 0.12); this.water.b.frequency.setTargetAtTime(700 + 900 * u, t, 0.2);
+    this.jet.g.gain.setTargetAtTime(active && !sailing ? 0.10 * boost : 0, t, 0.08);
     this.musFilter.frequency.setTargetAtTime(this.mode === 'race' ? 1100 + 1800 * Math.min(1.2, u) + 2500 * boost : 1500, t, 0.25);
     this.level = u;
   }

@@ -8,18 +8,86 @@
 // own driver; two-way contact; a boost the driver controls; landings judged by steering; drafting; places; no per-step garbage.
 // World: metres; x and z on the water, y up. Heading h: forward f = (-sin h, cos h), right r = (-cos h, -sin h). Positive steer,
 // positive h and positive lateral offsets all mean right. Tests: tests/race-sim.test.mjs.
-import * as W from './waves.mjs?v=ecb8b720';
-import { wrapA, wrapS, projectInto, pointInto, lineOffAt, speedProfile } from './courses.mjs?v=ecb8b720';
+import * as W from './waves.mjs?v=be984f14';
+import { wrapA, wrapS, projectInto, pointInto, lineOffAt, speedProfile } from './courses.mjs?v=be984f14';
+import { JUKUNG_SPEC, JUKUNG_PHYSICS } from './jukung-spec.mjs?v=be984f14';
+import { makeSailingState, advanceSailing } from './sailing.mjs?v=be984f14';
 
 export const DT = 1 / 120;                 // physics step, s
 export const COUNTDOWN_S = 3;
 export const LAST_IN_S = 45;               // once every rival has finished, the player has this long to finish too
-export const SIM_VERSION = 'crest-1';      // stamped on recordings: a ghost made by another version is not replayed
+export const SIM_VERSION = 'crest-1';      // existing ranked/replay physics unchanged; sailing practice records no ghost
 const AIR = 0.3;                           // m above the water before the hull counts as airborne
 const DEG = Math.PI / 180;
 const K_HULL = 1 - Math.exp(-DT / 0.08);   // the hull bridges short chop: buoyancy follows the six-point mean through 80 ms
 const K_BOOST = 1 - Math.exp(-DT / 0.16);  // the boost fades in and out over about 0.16 s
 const clamp = (v, lo, hi) => (v < lo ? lo : v > hi ? hi : v);
+
+// Optional racing jukung hull + two float capsules. Their open gaps remain open; the
+// outrigger span must not become one solid, broad collision hull. Ordinary
+// boat-vs-boat pairs, including the tour jukung, retain their original contacts.
+function contactShapes(b) {
+  const P = b.P, isRacer = P.craft === 'jukung-racer';
+  const shapes = b._contactShapes || (b._contactShapes = Array.from({ length: isRacer ? 3 : 2 }, () => ({})));
+  const fx = -Math.sin(b.h), fz = Math.cos(b.h), rx = -Math.cos(b.h), rz = -Math.sin(b.h);
+  for (let k = 0; k < shapes.length; k++) {
+    const q = shapes[k], floating = isRacer && k > 0;
+    const side = floating ? (k === 1 ? -1 : 1) * P.floatOffset : 0;
+    const forward = isRacer ? 0 : (k === 0 ? -1 : 1) * P.length * 0.27;
+    q.radius = isRacer ? (floating ? P.floatRadius : P.beam / 2) : P.beam * 0.55;
+    const half = isRacer ? Math.max(0, (floating ? P.floatLength : P.length) / 2 - q.radius) : 0;
+    q.ax = b.x + rx * side + fx * (forward - half); q.az = b.z + rz * side + fz * (forward - half);
+    q.bx = b.x + rx * side + fx * (forward + half); q.bz = b.z + rz * side + fz * (forward + half);
+  }
+  return shapes;
+}
+
+// Closest points on two finite 2D segments, including zero-length circles.
+function capsuleDelta(a, b, out) {
+  const ux = a.bx - a.ax, uz = a.bz - a.az, vx = b.bx - b.ax, vz = b.bz - b.az;
+  const rx = a.ax - b.ax, rz = a.az - b.az;
+  const A = ux * ux + uz * uz, E = vx * vx + vz * vz, F = vx * rx + vz * rz;
+  let s = 0, t = 0;
+  if (A <= 1e-12) t = E > 1e-12 ? clamp(F / E, 0, 1) : 0;
+  else {
+    const C = ux * rx + uz * rz;
+    if (E <= 1e-12) s = clamp(-C / A, 0, 1);
+    else {
+      const B = ux * vx + uz * vz, den = A * E - B * B;
+      if (den > 1e-12) s = clamp((B * F - C * E) / den, 0, 1);
+      t = (B * s + F) / E;
+      if (t < 0) { t = 0; s = clamp(-C / A, 0, 1); }
+      else if (t > 1) { t = 1; s = clamp((B - C) / A, 0, 1); }
+    }
+  }
+  out[0] = a.ax + ux * s - b.ax - vx * t;
+  out[1] = a.az + uz * s - b.az - vz * t;
+}
+
+function resolveRacingJukungContact(a, b) {
+  const A = contactShapes(a), B = contactShapes(b), delta = [0, 0];
+  let hit = false, closing = 0;
+  for (const ca of A) for (const cb of B) {
+    capsuleDelta(ca, cb, delta);
+    let dx = delta[0], dz = delta[1], d = Math.hypot(dx, dz);
+    const radius = ca.radius + cb.radius;
+    if (d >= radius) continue;
+    if (d < 1e-9) { dx = a.x - b.x; dz = a.z - b.z; d = Math.hypot(dx, dz); if (d < 1e-9) { dx = -Math.cos(a.h); dz = -Math.sin(a.h); d = 1; } }
+    hit = true;
+    const nx = dx / d, nz = dz / d, push = Math.max(0, radius - Math.hypot(delta[0], delta[1])) / 2;
+    a.x += nx * push; a.z += nz * push; b.x -= nx * push; b.z -= nz * push;
+    // Apply the same translation to cached endpoints before the next contact.
+    for (const q of A) { q.ax += nx * push; q.bx += nx * push; q.az += nz * push; q.bz += nz * push; }
+    for (const q of B) { q.ax -= nx * push; q.bx -= nx * push; q.az -= nz * push; q.bz -= nz * push; }
+    const vn = (a.vx - b.vx) * nx + (a.vz - b.vz) * nz;
+    closing = Math.max(closing, -vn);
+    if (vn < 0.6) {
+      const impulse = vn < 0 ? -1.3 * vn / 2 : (0.6 - vn) / 2;
+      a.vx += impulse * nx; a.vz += impulse * nz; b.vx -= impulse * nx; b.vz -= impulse * nz;
+    }
+  }
+  return { hit, closing };
+}
 
 // Handling of the yacht, three tunes of one hull. turnRate: yaw rate cap, deg/s, reached from turnRef m/s; yawTau: yaw response
 // time; grip: decay rate of sideways speed (1/s); carve: share of lost sideways speed turned into forward speed; surf: how much
@@ -71,6 +139,18 @@ export class Race {
     const n = this.settings.boats.length;
     this.player = this.settings.player;
     this.boats = this.settings.boats.map((spec, i) => makeBoat(i, spec, course, -8 - 11 * Math.floor(i / 2), i % 2 === 0 ? -5 : 5));
+    // Optional sailing trial: one player, explicit wind/trim, no rankings or ghost
+    // recording. Only this player becomes a jukung-racer. The normal tour jukung,
+    // existing fleet races and voyage propulsion stay on their arcade
+    // model until those missions/AI are deliberately retuned for sailing speeds.
+    this.nonRanked = !!this.settings.sailing;
+    this.sailingOptions = typeof this.settings.sailing === 'object' ? this.settings.sailing : {};
+    if (this.nonRanked && this.boats[this.player]) {
+      const b = this.boats[this.player];
+      Object.assign(b.P, JUKUNG_PHYSICS);
+      b.y = b.py = JUKUNG_SPEC.draft;
+      b.sailing = makeSailingState(this.sailingOptions);
+    }
     // what the boat can do with the boost on (a driver's skill scales it: pace); corners limit it, straights do not
     for (const b of this.boats) { b.prof = speedProfile(course, { ...b.P, top: b.P.top * (1 + BOOST.speed) }, 1); if (b.ai) b.pace = b.ai.skill; }
     this.order = this.boats.map((b) => b.i);          // boat indices by place, the leader first
@@ -78,7 +158,7 @@ export class Race {
     this.events = [];                                // what happened this step, for sound and effects; the caller empties it
     // free: no laps, no gates and no time cap: the boat roams the course's lane and another module decides when it ends
     // (sim/rescue.mjs, 2026-11-15)
-    this.free = !!this.settings.free;
+    this.free = this.nonRanked || !!this.settings.free;
     this.capS = this.free ? Infinity : this.settings.laps * course.len / 6 + 30;
     this.lastInT = null;                             // the race time at which the last rival finished with the player still out
     this._o = [0, 0, 0]; this._h = new Float64Array(6); this._in = { steer: 0, brake: 0, boost: 0 };
@@ -93,12 +173,12 @@ export class Race {
   }
   // One step. steer in [-1, 1] (quantised to hundredths here, so a live run and its replay see the same numbers), brake and
   // boost 0 or 1: the inputs of the player's boat. Computer-steered boats drive themselves.
-  step(steerIn = 0, brakeIn = 0, boostIn = 0) {
+  step(steerIn = 0, brakeIn = 0, boostIn = 0, sailingInput = {}) {
     // a finished race stands still, unless the caller keeps it alive as a backdrop (afterglow: the result screen; every boat then
     // sails on under the computer, nothing is recorded or scored any more)
     if (this.done && !this.afterglow) return;
     const q = Math.round(clamp(Number.isFinite(steerIn) ? steerIn : 0, -1, 1) * 100) || 0, brk = brakeIn ? 1 : 0, bst = boostIn ? 1 : 0;   // || 0: no -0
-    if (!this.done) { this.rec.steer.push(q); this.rec.flags.push(brk | (bst << 1)); }
+    if (!this.done && !this.nonRanked) { this.rec.steer.push(q); this.rec.flags.push(brk | (bst << 1)); }
     const racing = this.t >= this.go, B = this.boats, inp = this._in;
     if (racing && this.t - DT < this.go) this.events.push({ type: 'go' });
     for (let i = 0; i < B.length; i++) {
@@ -106,17 +186,18 @@ export class Race {
       b.px = b.x; b.py = b.y; b.pz = b.z; b.ph = b.h; b.ppitch = b.pitch; b.proll = b.roll;
       if (i === this.player && !b.finished && !this.done) { inp.steer = q / 100; inp.brake = brk; inp.boost = bst; }
       else this.drive(b, inp);
+      if (b.sailing) { inp.brake = 0; inp.boost = 0; }
       b.steer = inp.steer; b.brake = inp.brake; b.boostIn = inp.boost;
-      this.stepBoat(b, inp.steer, inp.brake, inp.boost, racing);
+      this.stepBoat(b, inp.steer, inp.brake, inp.boost, racing, sailingInput);
     }
-    if (racing) { this.contacts(); this.drafts(); this.places(); }
+    if (racing) { this.contacts(); if (!this.nonRanked) this.drafts(); this.places(); }
     this.t += DT; this.step_++;
     if (this.over && this.t - this.overAt > 6) this.finish('finished');
     // Every rival is in and the player is still out: the race ends LAST_IN_S later. Without this a player who cannot finish
     // waited out the long cap alone, five minutes and more (the outside critic's finding 5, 2026-11-14; the slowest stand-in of
     // tools/balance.mjs finishes at most 17.5 s behind the winner).
     // (a race without a player, the demo behind the menus, is over at its last finish and never comes here with every boat in)
-    if (B.length > 1 && !this.over) {
+    if (!this.nonRanked && B.length > 1 && !this.over) {
       if (this.lastInT === null) { let all = true; for (let i = 0; i < B.length; i++) if (i !== this.player && !B[i].finished) { all = false; break; } if (all) { this.lastInT = this.lapT; this.events.push({ type: 'lastIn', left: LAST_IN_S }); } }
       else if (this.lapT - this.lastInT > LAST_IN_S) this.finish('time limit');
     }
@@ -183,7 +264,8 @@ export class Race {
     return Math.atan2(-(o[0] - x0), o[1] - z0);
   }
   // ---------- one boat, one step ----------
-  stepBoat(b, s, brk, bst, racing) {
+  stepBoat(b, s, brk, bst, racing, sailingInput = {}) {
+    if (b.sailing) { this.stepSailingBoat(b, s, sailingInput, racing); return; }
     const P = b.P, dt = DT, c = this.c, wv = this.waves, t = this.t, h6 = this._h;
     // ---- planar motion ----
     let fx = -Math.sin(b.h), fz = Math.cos(b.h), rx = -Math.cos(b.h), rz = -Math.sin(b.h);
@@ -214,7 +296,7 @@ export class Race {
     const off = Math.abs(b.lat) > c.halfWidth;
     if (off) du -= 0.8 * u;
     // ---- the sea under the hull: six points (bow, middle, stern on each side) ----
-    const L = P.length * 0.45, Bm = P.beam * 0.5;
+    const L = P.length * 0.45, Bm = (P.supportBeam || P.beam) * 0.5;
     h6[0] = W.heightFast(wv, b.x + fx * L - rx * Bm, b.z + fz * L - rz * Bm, t, 3); h6[1] = W.heightFast(wv, b.x + fx * L + rx * Bm, b.z + fz * L + rz * Bm, t, 3);
     h6[2] = W.heightFast(wv, b.x - rx * Bm, b.z - rz * Bm, t, 3); h6[3] = W.heightFast(wv, b.x + rx * Bm, b.z + rz * Bm, t, 3);
     h6[4] = W.heightFast(wv, b.x - fx * L - rx * Bm, b.z - fz * L - rz * Bm, t, 3); h6[5] = W.heightFast(wv, b.x - fx * L + rx * Bm, b.z - fz * L + rz * Bm, t, 3);
@@ -282,6 +364,19 @@ export class Race {
       }
     }
   }
+  stepSailingBoat(b, steer, input, racing) {
+    if (!racing) return;
+    const fX = -Math.sin(b.h), fZ = Math.cos(b.h), rX = -Math.cos(b.h), rZ = -Math.sin(b.h);
+    const L = JUKUNG_SPEC.hullLength * 0.45, F = JUKUNG_SPEC.floatOffset;
+    const at = (forward, right) => W.heightFast(this.waves,
+      b.x + fX * forward + rX * right, b.z + fZ * forward + rZ * right, this.t, 3);
+    const water = { bow: at(L, 0), centre: at(0, 0), stern: at(-L, 0), port: at(0, -F), starboard: at(0, F) };
+    advanceSailing(b, { ...input, steer }, this.sailingOptions, DT, water);
+    b.hull = water.centre;
+    projectInto(this.c, b.x, b.z, b.s, this._o);
+    b.prog += wrapS(this.c, this._o[0] - b.s); b.s = this._o[0]; b.lat = this._o[1];
+    b.topU = Math.max(b.topU, b.u); b.sumU += b.u; b.nU++;
+  }
   scoreGates(b, p0, p1) {
     const gs = this.c.gates;
     for (;;) {
@@ -308,7 +403,8 @@ export class Race {
       const a = B[i], b = B[j];
       if ((a.x - b.x) ** 2 + (a.z - b.z) ** 2 > 196) { this._contact[i * n + j] = 0; continue; }
       let hit = false, closing = 0;
-      for (let ka = -1; ka <= 1; ka += 2) for (let kb = -1; kb <= 1; kb += 2) {
+      if (a.P.craft === 'jukung-racer' || b.P.craft === 'jukung-racer') ({ hit, closing } = resolveRacingJukungContact(a, b));
+      else for (let ka = -1; ka <= 1; ka += 2) for (let kb = -1; kb <= 1; kb += 2) {
         const la = a.P.length * 0.27 * ka, lb = b.P.length * 0.27 * kb;
         const ax = a.x - Math.sin(a.h) * la, az = a.z + Math.cos(a.h) * la, bx = b.x - Math.sin(b.h) * lb, bz = b.z + Math.cos(b.h) * lb;
         const dx = ax - bx, dz = az - bz, d = Math.hypot(dx, dz), rr = a.P.beam * 0.55 + b.P.beam * 0.55;

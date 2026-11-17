@@ -4,7 +4,7 @@
 // Covers the tilt edge cases of the F1 analysis: a permission prompt that answers late or never (INPUT-04), sensor events that arrive late
 // (INPUT-03: offered, never switched silently), a phone lying flat (INPUT-11), a recentre that does not jump (INPUT-10).
 // Written 2026-11-13 by the yacht project session.
-import { TiltInput } from '../sim/tilt-input.mjs?v=ecb8b720';
+import { TiltInput } from '../sim/tilt-input.mjs?v=be984f14';
 
 const clamp = (v, lo, hi) => (v < lo ? lo : v > hi ? hi : v);
 const now = () => performance.now();
@@ -15,6 +15,7 @@ export class Controls {
     this.mode = 'none';            // 'tilt', 'touch' or 'keys' once started
     this.prefer = 'auto';          // the player's setting: 'auto', 'tilt' or 'touch'
     this.steer = 0; this.brake = 0; this.boost = 0;
+    this.sailing = false;         // the sailing trial keeps steering, with sheet controls instead of throttle and drift
     this.perm = null; this.asking = false; this.started = false; this.flat = false; this.lostAt = null; this.tiltSeen = false;
     this.blend = 0; this.out = 0;
     this.t = { steerId: null, x0: 0, target: 0, value: 0, boost: new Set(), brake: new Set(), w: 800, range: 70 };
@@ -58,6 +59,7 @@ export class Controls {
   // ---- pointer events of the play layer (w = its width in CSS px) ----
   down(id, x, w) {
     const T = this.t; T.w = w;
+    if (this.sailing && (x >= w * 0.5 || this.mode === 'tilt')) return null;
     if (x >= w * 0.5) { T.boost.add(id); return 'boost'; }
     if (this.mode === 'tilt') { T.brake.add(id); return 'brake'; }
     if (T.steerId === null) { T.steerId = id; T.x0 = x; T.target = 0; return 'steer'; }
@@ -69,6 +71,7 @@ export class Controls {
   key(code, down) {
     const K = this.k;
     if (code === 'ArrowLeft' || code === 'KeyA') K.left = down; else if (code === 'ArrowRight' || code === 'KeyD') K.right = down;
+    else if (this.sailing) return false;
     else if (code === 'Space' || code === 'ArrowUp' || code === 'KeyW') K.boost = down; else if (code === 'ArrowDown' || code === 'KeyS' || code === 'ShiftLeft') K.brake = down; else return false;
     if (down && !K.used) { K.used = true; if (this.mode === 'none' || this.mode === 'touch') { this.mode = 'keys'; this.onChange('keys'); } }
     return true;
