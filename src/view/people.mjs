@@ -79,7 +79,8 @@ export class People {
   keepOnly(ids) { this.keep = new Set(ids); for (const [id, s] of this.src) if (!this.keep.has(id)) { disposeModel(s.scene); this.src.delete(id); } }
 }
 function disposeModel(root) { root.traverse((o) => { if (!o.isMesh) return; o.geometry.dispose(); for (const m of Array.isArray(o.material) ? o.material : [o.material]) { for (const v of Object.values(m)) if (v && v.isTexture) v.dispose(); m.dispose(); } if (o.skeleton) o.skeleton.dispose(); }); }
-// A clip as the rig needs it: the turn of every joint, and the place of the hips only. The files carry place and size tracks
+// A clip as the rig needs it: the turn of every joint, and the place of the hips only. (Since 0.10.1 the files themselves hold no
+// more than that: tools/slim-assets.mjs. This stays for a file that still does.) Until then the files carried place and size tracks
 // for all 78 joints, three times the work a frame for nothing that shows (the smoke test's slow-processor check fell behind).
 // (the hips: the joint whose height changes most over the clip, which is what lifts a hop)
 export function lightClip(clip) {

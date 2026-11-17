@@ -16,6 +16,7 @@
 // 0.9.0 (the same day, after the owner's six pictures of 14:14: the project's research/A7-target-pictures): the jukung's look
 // follows the pictures (view/jukung.mjs), the telling on the beach has a table of planks with nine palm leaves and their signs,
 // the slopes are forested, a village is lit at night, rain falls under the squall, the overdue boat has a canopy.
+// 0.10.1 (2026-11-17): the same game with lighter model files (tools/slim-assets.mjs): nothing that is shown has changed.
 // 0.10.0 (the same day): the two figures of the voyages (view/people.mjs, KING and JACK): the king at the helm of the jukung,
 // the little captain as its lookout, in his own boat or by his fire; and the artwork on the sail (view/jukung.mjs).
 // 0.8.0 (the same day, plan PLAN-MONKEYKING.md of the project): a sixth boat made wholly in code, the jukung (view/jukung.mjs),
@@ -23,26 +24,26 @@
 // on the beach with nine lesson leaves a voyage; a Voyage tab in the menu; a film camera that travels with the boat.
 // 0.7.0 (the same day): each boat handles its own way (sim/boat-stats.mjs), a display inside the cockpit for the view from the
 // helm (view/dash.mjs), a fifth boat (the red catamaran without its lettering), and a ghost that remembers its boat.
-import { Stage, CAMS } from './view/stage.mjs?v=281086e4';
-import { LIVERIES, LIVERY_KEYS } from './view/boats.mjs?v=281086e4';
-import { OWNER, KING, crewFor } from './view/people.mjs?v=281086e4';
-import { WORLDS } from './view/sky.mjs?v=281086e4';
-import { getCourse, COURSE_DEFS, COURSE_KEYS, pointInto, wrapA, wrapS } from './sim/courses.mjs?v=281086e4';
-import { Race, defaultSettings, DT, TUNES, TUNE_KEYS, BOOST, SIM_VERSION, encodeInputs, decodeInputs } from './sim/race-sim.mjs?v=281086e4';
-import { Rescue, arenaCourse, rescueSettings, ARENA, RESCUE, S as SHARK } from './sim/rescue.mjs?v=281086e4';
-import { Boss, dragonCourse, bossSettings, DRAGON, BOSS as FIGHT } from './sim/boss.mjs?v=281086e4';
-import { Leviathan, leviCourse, leviSettings, LEVI, FIGHT as LFIGHT, PHASES } from './sim/leviathan.mjs?v=281086e4';
-import { makeVoyage, bayCourse, voyageSettings, voyageChoices, VOYAGES, VOYAGES_READY as VOYAGE_KEYS } from './sim/voyages.mjs?v=281086e4';
+import { Stage, CAMS } from './view/stage.mjs?v=ecb8b720';
+import { LIVERIES, LIVERY_KEYS } from './view/boats.mjs?v=ecb8b720';
+import { OWNER, KING, crewFor } from './view/people.mjs?v=ecb8b720';
+import { WORLDS } from './view/sky.mjs?v=ecb8b720';
+import { getCourse, COURSE_DEFS, COURSE_KEYS, pointInto, wrapA, wrapS } from './sim/courses.mjs?v=ecb8b720';
+import { Race, defaultSettings, DT, TUNES, TUNE_KEYS, BOOST, SIM_VERSION, encodeInputs, decodeInputs } from './sim/race-sim.mjs?v=ecb8b720';
+import { Rescue, arenaCourse, rescueSettings, ARENA, RESCUE, S as SHARK } from './sim/rescue.mjs?v=ecb8b720';
+import { Boss, dragonCourse, bossSettings, DRAGON, BOSS as FIGHT } from './sim/boss.mjs?v=ecb8b720';
+import { Leviathan, leviCourse, leviSettings, LEVI, FIGHT as LFIGHT, PHASES } from './sim/leviathan.mjs?v=ecb8b720';
+import { makeVoyage, bayCourse, voyageSettings, voyageChoices, VOYAGES, VOYAGES_READY as VOYAGE_KEYS } from './sim/voyages.mjs?v=ecb8b720';
 const VOYAGES_READY_ALL = VOYAGE_KEYS;
-import { FLEET, FLEET_KEYS, rivalBoats } from './view/fleet.mjs?v=281086e4';
-import { BOAT_STATS, boatTweak } from './sim/boat-stats.mjs?v=281086e4';
-import { Governor, RefreshWatch, measureRefresh } from './sim/governor.mjs?v=281086e4';
-import * as PR from './sim/progress.mjs?v=281086e4';
-import { Controls } from './ui/controls.mjs?v=281086e4';
-import { Sound } from './ui/sound.mjs?v=281086e4';
-import * as PF from './ui/platform.mjs?v=281086e4';
+import { FLEET, FLEET_KEYS, rivalBoats } from './view/fleet.mjs?v=ecb8b720';
+import { BOAT_STATS, boatTweak } from './sim/boat-stats.mjs?v=ecb8b720';
+import { Governor, RefreshWatch, measureRefresh } from './sim/governor.mjs?v=ecb8b720';
+import * as PR from './sim/progress.mjs?v=ecb8b720';
+import { Controls } from './ui/controls.mjs?v=ecb8b720';
+import { Sound } from './ui/sound.mjs?v=ecb8b720';
+import * as PF from './ui/platform.mjs?v=ecb8b720';
 
-export const VERSION = 'crest-run 0.10.0', BUILD = '2026-11-16 #281086e4';
+export const VERSION = 'crest-run 0.10.1', BUILD = '2026-11-17 #ecb8b720';
 const $ = (id) => document.getElementById(id);
 const Q = new URLSearchParams(location.search);
 // on a desk (a local address) the page takes two test switches from its address that a published page ignores: the computer at

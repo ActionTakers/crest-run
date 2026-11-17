@@ -3,22 +3,22 @@
 // shows it, interpolated between the last two physics steps so the picture is smooth at any frame rate.
 // Written 2026-11-13 by the yacht project session.
 import * as THREE from 'three';
-import * as W from '../sim/waves.mjs?v=281086e4';
-import { pointInto, wrapA } from '../sim/courses.mjs?v=281086e4';
-import { Sky, WORLDS, makeNoiseTexture } from './sky.mjs?v=281086e4';
-import { Sea } from './sea.mjs?v=281086e4';
-import { Post } from './post.mjs?v=281086e4';
-import { Wake, Spray } from './fx.mjs?v=281086e4';
-import { loadYacht, BoatVisual } from './boats.mjs?v=281086e4';
-import { Scenery } from './scenery.mjs?v=281086e4';
-import { RescueView } from './rescue-view.mjs?v=281086e4';
-import { People, crewClip, tick, JACK, CAST_H, SIT_HIP } from './people.mjs?v=281086e4';
-import { BossView } from './boss-view.mjs?v=281086e4';
-import { LeviathanView } from './leviathan-view.mjs?v=281086e4';
-import { FLEET } from './fleet.mjs?v=281086e4';
-import { Dash } from './dash.mjs?v=281086e4';
-import { makeJukung, tickJukung } from './jukung.mjs?v=281086e4';
-import { BayView } from './bay-view.mjs?v=281086e4';
+import * as W from '../sim/waves.mjs?v=ecb8b720';
+import { pointInto, wrapA } from '../sim/courses.mjs?v=ecb8b720';
+import { Sky, WORLDS, makeNoiseTexture } from './sky.mjs?v=ecb8b720';
+import { Sea } from './sea.mjs?v=ecb8b720';
+import { Post } from './post.mjs?v=ecb8b720';
+import { Wake, Spray } from './fx.mjs?v=ecb8b720';
+import { loadYacht, BoatVisual } from './boats.mjs?v=ecb8b720';
+import { Scenery } from './scenery.mjs?v=ecb8b720';
+import { RescueView } from './rescue-view.mjs?v=ecb8b720';
+import { People, crewClip, tick, JACK, CAST_H, SIT_HIP } from './people.mjs?v=ecb8b720';
+import { BossView } from './boss-view.mjs?v=ecb8b720';
+import { LeviathanView } from './leviathan-view.mjs?v=ecb8b720';
+import { FLEET } from './fleet.mjs?v=ecb8b720';
+import { Dash } from './dash.mjs?v=ecb8b720';
+import { makeJukung, tickJukung } from './jukung.mjs?v=ecb8b720';
+import { BayView } from './bay-view.mjs?v=ecb8b720';
 
 const clamp = (v, lo, hi) => (v < lo ? lo : v > hi ? hi : v);
 const smooth = (e0, e1, x) => { const t = clamp((x - e0) / (e1 - e0), 0, 1); return t * t * (3 - 2 * t); };

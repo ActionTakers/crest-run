@@ -9,8 +9,8 @@
 // free mode like sim/boss.mjs. Written 2026-11-15 by the yacht project session on the owner's words of that day ("make our
 // next one according to these teachings", DECISIONS.md). Every number is tuned with the stand-in driver below, never by a
 // person. Tests: tests/leviathan.test.mjs.
-import { DT, BOOST, Race } from './race-sim.mjs?v=281086e4';
-import { buildCourse, wrapA } from './courses.mjs?v=281086e4';
+import { DT, BOOST, Race } from './race-sim.mjs?v=ecb8b720';
+import { buildCourse, wrapA } from './courses.mjs?v=ecb8b720';
 
 const DEG = Math.PI / 180;
 const clamp = (v, lo, hi) => (v < lo ? lo : v > hi ? hi : v);
