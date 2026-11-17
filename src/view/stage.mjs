@@ -3,24 +3,24 @@
 // shows it, interpolated between the last two physics steps so the picture is smooth at any frame rate.
 // Written 2026-11-13 by the yacht project session.
 import * as THREE from 'three';
-import * as W from '../sim/waves.mjs?v=be984f14';
-import { pointInto, wrapA } from '../sim/courses.mjs?v=be984f14';
-import { Sky, WORLDS, makeNoiseTexture } from './sky.mjs?v=be984f14';
-import { Sea } from './sea.mjs?v=be984f14';
-import { Post } from './post.mjs?v=be984f14';
-import { Wake, Spray } from './fx.mjs?v=be984f14';
-import { loadYacht, BoatVisual } from './boats.mjs?v=be984f14';
-import { Scenery } from './scenery.mjs?v=be984f14';
-import { RescueView } from './rescue-view.mjs?v=be984f14';
-import { People, crewClip, tick, JACK, CAST_H, SIT_HIP } from './people.mjs?v=be984f14';
-import { BossView } from './boss-view.mjs?v=be984f14';
-import { LeviathanView } from './leviathan-view.mjs?v=be984f14';
-import { FLEET } from './fleet.mjs?v=be984f14';
-import { Dash } from './dash.mjs?v=be984f14';
-import { makeJukung, tickJukung } from './jukung.mjs?v=be984f14';
-import { makeRacingJukung, tickRacingJukung } from './jukung-racing.mjs?v=be984f14';
-import { JUKUNG_SPEC } from '../sim/jukung-spec.mjs?v=be984f14';
-import { BayView } from './bay-view.mjs?v=be984f14';
+import * as W from '../sim/waves.mjs?v=7d4a3824';
+import { pointInto, wrapA } from '../sim/courses.mjs?v=7d4a3824';
+import { Sky, WORLDS, makeNoiseTexture } from './sky.mjs?v=7d4a3824';
+import { Sea } from './sea.mjs?v=7d4a3824';
+import { Post } from './post.mjs?v=7d4a3824';
+import { Wake, Spray } from './fx.mjs?v=7d4a3824';
+import { loadYacht, BoatVisual } from './boats.mjs?v=7d4a3824';
+import { Scenery } from './scenery.mjs?v=7d4a3824';
+import { RescueView } from './rescue-view.mjs?v=7d4a3824';
+import { People, crewClip, tick, JACK, CAST_H, SIT_HIP } from './people.mjs?v=7d4a3824';
+import { BossView } from './boss-view.mjs?v=7d4a3824';
+import { LeviathanView } from './leviathan-view.mjs?v=7d4a3824';
+import { FLEET } from './fleet.mjs?v=7d4a3824';
+import { Dash } from './dash.mjs?v=7d4a3824';
+import { makeJukung, tickJukung } from './jukung.mjs?v=7d4a3824';
+import { makeRacingJukung, tickRacingJukung } from './jukung-racing.mjs?v=7d4a3824';
+import { JUKUNG_SPEC } from '../sim/jukung-spec.mjs?v=7d4a3824';
+import { BayView } from './bay-view.mjs?v=7d4a3824';
 
 const clamp = (v, lo, hi) => (v < lo ? lo : v > hi ? hi : v);
 const smooth = (e0, e1, x) => { const t = clamp((x - e0) / (e1 - e0), 0, 1); return t * t * (3 - 2 * t); };
@@ -79,13 +79,15 @@ export class Stage {
     this._v = new THREE.Vector3(); this._o = [0, 0, 0];
     this.stats = { calls: 0, triangles: 0 };
   }
-  async load(base = './assets/') {
-    this.base = base; this.yacht = await loadYacht(base + 'models/yacht-b04.glb'); this.yacht.key = 'yacht'; this.yacht.paint = true;
+  async load(base = './assets/', { bay = false } = {}) {
+    this.base = base;
+    this.yacht = bay ? makeJukung() : await loadYacht(base + 'models/yacht-b04.glb');
+    this.yacht.key = bay ? 'jukung' : 'yacht'; this.yacht.paint = !bay;
     this.dash = new Dash();                                                   // the display inside the cockpit (view/dash.mjs)
-    this.fleet = { yacht: this.yacht }; this.fleetLoads = new Map();          // the other boats' models arrive when a race needs them
+    this.fleet = { [this.yacht.key]: this.yacht }; this.fleetLoads = new Map(); // the other boats' models arrive when needed
     await this.scenery.load(base + 'models/kit.glb');
     // the rescue level's models load behind the title screen; a start of that level waits for them (main.mjs)
-    this.rescueLoad = this.rescueView.load(base).catch((e) => { console.warn('rescue models not loaded: ' + (e && e.message)); return false; });
+    this.rescueLoad = bay ? Promise.resolve(false) : this.rescueView.load(base).catch((e) => { console.warn('rescue models not loaded: ' + (e && e.message)); return false; });
     return { yacht: { triangles: this.yacht.triangles, ms: this.yacht.ms } };
   }
   // ---------- settings ----------
@@ -131,7 +133,7 @@ export class Stage {
     this.race = race; this.focus = focus;
     while (this.boats.length < race.boats.length) {
       const vis = new BoatVisual(this.yacht), wake = new Wake(this.scene, this.sea.U, { n: this.boats.length === 0 ? 120 : 80, stern: this.yacht.length * 0.44 });
-      this.scene.add(vis.group); this.boats.push({ vis, wake, key: 'yacht', want: 'yacht', x: 0, y: 0, z: 0, h: 0, pitch: 0, roll: 0, u: 0 });
+      this.scene.add(vis.group); this.boats.push({ vis, wake, key: this.yacht.key || 'yacht', want: this.yacht.key || 'yacht', x: 0, y: 0, z: 0, h: 0, pitch: 0, roll: 0, u: 0 });
     }
     this.boats.forEach((B, i) => {
       const on = i < race.boats.length; B.vis.group.visible = on; B.wake.mesh.visible = on && (i === focus || this.tier.rivalWakes); B.wake.reset(); if (B.fw) for (const w of B.fw) { w.reset(); w.mesh.visible = false; }

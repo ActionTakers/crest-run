@@ -238,7 +238,7 @@ pre { text-align: left; white-space: pre-wrap; word-break: break-word; font-size
 .sailing #h-speed { justify-content: flex-start; }
 .sailing #h-speed b { font-size: 36px; }
 .sailing #h-speed small { font-size: 12px; }
-.sailing #h-warn { top: calc(118px + var(--st)); left: calc(14px + var(--sl)); right: auto; transform: none; max-width: 190px; white-space: normal; text-align: left; font-size: 12px; }
+.sailing #h-warn { top: calc(118px + var(--st)); left: calc(14px + var(--sl)); right: auto; transform: none; box-sizing: border-box; max-width: 198px; white-space: normal; text-align: left; font-size: 12px; }
 .sailing #sail-wind { display: block; position: absolute; top: calc(12px + var(--st)); left: calc(14px + var(--sl)); width: 198px; padding: 11px 12px; box-sizing: border-box; border: 1px solid var(--line); border-radius: 14px; background: rgba(6,18,31,.86); }
 .sail-eyebrow { color: var(--teal); font-size: 10px; font-weight: 800; letter-spacing: .12em; }
 .sail-wind-row { display: flex; align-items: center; gap: 9px; margin-top: 6px; }
@@ -282,5 +282,170 @@ pre { text-align: left; white-space: pre-wrap; word-break: break-word; font-size
 .sailing-menu #m-hint { max-width: 480px; }
 .sailing-menu #b-go { min-width: 140px; }
 @media (max-width: 920px) { .tabs button { padding: 0 12px; font-size: 12px; } .menu-head { gap: 8px; } }
-@media (max-width: 730px) { .menu-head .logo { display: none; } .tabs { flex: 1; justify-content: space-around; } .tabs button { padding: 0 10px; } .sailing-card { padding: 14px 18px; gap: 18px; } .sailing-card-notes { font-size: 11px; gap: 12px; } .sailing #sail-controls { width: 216px; } .sailing #sail-wind { width: 184px; } }
+@media (max-width: 730px) { .menu-head .logo { display: none; } .tabs { flex: 1; justify-content: space-around; } .tabs button { padding: 0 10px; } .sailing-card { padding: 14px 18px; gap: 18px; } .sailing-card-notes { font-size: 11px; gap: 12px; } .sailing #sail-controls { width: 216px; } .sailing #sail-wind { width: 184px; } .sailing #h-warn { max-width: 184px; } }
 @media (max-height: 370px) { .sailing #sail-controls { max-height: calc(100% - 68px - var(--st) - var(--sb)); } #sail-trim-state { min-height: 14px; } .sailing-card h2 { margin: 4px 0; font-size: 24px; } .sailing-card .small { font-size: 11px; } .sailing-card-notes { gap: 10px; } .sailing #h-dash { bottom: calc(78px + var(--sb)); } }
+
+/* ---------- MonkeyKing & Jack: a separate entrance to the bay ---------- */
+/* The shared root game keeps its existing skin. Bay-specific rules are scoped to its entry body. */
+body[data-game="bay"] { --gold: #e7bb68; --teal: #84d7cb; --ink: #092c32; --panel: rgba(9, 37, 41, .95); --plate: rgba(14, 48, 51, .88); --line: rgba(232, 211, 164, .25); color: #f6eedc; }
+body[data-game="bay"] .cta { background: #e8be73; color: #193235; font-size: 14px; letter-spacing: .055em; box-shadow: 0 5px 20px rgba(0, 0, 0, .2), inset 0 1px rgba(255, 255, 255, .3); }
+body[data-game="bay"] .ghost { background: rgba(8, 35, 39, .82); color: #f6eedc; }
+body[data-game="bay"] button:focus-visible { outline: 3px solid #e8be73; outline-offset: 3px; }
+body[data-game="bay"] #s-title, body[data-game="bay"] #s-boot { background: linear-gradient(180deg, rgba(4, 30, 33, .56), rgba(7, 32, 34, .1) 52%, rgba(4, 26, 29, .79)); }
+body[data-game="bay"] .logo { font-family: Georgia, "Times New Roman", serif; font-weight: 700; font-style: normal; text-transform: none; letter-spacing: -.035em; line-height: 1.05; }
+body[data-game="bay"] .logo.big { font-size: clamp(34px, 8vw, 76px); }
+body[data-game="bay"] .logo span:first-child { color: #f6eedc; }
+body[data-game="bay"] .logo span:last-child { color: #e8be73; }
+body[data-game="bay"] .tag { color: #f6eedc; max-width: 450px; line-height: 1.4; }
+body[data-game="bay"] #title-note { max-width: 540px; line-height: 1.4; margin-top: 14px; }
+body[data-game="bay"] .panel { border-color: rgba(232, 211, 164, .3); box-shadow: 0 12px 48px rgba(2, 19, 21, .25); }
+body[data-game="bay"] .row.sticky { background: linear-gradient(180deg, rgba(9, 37, 41, 0), rgba(9, 37, 41, .99) 38%); }
+body[data-game="bay"] .chips button.on { color: #193235; }
+body[data-game="bay"] #toast { background: rgba(5, 29, 32, .96); }
+body[data-game="bay"] .sailing #h-count { top: auto; bottom: calc(24px + var(--sb)); transform: translateX(-50%); width: 64px; text-align: center; font-size: 32px; }
+
+#s-bay { background: linear-gradient(105deg, rgba(6, 28, 32, .96), rgba(8, 35, 39, .88) 53%, rgba(8, 34, 39, .74)); text-align: left; padding-top: calc(14px + var(--st)); padding-bottom: calc(14px + var(--sb)); }
+.bay-shell { width: min(1120px, 100%); height: min(640px, 100%); min-height: 0; display: grid; grid-template-rows: auto minmax(0, 1fr); gap: clamp(12px, 3vh, 28px); }
+.bay-head { min-height: 52px; display: flex; justify-content: space-between; align-items: center; gap: 20px; }
+.bay-brand { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.bay-mark { flex: none; display: block; width: 48px; height: 48px; border: 1px solid #bd9150; border-radius: 50%; padding: 3px; background: #ede0bf; box-sizing: border-box; }
+.bay-brand span { display: block; font-size: 15px; font-weight: 800; letter-spacing: .10em; color: #f4ead2; }
+.bay-brand small { display: block; margin-top: 4px; font-size: 10px; font-weight: 700; letter-spacing: .28em; color: #c5ae7e; }
+.bay-layout { display: grid; grid-template-columns: minmax(0, .83fr) minmax(0, 1.17fr); gap: clamp(24px, 5vw, 72px); min-height: 0; }
+.bay-intro { display: flex; flex-direction: column; justify-content: center; align-items: flex-start; min-width: 0; min-height: 0; }
+.bay-eyebrow { display: block; font-size: 10px; font-weight: 700; letter-spacing: .17em; color: #b7cbbe; }
+#bay-heading { font-family: Georgia, "Times New Roman", serif; font-size: clamp(32px, 4.6vw, 62px); line-height: 1.02; font-weight: 400; letter-spacing: -.045em; margin: 14px 0; color: #f8e9ca; }
+.bay-intro-copy { max-width: 330px; font-size: 15px; line-height: 1.5; color: #c7d5ce; margin: 0; }
+.bay-embark { width: 100%; margin-top: clamp(14px, 3vh, 26px); }
+#bay-continue { min-height: 48px; max-width: 100%; width: 100%; padding: 0 18px; border-radius: 10px; }
+#bay-continue-note { min-height: 15px; color: #b7c9c2; font-size: 11px; line-height: 1.35; margin: 8px 0 0; }
+.bay-school-row { display: flex; align-self: stretch; align-items: stretch; gap: 8px; margin-top: 18px; padding-top: 10px; border-top: 1px solid rgba(232, 211, 164, .23); }
+.bay-school { display: flex; align-items: center; justify-content: space-between; flex: 1; min-width: 0; gap: 12px; min-height: 48px; text-align: left; }
+#bay-replay { flex: none; max-width: 90px; min-height: 44px; padding: 6px 9px; border-radius: 8px; font-size: 10px; line-height: 1.25; }
+.bay-school strong, .bay-school small { display: block; }
+.bay-school strong { font-size: 14px; font-weight: 700; color: #f5e6c8; }
+.bay-school small { font-size: 11px; line-height: 1.35; margin-top: 4px; color: #b7c9c2; }
+.bay-school > span:last-child { font-size: 25px; color: #e8be73; }
+.bay-school:hover strong { color: #e8be73; }
+.bay-voyages { display: grid; grid-template-rows: auto minmax(0, 1fr) auto; gap: 11px; min-height: 0; }
+.bay-voyages-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+.bay-voyages-head h2 { margin: 0; font-size: 12px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: #dfcda9; }
+#bay-progress { color: #a9c3b9; font-size: 10px; line-height: 1.3; text-align: right; }
+.bay-journeys { display: grid; grid-template-rows: repeat(3, minmax(0, 1fr)); gap: 11px; min-height: 0; }
+.bay-journey { display: grid; grid-template-columns: clamp(72px, 8vw, 112px) minmax(0, 1fr) 16px; align-items: center; gap: 15px; position: relative; min-width: 0; min-height: 76px; padding: 12px 14px 12px 12px; border: 1px solid rgba(221, 199, 151, .25); border-radius: 13px; background: rgba(16, 49, 51, .91); text-align: left; transition: border-color .15s, background-color .15s; }
+.bay-journey:hover, .bay-journey:focus-visible { border-color: #d6b16c; background: #184247; }
+.bay-journey.recommended { border-color: #cfa55f; background: linear-gradient(100deg, rgba(44, 68, 57, .96), rgba(17, 53, 55, .96)); }
+.bay-journey.complete { border-color: rgba(132, 215, 203, .42); }
+.bay-journey-scene { display: block; align-self: stretch; min-height: 52px; border-radius: 7px; position: relative; overflow: hidden; background: linear-gradient(180deg, #d6ae6e 0%, #dcd0a1 42%, #528781 43%, #16494f 100%); }
+.bay-journey-scene::before { content: ""; position: absolute; left: 10%; right: -30%; bottom: 37%; height: 48%; background: #566e68; opacity: .65; clip-path: polygon(0 100%, 32% 32%, 47% 52%, 64% 0, 100% 100%); }
+.bay-journey-scene::after { content: ""; position: absolute; width: 18px; height: 18px; border-radius: 50%; top: 19%; left: 15%; background: #ffedb8; box-shadow: 0 0 20px rgba(255, 224, 158, .24); }
+.bay-journey-scene.squall { background: linear-gradient(180deg, #344b59, #7c9496 42%, #417075 43%, #123e4b); }
+.bay-journey-scene.squall::before { background: #2d5357; opacity: .9; }
+.bay-journey-scene.squall::after { inset: 0; width: auto; height: auto; border-radius: 0; background: repeating-linear-gradient(112deg, transparent 0 16px, rgba(218, 228, 219, .22) 17px 18px, transparent 19px 26px); box-shadow: none; }
+.bay-journey-scene.night { background: linear-gradient(180deg, #172b44, #865458 42%, #415e70 43%, #102e42); }
+.bay-journey-scene.night::before { background: #202d41; opacity: .95; }
+.bay-journey-scene.night::after { width: 11px; height: 11px; top: 17%; left: 68%; background: #eee6bd; box-shadow: 0 0 12px rgba(255, 236, 192, .2); }
+.bay-journey-copy { display: block; min-width: 0; }
+.bay-journey-kicker { display: block; color: #cbb789; font-size: 9px; line-height: 1.3; letter-spacing: .12em; text-transform: uppercase; font-weight: 700; margin-bottom: 4px; }
+.bay-journey strong { display: block; font-family: Georgia, "Times New Roman", serif; color: #fff0d5; font-size: clamp(19px, 2vw, 25px); font-weight: 400; line-height: 1.1; }
+.bay-journey-story { display: block; color: #c3d1ca; font-size: 12px; line-height: 1.35; margin-top: 6px; }
+.bay-journey-status { display: block; color: #93c4b6; font-size: 10px; line-height: 1.3; margin-top: 6px; }
+.bay-journey-arrow { color: #ddba75; font-size: 20px; }
+.bay-footnote { margin: 0; color: #99b8ae; font-size: 10px; line-height: 1.3; }
+
+/* Guided exercises sit in the clear strip between wind instruments and sheet controls. */
+#sail-lesson { display: none; }
+.sailing #sail-lesson:not(.hidden) { display: block; position: absolute; top: calc(12px + var(--st)); left: calc(236px + var(--sl)); right: calc(276px + var(--sr)); max-width: 340px; margin: 0 auto; padding: 11px 13px; box-sizing: border-box; border: 1px solid rgba(231, 187, 104, .5); border-radius: 12px; background: rgba(7, 33, 38, .94); color: #f6eedc; text-shadow: none; pointer-events: auto; }
+#sail-lesson-step { display: block; color: #e8be73; font-size: 9px; line-height: 1.3; }
+#sail-lesson-title { font-size: 16px; line-height: 1.15; font-weight: 700; letter-spacing: 0; margin: 5px 0; }
+#sail-lesson-note { font-size: 11px; line-height: 1.35; margin: 0; color: #d3dfd7; }
+#sail-lesson-progress { display: block; width: 100%; height: 5px; margin-top: 10px; border: 0; border-radius: 5px; overflow: hidden; background: rgba(246, 238, 220, .15); accent-color: #e8be73; }
+#sail-lesson-progress::-webkit-progress-bar { background: rgba(246, 238, 220, .15); border-radius: 5px; }
+#sail-lesson-progress::-webkit-progress-value { background: #e8be73; border-radius: 5px; }
+#sail-lesson-progress::-moz-progress-bar { background: #e8be73; border-radius: 5px; }
+.sail-lesson-actions { display: flex; gap: 7px; margin-top: 10px; }
+.sail-lesson-actions .ghost { flex: 1; min-width: 0; min-height: 44px; padding: 5px 8px; border-radius: 8px; border-color: #d6b16c; font-size: 10.5px; line-height: 1.25; }
+
+@media (max-width: 920px) {
+  .bay-layout { grid-template-columns: minmax(0, .78fr) minmax(0, 1.22fr); gap: 28px; }
+  .bay-journey { grid-template-columns: 68px minmax(0, 1fr) 12px; gap: 11px; }
+  .bay-voyages-head { align-items: flex-start; }
+  .bay-voyages-head h2 { font-size: 11px; }
+}
+@media (max-width: 730px) {
+  .bay-brand span { font-size: 12px; letter-spacing: .08em; }
+  .bay-brand small { font-size: 9px; letter-spacing: .22em; }
+  .bay-mark { width: 42px; height: 42px; }
+  .bay-head { min-height: 44px; }
+  .bay-layout { grid-template-columns: minmax(0, .8fr) minmax(0, 1.2fr); gap: 20px; }
+  .bay-journey { grid-template-columns: 56px minmax(0, 1fr) 10px; gap: 10px; padding: 10px; }
+  .bay-journey strong { font-size: 19px; }
+  .bay-voyages-head h2 { font-size: 10px; letter-spacing: .045em; }
+  #bay-progress { font-size: 9px; max-width: 128px; }
+  #bay-continue { font-size: 12px; letter-spacing: .025em; padding: 0 12px; }
+  .sailing #sail-lesson:not(.hidden) { left: calc(212px + var(--sl)); right: calc(244px + var(--sr)); padding: 9px 10px; }
+  #sail-lesson-title { font-size: 14px; }
+}
+@media (max-height: 460px) and (orientation: landscape) {
+  #s-bay { padding-top: calc(10px + var(--st)); padding-bottom: calc(10px + var(--sb)); }
+  .bay-shell { gap: 12px; }
+  .bay-mark { width: 40px; height: 40px; }
+  .bay-head { min-height: 44px; }
+  .bay-brand { gap: 10px; }
+  .bay-brand small { margin-top: 3px; }
+  .bay-intro { justify-content: center; }
+  .bay-eyebrow { font-size: 8px; letter-spacing: .12em; }
+  #bay-heading { font-size: clamp(29px, 4.1vw, 42px); margin: 8px 0; line-height: 1.02; }
+  .bay-intro-copy { font-size: 12px; line-height: 1.35; }
+  .bay-embark { margin-top: 12px; }
+  #bay-continue { min-height: 44px; }
+  #bay-continue-note { font-size: 9px; margin-top: 5px; }
+  .bay-school-row { margin-top: 8px; padding-top: 6px; }
+  .bay-school { min-height: 44px; }
+  .bay-school strong { font-size: 12px; }
+  .bay-school small { font-size: 9px; margin-top: 3px; }
+  .bay-voyages { gap: 7px; }
+  .bay-journeys { gap: 8px; }
+  .bay-journey { min-height: 64px; padding-top: 8px; padding-bottom: 8px; }
+  .bay-journey-story { display: none; }
+  .bay-journey-status { margin-top: 5px; font-size: 9px; }
+  .bay-journey-kicker { margin-bottom: 3px; font-size: 8px; }
+  .bay-journey-scene { min-height: 44px; }
+  .bay-footnote { font-size: 9px; }
+  body[data-game="bay"] #title-note { margin-top: 9px; font-size: 11px; }
+}
+@media (max-width: 640px) and (orientation: landscape) {
+  .bay-layout { gap: 14px; }
+  .bay-journey { grid-template-columns: 42px minmax(0, 1fr); gap: 8px; }
+  .bay-journey-arrow { display: none; }
+  .bay-voyages-head h2 { display: none; }
+  #bay-progress { max-width: none; text-align: left; }
+  .bay-school small { display: none; }
+  .sailing #sail-wind { width: 158px; padding: 9px; }
+  .sailing #h-warn { max-width: 158px; }
+  .sail-compass { width: 42px; height: 42px; }
+  .sail-wind-row { gap: 7px; }
+  .sailing #sail-controls { width: 196px; padding-left: 10px; padding-right: 10px; }
+  .sailing #sail-lesson:not(.hidden) { left: calc(184px + var(--sl)); right: calc(224px + var(--sr)); padding: 8px; }
+  #sail-lesson-title { font-size: 13px; }
+  #sail-lesson-note { font-size: 10px; }
+}
+@media (max-height: 340px) and (orientation: landscape) {
+  .bay-shell { gap: 8px; }
+  .bay-intro-copy { display: none; }
+  .bay-eyebrow { font-size: 8px; }
+  #bay-heading { margin: 5px 0; }
+  .bay-embark { margin-top: 7px; }
+  .bay-school-row { margin-top: 5px; }
+  .bay-footnote { display: none; }
+  .bay-voyages { grid-template-rows: auto minmax(0, 1fr); }
+}
+@media (orientation: portrait) {
+  .bay-shell { height: 100%; overflow-y: auto; touch-action: pan-y; padding: 0 3px 8px; box-sizing: border-box; }
+  .bay-layout { grid-template-columns: 1fr; gap: 26px; }
+  .bay-intro { min-height: min-content; }
+  #bay-heading { font-size: clamp(36px, 10vw, 58px); }
+  .bay-voyages { min-height: 430px; }
+  .bay-journey { min-height: 112px; }
+}
+@media (prefers-reduced-motion: reduce) { .bay-journey { transition: none; } }

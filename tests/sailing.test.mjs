@@ -5,9 +5,9 @@ import { fileURLToPath } from 'node:url';
 import { JUKUNG_SPEC as J, JUKUNG_PHYSICS, JUKUNG_SPAN } from '../src/sim/jukung-spec.mjs';
 import { sailingForces, floatLoads, advanceSailing, makeSailingState, sailingInputs } from '../src/sim/sailing.mjs';
 import { Race, defaultSettings, DT, SIM_VERSION, TUNE_KEYS } from '../src/sim/race-sim.mjs';
-import { getCourse, COURSE_KEYS } from '../src/sim/courses.mjs?v=be984f14';
+import { getCourse, COURSE_KEYS } from '../src/sim/courses.mjs?v=7d4a3824';
 import { boatTweak } from '../src/sim/boat-stats.mjs';
-import { bayCourse, voyageSettings, Voyage, RULES } from '../src/sim/voyage.mjs?v=be984f14';
+import { bayCourse, voyageSettings, Voyage, RULES } from '../src/sim/voyage.mjs?v=7d4a3824';
 
 const close = (a, b, tolerance = 1e-10) => assert.ok(Math.abs(a - b) <= tolerance, `${a} != ${b}`);
 const boat = (extra = {}) => ({ x: 0, z: 0, y: J.draft, h: 0, vx: 0, vz: 0,

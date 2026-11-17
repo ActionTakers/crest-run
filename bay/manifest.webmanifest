@@ -1,0 +1,24 @@
+{
+  "id": "./",
+  "name": "MonkeyKing & Jack — Lipah Bay",
+  "short_name": "Lipah Bay",
+  "description": "Your boat. Your bay. Three voyages with MonkeyKing and Captain Jack.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "fullscreen",
+  "display_override": [
+    "fullscreen",
+    "standalone"
+  ],
+  "orientation": "landscape",
+  "background_color": "#092c32",
+  "theme_color": "#092c32",
+  "icons": [
+    {
+      "src": "../assets/textures/sail-emblem.webp",
+      "sizes": "512x512",
+      "type": "image/webp",
+      "purpose": "any"
+    }
+  ]
+}

@@ -4,6 +4,9 @@ This increment adds an optional sailing practice to Crest Run. Open the game wit
 `?sailing=1`, or choose **Sailing trial** from the menu. The trial starts after the
 normal steering and sound setup.
 
+The dedicated [Lipah Bay entrance](BAY_GAME.md) also offers an optional guided
+lesson using this craft: find the wind, trim manually and balance the boat.
+
 ## What the player can try
 
 The apparent-wind instrument shows the breeze felt aboard. Trim assist starts on;

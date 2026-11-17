@@ -1,0 +1,276 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<base href="../">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Lipah Bay">
+<meta name="theme-color" content="#092c32">
+<meta name="description" content="Sail with MonkeyKing and Captain Jack. Read the wind, explore Lipah Bay, and bring everyone home through three voyages.">
+<link rel="manifest" href="./bay/manifest.webmanifest">
+<link rel="icon" href="./assets/textures/sail-emblem.webp" type="image/webp">
+<link rel="apple-touch-icon" href="./assets/textures/sail-emblem.webp">
+<title>MonkeyKing &amp; Jack — Lipah Bay</title>
+<link rel="stylesheet" href="./css/game.css?v=7d4a3824">
+<script type="importmap">{ "imports": { "three": "./vendor/three-0.186.1/build/three.module.js", "three/addons/": "./vendor/three-0.186.1/examples/jsm/" } }</script>
+</head>
+<body data-game="bay">
+<canvas id="c"></canvas>
+
+<!-- the play layer takes the thumbs during a race -->
+<div id="play" class="layer hidden"></div>
+
+<div id="hud" class="layer hidden" aria-live="off">
+  <div id="h-edge"></div>
+  <div id="h-prog"><i id="h-prog-me"></i></div>
+  <div id="h-pos"><b id="h-place">1</b><span id="h-of">/4</span><small id="h-lap">LAP 1/2</small></div>
+  <div id="h-clock"><b id="h-time">0:00.0</b><small id="h-gap"></small></div>
+  <div id="h-top">
+    <button id="h-view" class="hbtn" aria-label="Change the view"><svg viewBox="0 0 24 24"><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="12" r="3" fill="currentColor"/></svg></button>
+    <button id="h-recentre" class="hbtn" aria-label="Recentre steering"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="12" r="2.2" fill="currentColor"/><path d="M12 1v5M12 18v5M1 12h5M18 12h5" stroke="currentColor" stroke-width="2"/></svg></button>
+    <button id="h-pause" class="hbtn" aria-label="Pause"><svg viewBox="0 0 24 24"><rect x="6" y="5" width="4" height="14" rx="1" fill="currentColor"/><rect x="14" y="5" width="4" height="14" rx="1" fill="currentColor"/></svg></button>
+  </div>
+  <div id="h-arrow"><svg viewBox="0 0 40 40"><path d="M20 4l12 20h-8v12h-8V24H8z" fill="currentColor"/></svg></div>
+  <div id="h-msg"></div>
+  <div id="h-count"></div>
+  <div id="h-warn"></div>
+  <div id="bossbar"><b id="bb-name"></b><div id="bb-hp"><i id="bb-hp-fill"></i></div><div id="bb-st"><i id="bb-st-fill"></i></div><small id="bb-cast"></small></div>
+  <!-- speed and boost sit beside the boost button, clear of the player's yacht in the middle -->
+  <div id="h-dash">
+    <span id="h-chain"></span>
+    <div id="h-speed"><b id="h-kmh">0</b><small id="h-unit">km/h</small></div>
+    <div id="h-boost"><i id="h-boost-fill"></i></div>
+  </div>
+  <div id="h-left"><div id="h-steer"><i id="h-knob"></i></div><span id="h-left-label">HOLD: DRIFT</span></div>
+  <div id="h-boostbtn"><span>BOOST</span></div>
+  <section id="sail-wind" aria-label="Sailing feedback">
+    <div class="sail-eyebrow">JACK'S SAILING TRIAL</div>
+    <div class="sail-wind-row">
+      <svg class="sail-compass" viewBox="0 0 64 64" aria-hidden="true">
+        <circle cx="32" cy="32" r="29" fill="none" stroke="currentColor" opacity=".28"/>
+        <path d="M32 22l6 20H26z" fill="currentColor" opacity=".6"/>
+        <g id="sail-wind-arrow"><path d="M32 4v13m-4-4l4 5 4-5" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></g>
+      </svg>
+      <div><small>APPARENT WIND</small><strong id="sail-wind-speed">Finding the breeze</strong><span id="sail-wind-from">Wind felt aboard</span></div>
+    </div>
+  </section>
+  <section id="sail-lesson" class="hidden" aria-label="Sailing lesson" aria-live="polite">
+    <span id="sail-lesson-step" class="sail-eyebrow">SAILING SCHOOL</span>
+    <h2 id="sail-lesson-title">Find the breeze</h2>
+    <p id="sail-lesson-note">A little time on the water before your first voyage.</p>
+    <progress id="sail-lesson-progress" value="0" max="1" aria-label="Progress through this exercise"></progress>
+    <div class="sail-lesson-actions"><button id="sail-lesson-skip" class="ghost" type="button">Sail freely</button><button id="sail-lesson-done" class="ghost hidden" type="button">Back to the bay</button></div>
+  </section>
+  <section id="sail-controls" aria-label="Sail controls">
+    <div class="sail-control-head"><strong>Sail trim</strong><button id="sail-auto" type="button" aria-pressed="true">Assist ON</button></div>
+    <label for="sail-sheet" class="sail-range-label"><span>Ease out</span><span>Sheet in</span></label>
+    <input id="sail-sheet" type="range" min="0" max="100" step="1" value="50" aria-label="Sail sheet, from fully eased to sheeted in"/>
+    <p id="sail-trim-state">Assist follows the wind</p>
+    <div class="sail-floats" aria-label="Outrigger loading">
+      <div><span>Port float</span><i><b id="sail-load-port"></b></i></div>
+      <div><span>Starboard float</span><i><b id="sail-load-starboard"></b></i></div>
+    </div>
+    <p id="sail-load-state">Balanced</p>
+    <details id="sail-balance">
+      <summary>Balance the boat</summary>
+      <label for="sail-rig">Rig balance <span id="sail-rig-value">Centred</span></label>
+      <input id="sail-rig" type="range" min="-100" max="100" step="1" value="0" aria-label="Rig balance, effort aft to forward"/>
+      <div class="sail-range-label"><span>Effort aft</span><span>Effort forward</span></div>
+      <label for="sail-crew">Crew weight <span id="sail-crew-value">Centred</span></label>
+      <input id="sail-crew" type="range" min="-100" max="100" step="1" value="0" aria-label="Crew weight, port to starboard"/>
+      <div class="sail-range-label"><span>Port</span><span>Starboard</span></div>
+      <p id="sail-control-help">Slide left to steer. Move the sheet to take over.</p>
+    </details>
+  </section>
+</div>
+
+<div id="screens">
+  <section id="s-boot" class="screen show">
+    <div class="logo"><span>MonkeyKing</span> <span>&amp; Jack</span></div>
+    <div class="bar"><i id="boot-bar"></i></div>
+    <p id="boot-msg" class="dim">The bay is waking...</p>
+    <button id="b-reload" class="ghost hidden">Reload</button>
+  </section>
+
+  <section id="s-title" class="screen">
+    <div class="logo big"><span>MonkeyKing</span> <span>&amp; Jack</span></div>
+    <p class="tag">Your boat. Your bay. Three voyages.</p>
+    <button id="b-start" class="cta">ENTER THE BAY</button>
+    <p id="title-note" class="dim small"></p>
+    <div class="corner"><button id="b-title-settings" class="ghost">Settings</button></div>
+    <p id="title-build" class="build"></p>
+  </section>
+
+  <!-- The bay has its own entrance and journey hub; the root racing game keeps its menu. -->
+  <section id="s-bay" class="screen" aria-labelledby="bay-heading">
+    <div class="bay-shell">
+      <header class="bay-head">
+        <div class="bay-brand">
+          <img class="bay-mark" src="./assets/textures/sail-emblem.webp" width="52" height="52" alt="" decoding="async">
+          <div><span>MONKEYKING &amp; JACK</span><small>LIPAH BAY</small></div>
+        </div>
+        <button id="bay-settings" class="ghost" type="button">Settings</button>
+      </header>
+      <div class="bay-layout">
+        <div class="bay-intro">
+          <span class="bay-eyebrow">FROM THIS LITTLE BEACH</span>
+          <h1 id="bay-heading">Your boat.<br>Your bay.<br>Three voyages.</h1>
+          <p class="bay-intro-copy">Read the water, look after one another, and bring everyone home.</p>
+          <div class="bay-embark">
+            <button id="bay-continue" class="cta" type="button">BEGIN THE MORNING</button>
+            <p id="bay-continue-note">Start with Glass Morning, at first light.</p>
+          </div>
+          <div class="bay-school-row"><button id="bay-practice" class="bay-school" type="button"><span><strong>Sail with Jack</strong><small>Find your balance before the voyage</small></span><span aria-hidden="true">↗</span></button><button id="bay-replay" class="ghost hidden" type="button">Repeat sailing lesson</button></div>
+        </div>
+        <div class="bay-voyages">
+          <div class="bay-voyages-head"><h2>Three ways home</h2><span id="bay-progress">Your first morning awaits</span></div>
+          <div id="bay-journeys" class="bay-journeys" aria-label="Choose a voyage"></div>
+          <p class="bay-footnote">Wind, current and the choices you make.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="s-cal" class="screen">
+    <div class="panel narrow">
+      <h2 id="cal-title">Hold your phone like a steering wheel</h2>
+      <div id="cal-wheel"><i id="cal-needle"></i></div>
+      <p id="cal-msg">Keep it still for a moment...</p>
+      <p id="cal-sound" class="dim small">You should have heard a chime. No sound? Turn the volume up and check the silent switch.</p>
+      <div class="row center">
+        <button id="b-cal-anyway" class="ghost hidden">Use this position</button>
+        <button id="b-cal-touch" class="ghost">Steer by touch instead</button>
+      </div>
+    </div>
+  </section>
+
+  <section id="s-menu" class="screen">
+    <div class="menu">
+      <div class="menu-head">
+        <div class="logo small"><span>MonkeyKing</span> <span>&amp; Jack</span></div>
+        <div class="tabs" id="m-modes"><button data-mode="race" class="on">Race</button><button data-mode="trial">Time trial</button><button data-mode="rescue">Rescue</button><button data-mode="voyage">Voyage</button><button id="b-sailing" data-mode="sailing">Sailing trial</button></div>
+        <button id="b-menu-settings" class="ghost">Settings</button>
+      </div>
+      <div id="m-courses" class="cards"></div>
+      <div class="menu-foot">
+        <div class="pick" id="p-tune"><small>Tune</small><div id="m-tunes" class="chips one-line"></div></div>
+        <div class="pick" id="m-diff-wrap"><small id="m-diff-label">Rivals</small><div id="m-diff" class="chips one-line"><button data-diff="easy">Easy</button><button data-diff="normal">Normal</button><button data-diff="hard">Hard</button></div></div>
+        <div class="pick" id="p-colour"><small>Boat</small><div id="m-liveries" class="dots"></div></div>
+        <p id="m-hint"></p>
+        <button id="b-go" class="cta">RACE</button>
+      </div>
+    </div>
+  </section>
+
+  <section id="s-results" class="screen">
+    <div class="panel wide results">
+      <!-- the title across the top, two columns under it, the tip on one line: every line stands clear of the buttons in a
+           browser tab of a small phone too -->
+      <h2 id="r-title"></h2>
+      <div class="res-cols">
+        <div class="res-main">
+          <div class="res-top"><div id="r-place"></div><div><p id="r-time"></p><p id="r-best" class="dim"></p></div><div id="r-medal"></div></div>
+          <ul id="r-news"></ul>
+        </div>
+        <div class="res-side">
+          <div id="r-table"></div>
+          <p id="r-stats" class="dim small"></p>
+        </div>
+      </div>
+      <p id="r-tip" class="small"></p>
+      <div class="row center sticky"><button id="b-nextcourse" class="cta hidden"></button><button id="b-retry" class="cta">SAIL AGAIN</button><button id="b-next" class="ghost">Back to the beach</button></div>
+    </div>
+  </section>
+
+  <!-- a rescue voyage: the three choices before leaving (Kies), and the telling on the beach afterwards (Veranker) -->
+  <section id="s-kies" class="screen">
+    <div class="panel wide kies">
+      <h2 id="k-title"></h2>
+      <p id="k-story" class="small"></p>
+      <p id="k-ask" class="small"></p>
+      <div id="k-rows"></div>
+      <div class="row center sticky"><button id="b-kies-go" class="cta">SAIL</button><button id="b-kies-book" class="ghost">Leaves</button><button id="b-kies-back" class="ghost">Back</button></div>
+    </div>
+  </section>
+  <section id="s-beach" class="screen">
+    <div class="panel wide beach">
+      <h2 id="v-title"></h2>
+      <div class="vcols"><div id="v-qs"></div><div id="v-leaves"></div></div>
+      <div class="row center sticky"><button id="b-beach-done" class="cta">DONE</button></div>
+    </div>
+  </section>
+
+  <section id="s-pause" class="screen">
+    <div class="panel narrow">
+      <h2>Paused</h2>
+      <div class="col">
+        <button id="b-resume" class="cta">RESUME</button>
+        <button id="b-restart" class="ghost">Restart</button>
+        <button id="b-pause-settings" class="ghost">Settings</button>
+        <button id="b-quit" class="ghost">Return to the beach</button>
+      </div>
+    </div>
+  </section>
+
+  <section id="s-settings" class="screen">
+    <div class="panel wide">
+      <h2>Settings</h2>
+      <div class="grid" id="set-grid">
+        <label>Steering<div class="chips" data-set="steering"><button data-v="auto">Auto</button><button data-v="tilt">Tilt</button><button data-v="touch">Touch</button></div></label>
+        <label><span>Full lock at <b id="set-maxdeg-v">25</b> degrees of tilt</span><input id="set-maxdeg" type="range" min="12" max="40" step="1"></label>
+        <label>Reverse tilt<div class="chips" data-set="invert"><button data-v="false">Off</button><button data-v="true">On</button></div></label>
+        <label>Camera<div class="chips" data-set="camera"><button data-v="chase">Chase</button><button data-v="high">High</button><button data-v="low">Low</button></div></label>
+        <label>Camera motion<div class="chips" data-set="motion"><button data-v="full">Full</button><button data-v="calm">Calm</button></div></label>
+        <label>Sound<div class="chips" data-set="sound"><button data-v="true">On</button><button data-v="false">Off</button></div></label>
+        <label>Music<div class="chips" data-set="music"><button data-v="true">On</button><button data-v="false">Off</button></div></label>
+        <label>Picture quality<div class="chips" data-set="quality"><button data-v="auto">Auto</button><button data-v="low">Low</button><button data-v="mid">Mid</button><button data-v="high">High</button></div></label>
+        <label>Speed in<div class="chips" data-set="units"><button data-v="kmh">km/h</button><button data-v="kn">knots</button></div></label>
+      </div>
+      <div class="row center sticky">
+        <button id="b-recal" class="ghost">Set straight ahead again</button>
+        <button id="b-card" class="ghost">Test card</button>
+        <button id="b-set-done" class="cta">DONE</button>
+      </div>
+    </div>
+  </section>
+
+  <section id="s-card" class="screen">
+    <div class="panel wide">
+      <h2>Test card</h2>
+      <p class="dim small">Numbers of this phone and this session, for the test notes. Copy it and paste it in the chat.</p>
+      <pre id="card-text"></pre>
+      <div class="row center"><button id="b-card-copy" class="cta">COPY</button><button id="b-card-reset" class="ghost">Erase progress</button><button id="b-card-done" class="ghost">Back</button></div>
+    </div>
+  </section>
+
+  <section id="s-resume" class="screen">
+    <div class="panel narrow"><h2>Paused</h2><p>The game was in the background.</p><button id="b-resume2" class="cta">RESUME</button></div>
+  </section>
+
+  <section id="s-sensors" class="screen">
+    <div class="panel narrow"><h2>The motion sensors stopped</h2><p>The voyage is paused. Steer with your left thumb: slide it left and right.</p>
+      <div class="col"><button id="b-resume3" class="cta">RESUME WITH TOUCH</button><button id="b-sensors-tilt" class="ghost">Try tilt again</button></div></div>
+  </section>
+
+  <section id="s-rotate" class="screen solid">
+    <div class="rot"><svg viewBox="0 0 64 64"><rect x="20" y="6" width="24" height="44" rx="4" fill="none" stroke="currentColor" stroke-width="3"/><path d="M50 40a22 22 0 0 1-18 18" fill="none" stroke="currentColor" stroke-width="3"/><path d="M30 54l3 5 4-6" fill="none" stroke="currentColor" stroke-width="3"/></svg><p>Turn your phone sideways</p>
+      <p class="dim small">Nothing happens? Switch off Portrait Orientation Lock in Control Centre.</p></div>
+  </section>
+</div>
+<div id="toast"></div>
+<!-- a file of the game that does not arrive (a weak connection) must not leave "Loading the sea..." up for ever -->
+<script>
+window.addEventListener('error', function (e) {
+  var t = e.target;
+  if (window.__ready || !t || t === window || !(t.tagName === 'SCRIPT' || (t.tagName === 'LINK' && t.rel === 'stylesheet'))) return;
+  var m = document.getElementById('boot-msg'), b = document.getElementById('b-reload');
+  if (m) m.textContent = 'A file of the game did not arrive. Check the connection, then reload.';
+  if (b) { b.classList.remove('hidden'); b.onclick = function () { location.reload(); }; }
+}, true);
+</script>
+<script type="module" src="./src/main.mjs?v=7d4a3824"></script>
+</body>
+</html>

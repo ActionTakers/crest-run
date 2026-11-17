@@ -12,7 +12,7 @@
 <link rel="icon" href="./assets/icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="./assets/icon-180.png">
 <title>Crest Run</title>
-<link rel="stylesheet" href="./css/game.css?v=be984f14">
+<link rel="stylesheet" href="./css/game.css?v=7d4a3824">
 <script type="importmap">{ "imports": { "three": "./vendor/three-0.186.1/build/three.module.js", "three/addons/": "./vendor/three-0.186.1/examples/jsm/" } }</script>
 </head>
 <body>
@@ -55,6 +55,13 @@
       <div><small>APPARENT WIND</small><strong id="sail-wind-speed">Finding the breeze</strong><span id="sail-wind-from">Wind felt aboard</span></div>
     </div>
   </section>
+  <section id="sail-lesson" class="hidden" aria-label="Sailing lesson" aria-live="polite">
+    <span id="sail-lesson-step" class="sail-eyebrow">SAILING SCHOOL</span>
+    <h2 id="sail-lesson-title">Find the breeze</h2>
+    <p id="sail-lesson-note">A little time on the water before your first voyage.</p>
+    <progress id="sail-lesson-progress" value="0" max="1" aria-label="Progress through this exercise"></progress>
+    <div class="sail-lesson-actions"><button id="sail-lesson-skip" class="ghost" type="button">Sail freely</button><button id="sail-lesson-done" class="ghost hidden" type="button">Back to the bay</button></div>
+  </section>
   <section id="sail-controls" aria-label="Sail controls">
     <div class="sail-control-head"><strong>Sail trim</strong><button id="sail-auto" type="button" aria-pressed="true">Assist ON</button></div>
     <label for="sail-sheet" class="sail-range-label"><span>Ease out</span><span>Sheet in</span></label>
@@ -93,6 +100,36 @@
     <p id="title-note" class="dim small"></p>
     <div class="corner"><button id="b-title-settings" class="ghost">Settings</button></div>
     <p id="title-build" class="build"></p>
+  </section>
+
+  <!-- The bay has its own entrance and journey hub; the root racing game keeps its menu. -->
+  <section id="s-bay" class="screen" aria-labelledby="bay-heading">
+    <div class="bay-shell">
+      <header class="bay-head">
+        <div class="bay-brand">
+          <img class="bay-mark" src="./assets/textures/sail-emblem.webp" width="52" height="52" alt="" decoding="async">
+          <div><span>MONKEYKING &amp; JACK</span><small>LIPAH BAY</small></div>
+        </div>
+        <button id="bay-settings" class="ghost" type="button">Settings</button>
+      </header>
+      <div class="bay-layout">
+        <div class="bay-intro">
+          <span class="bay-eyebrow">FROM THIS LITTLE BEACH</span>
+          <h1 id="bay-heading">Your boat.<br>Your bay.<br>Three voyages.</h1>
+          <p class="bay-intro-copy">Read the water, look after one another, and bring everyone home.</p>
+          <div class="bay-embark">
+            <button id="bay-continue" class="cta" type="button">BEGIN THE MORNING</button>
+            <p id="bay-continue-note">Start with Glass Morning, at first light.</p>
+          </div>
+          <div class="bay-school-row"><button id="bay-practice" class="bay-school" type="button"><span><strong>Sail with Jack</strong><small>Find your balance before the voyage</small></span><span aria-hidden="true">↗</span></button><button id="bay-replay" class="ghost hidden" type="button">Repeat sailing lesson</button></div>
+        </div>
+        <div class="bay-voyages">
+          <div class="bay-voyages-head"><h2>Three ways home</h2><span id="bay-progress">Your first morning awaits</span></div>
+          <div id="bay-journeys" class="bay-journeys" aria-label="Choose a voyage"></div>
+          <p class="bay-footnote">Wind, current and the choices you make.</p>
+        </div>
+      </div>
+    </div>
   </section>
 
   <section id="s-cal" class="screen">
@@ -232,6 +269,6 @@ window.addEventListener('error', function (e) {
   if (b) { b.classList.remove('hidden'); b.onclick = function () { location.reload(); }; }
 }, true);
 </script>
-<script type="module" src="./src/main.mjs?v=be984f14"></script>
+<script type="module" src="./src/main.mjs?v=7d4a3824"></script>
 </body>
 </html>
