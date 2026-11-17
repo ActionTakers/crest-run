@@ -3,24 +3,25 @@
 // shows it, interpolated between the last two physics steps so the picture is smooth at any frame rate.
 // Written 2026-11-13 by the yacht project session.
 import * as THREE from 'three';
-import * as W from '../sim/waves.mjs?v=7d4a3824';
-import { pointInto, wrapA } from '../sim/courses.mjs?v=7d4a3824';
-import { Sky, WORLDS, makeNoiseTexture } from './sky.mjs?v=7d4a3824';
-import { Sea } from './sea.mjs?v=7d4a3824';
-import { Post } from './post.mjs?v=7d4a3824';
-import { Wake, Spray } from './fx.mjs?v=7d4a3824';
-import { loadYacht, BoatVisual } from './boats.mjs?v=7d4a3824';
-import { Scenery } from './scenery.mjs?v=7d4a3824';
-import { RescueView } from './rescue-view.mjs?v=7d4a3824';
-import { People, crewClip, tick, JACK, CAST_H, SIT_HIP } from './people.mjs?v=7d4a3824';
-import { BossView } from './boss-view.mjs?v=7d4a3824';
-import { LeviathanView } from './leviathan-view.mjs?v=7d4a3824';
-import { FLEET } from './fleet.mjs?v=7d4a3824';
-import { Dash } from './dash.mjs?v=7d4a3824';
-import { makeJukung, tickJukung } from './jukung.mjs?v=7d4a3824';
-import { makeRacingJukung, tickRacingJukung } from './jukung-racing.mjs?v=7d4a3824';
-import { JUKUNG_SPEC } from '../sim/jukung-spec.mjs?v=7d4a3824';
-import { BayView } from './bay-view.mjs?v=7d4a3824';
+import * as W from '../sim/waves.mjs?v=55436194';
+import { pointInto, wrapA } from '../sim/courses.mjs?v=55436194';
+import { Sky, WORLDS, makeNoiseTexture } from './sky.mjs?v=55436194';
+import { Sea } from './sea.mjs?v=55436194';
+import { Post } from './post.mjs?v=55436194';
+import { Wake, Spray } from './fx.mjs?v=55436194';
+import { loadYacht, BoatVisual } from './boats.mjs?v=55436194';
+import { Scenery } from './scenery.mjs?v=55436194';
+import { RescueView } from './rescue-view.mjs?v=55436194';
+import { People, crewClip, tick, JACK, CAST_H, SIT_HIP } from './people.mjs?v=55436194';
+import { BossView } from './boss-view.mjs?v=55436194';
+import { LeviathanView } from './leviathan-view.mjs?v=55436194';
+import { DeckView } from './deck-view.mjs?v=55436194';
+import { FLEET } from './fleet.mjs?v=55436194';
+import { Dash } from './dash.mjs?v=55436194';
+import { makeJukung, tickJukung } from './jukung.mjs?v=55436194';
+import { makeRacingJukung, tickRacingJukung } from './jukung-racing.mjs?v=55436194';
+import { JUKUNG_SPEC } from '../sim/jukung-spec.mjs?v=55436194';
+import { BayView } from './bay-view.mjs?v=55436194';
 
 const clamp = (v, lo, hi) => (v < lo ? lo : v > hi ? hi : v);
 const smooth = (e0, e1, x) => { const t = clamp((x - e0) / (e1 - e0), 0, 1); return t * t * (3 - 2 * t); };
@@ -68,6 +69,8 @@ export class Stage {
     this.rescueView = new RescueView(this.scene, this.sea, this.spray, this.scenery, this.people); this.rescue = null; this.rescueLoad = null;
     this.bossView = new BossView(this.scene, this.sea, this.spray, this.people); this.boss = null; this.bossId = null;      // the boss level (sim/boss.mjs)
     this.leviView = new LeviathanView(this.scene, this.sea, this.spray); this.levi = null;                                 // the second boss level (sim/leviathan.mjs)
+    this.xr = false; this.xrRig = null; this.xrHands = []; this.xrInput = { fire: false, flare: false, hand: 0, pulls: 0 };   // the headset (enterXr): a rig the camera rides on, two controllers, what they ask for
+    this.deckView = new DeckView(this.scene, this.sea, this.spray); this.deck = null;                                      // the level on the deck (sim/deck.mjs)
     this.bayView = new BayView(this.scene, this.sea, this.spray, this.scenery); this.voyage = null;                         // the rescue voyages in the bay (sim/voyage.mjs)
     this.boats = [];           // { vis, wake, y, pitch, roll, x, z, h } per race boat
     this.yacht = null; this.world = null; this.worldKey = null; this.course = null; this.race = null;
@@ -106,6 +109,7 @@ export class Stage {
   // scale: the render scale the frame-rate governor chose (1 = full resolution of this tier)
   setScale(s) { const v = clamp(s, 0.4, 1); if (v === this.scale) return; this.scale = v; this.applySize(); }
   applySize() {
+    if (this.renderer.xr.isPresenting) return;            // the headset sets its own size
     const T = this.tier, pr = Math.min(this.dpr, T.maxDpr), post = this.post.enabled;
     // with the pipeline the page's canvas keeps its size and only the scene target scales; without it the canvas itself scales
     this.renderer.setPixelRatio(post ? pr : pr * this.scale);
@@ -130,6 +134,7 @@ export class Stage {
   setCourse(course) { this.course = course; this.scenery.setCourse(course); }
   // one visual per race boat; liveries: a livery key per boat; focus: the boat the camera follows
   setRace(race, liveries, focus = 0) {
+    if (this.deck) this.setDeck(null);                     // every level begins with a race of its own: the deck's view leaves with the old one
     this.race = race; this.focus = focus;
     while (this.boats.length < race.boats.length) {
       const vis = new BoatVisual(this.yacht), wake = new Wake(this.scene, this.sea.U, { n: this.boats.length === 0 ? 120 : 80, stern: this.yacht.length * 0.44 });
@@ -156,6 +161,40 @@ export class Stage {
   // (bossView.load). The promise: the boss's own model has arrived
   // the second boss level's fight, or null for none (its beast is made in code: nothing to load)
   setLevi(levi) { this.levi = levi || null; this.leviView.setLevi(this.levi); }
+  // ---------- the headset (WebXR). Only the level on the deck offers it (main.mjs). The camera rides on a rig that stands on
+  // the boat's foredeck; the headset moves it from there. The picture is drawn straight to the headset, without the bloom
+  // pipeline. Two controllers: the trigger fires (the hand that pulled last aims), the grip sends a flare. NOT TRIED in a
+  // headset on this PC. ----------
+  enterXr(session) {
+    const r = this.renderer; r.xr.enabled = true; r.xr.setReferenceSpaceType('local-floor'); r.xr.setFramebufferScaleFactor(0.85);   // a little under the headset's own size: two eyes are twice the work
+    if (!this.xrRig) {
+      this.xrRig = new THREE.Group(); this.scene.add(this.xrRig);      // where the player's feet stand: it carries the panel; the camera is not its child
+      this.xrHands = [0, 1].map((i) => { const c = r.xr.getController(i), I = this.xrInput;
+        c.addEventListener('selectstart', () => { I.fire = true; I.hand = i; I.pulls++; }); c.addEventListener('selectend', () => { if (I.hand === i) I.fire = false; });
+        c.addEventListener('squeezestart', () => { I.flare = true; }); this.scene.add(c); return c; });
+    }
+    this.xrInput.fire = false; this.xrInput.flare = false; this.xrRig.add(this.dash.mesh); this.dash.mesh.position.set(0, 1.02, -0.72); this.dash.mesh.rotation.set(-0.7, 0, 0); this.dash.mesh.scale.setScalar(1.5);
+    this.xr = true; this.xrBase = null; return r.xr.setSession(session).then(() => { this.xrBase = r.xr.getReferenceSpace(); });
+  }
+  exitXr() {
+    this.xr = false; this.xrBase = null; this.xrInput.fire = false; if (this.xrRig) this.xrRig.remove(this.dash.mesh); this.dash.mesh.scale.setScalar(1); this.dash.mesh.visible = false;
+    this.renderer.xr.enabled = false; this.deckView.hand = null; this.applySize();
+  }
+  // the headset's own floor is moved to where the rig stands, so that every pose it gives (the eyes, the hands) is a place in
+  // the game's world and the camera needs no parent (the sea, the sky and the spray all read the camera's own position)
+  xrSpace() {
+    const base = this.xrBase, R = this.xrRig; if (!base || typeof XRRigidTransform === 'undefined') return;
+    const th = R.rotation.y, c = Math.cos(th), s = Math.sin(th), vx = -R.position.x, vy = -R.position.y, vz = -R.position.z;
+    this.renderer.xr.setReferenceSpace(base.getOffsetReferenceSpace(new XRRigidTransform({ x: vx * c - vz * s, y: vy, z: vx * s + vz * c, w: 1 }, { x: 0, y: Math.sin(-th / 2), z: 0, w: Math.cos(-th / 2) })));
+  }
+  // where the aiming hand points, as the gun's yaw from the bow and its pitch (sim/deck.mjs), for a boat heading h; null: no hand yet
+  xrAim(h, out = {}) {
+    const c = this.xrHands[this.xrInput.hand]; if (!this.xr || !c) return null;
+    c.getWorldDirection(this._v); const dx = -this._v.x, dy = -this._v.y, dz = -this._v.z;        // a controller points along its own -z
+    out.ay = wrapA(Math.atan2(-dx, dz) - h); out.ap = Math.asin(clamp(dy, -1, 1)); return out;
+  }
+  // the level on the deck, or null for none (the promise: its three models have arrived; a film waits for it)
+  setDeck(fight) { this.deck = fight || null; return this.deckView.setDeck(this.deck); }
   // a rescue voyage in the bay, or null for none (everything of it is made in code: nothing to load)
   // (the promise: Little Captain Jack has arrived where this voyage has him; a film waits for it)
   setVoyage(v) { this.voyage = v || null; this.bayView.setVoyage(this.voyage, this.world); if (!this.voyage) this.lookAt = null; return this.setJack(!v ? null : v.key === 'mk1' ? 'bow' : v.key === 'mk3' && !v.jack ? 'beach' : 'boat'); }
@@ -238,6 +277,7 @@ export class Stage {
     if (this.rescue) this.rescueView.onEvent(e, this);
     if (this.boss) this.bossView.onEvent(e, this);
     if (this.levi) this.leviView.onEvent(e, this);
+    if (this.deck) this.deckView.onEvent(e, this);
     if (this.voyage) this.bayView.onEvent(e, this);
     if (e.type === 'gate' || e.type === 'miss') { if (me) this.scenery.markGate(e.gate, e.type === 'gate'); }
     if (e.type === 'lap' && me) this.scenery.resetGates();
@@ -309,6 +349,7 @@ export class Stage {
     if (this.rescue) this.rescueView.update(dt, tSim, this.camera, M);
     if (this.boss) this.bossView.update(dt, tSim, this.camera, M);
     if (this.levi) this.leviView.update(dt, tSim, this.camera, M);
+    if (this.deck) this.deckView.update(dt, tSim, this.camera, M);
     if (this.voyage) { this.bayView.update(dt, tSim, this.camera, M); const K = this.voyage.look; this.lookAt = K ? wrapA(Math.atan2(-(K.x - M.x), K.z - M.z) - M.h) : null; }   // the lookout points at what the voyage names
     // picture effects
     const fx = this.post.fx, F = this.fx, top = me.P.top, k = clamp(me.u / top, 0, 1.4), mo = this.cam.motion;
@@ -322,6 +363,8 @@ export class Stage {
   placeCamera(b, B, dt) {
     const cam = this.camera, C = CAMS[this.cam.key] || CAMS.chase, S = this.cam, P = b.P, mo = S.motion;
     S.t += dt;
+    // in the headset the camera is the headset's: only the rig it rides on is placed, on the foredeck, turning with the boat
+    if (this.xr) { this.deckView.placeRig(this.xrRig, B, dt); this.xrSpace(); this.deckView.hand = this.deck ? this.xrHands[this.xrInput.hand] || null : null; this.dash.mesh.visible = !!this.dash.values; S.shake = Math.max(0, S.shake - dt * 2.4); S.h = null; return; }
     // test and film hook: a fixed camera { pos: [x, y, z], look: [x, y, z], fov }
     if (this.debugCam) { const D = this.debugCam; cam.position.fromArray(D.pos); this.look.fromArray(D.look); cam.up.set(0, 1, 0); cam.lookAt(this.look); if (cam.fov !== (D.fov || 50)) { cam.fov = D.fov || 50; cam.updateProjectionMatrix(); } S.h = null; return; }
     // film hook: a camera that travels with the boat { ahead, right, up (metres from its middle), lookAhead, lookRight, lookUp, fov }
@@ -339,6 +382,8 @@ export class Stage {
       if (Math.abs(cam.fov - 42) > 0.05) { cam.fov = 42; cam.updateProjectionMatrix(); }
       S.h = null; return;
     }
+    // on the deck: at the gunner's eyes, looking along the gun (view/deck-view.mjs); a hit shakes the view a little
+    if (this.deck) { this.deckView.placeCamera(cam, B, dt, this.look); S.shake = Math.max(0, S.shake - dt * 2.4); if (S.shake > 0) cam.rotateZ(0.012 * S.shake * Math.sin(S.t * 71)); this.dash.mesh.visible = false; S.h = null; return; }
     // from the driver's own eyes: at the seated figure's head, looking along the hull and a little down, leaning with the boat
     const own = this.boats[this.focus] && this.boats[this.focus].skipper, eye = C.eye && own ? C.eye : null;
     if (own) { const hb = own.headBone || (own.headBone = own.root.getObjectByName('Head')), k = eye ? 0.001 : 1; if (hb && hb.scale.x !== k) hb.scale.setScalar(k); }   // his own head is not drawn then
@@ -376,7 +421,8 @@ export class Stage {
   }
   render() {
     const info = this.renderer.info; info.reset();
-    this.post.render(this.scene, this.camera);
+    if (this.renderer.xr.isPresenting) { this.renderer.setRenderTarget(null); this.renderer.render(this.scene, this.camera); }   // the headset: both eyes, drawn straight
+    else this.post.render(this.scene, this.camera);
     this.stats.calls = info.render.calls; this.stats.triangles = info.render.triangles;
   }
 }

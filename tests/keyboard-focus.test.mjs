@@ -13,7 +13,7 @@ const controls=new Controls();controls.sailing=true;controls.mode='keys';
 const G={screen:'race',run:{mode:'sailing'},paused:false,sailInput:{sheet:.5,autoTrim:true}};
 const calls={paint:0,view:0,pause:0,resume:0,boost:0};let onKey;
 vm.runInNewContext(source.slice(start,end),{window:{addEventListener:(type,fn)=>{assert.equal(type,'keydown');onKey=fn;}},Element,G,controls,
- clamp:(v,a,b)=>Math.max(a,Math.min(b,v)),paintSailControls:()=>calls.paint++,toggleView:()=>calls.view++,pause:()=>calls.pause++,resume:()=>calls.resume++,boostPressed:()=>calls.boost++});
+ clamp:(v,a,b)=>Math.max(a,Math.min(b,v)),paintSailControls:()=>calls.paint++,toggleView:()=>calls.view++,pause:()=>calls.pause++,resume:()=>calls.resume++,boostPressed:()=>calls.boost++,deckOn:()=>false});
 const press=(code,kind='range',repeat=false)=>{const e={code,target:new Element(kind),repeat,prevented:false,preventDefault(){this.prevented=true;}};onKey(e);return e;};
 for(const key of ['ArrowLeft','ArrowRight','ArrowUp','ArrowDown','Home','End','PageUp','PageDown']){controls.releaseAll();const e=press(key);assert.equal(e.prevented,false,key+' native behavior');assert.equal(controls.k.left||controls.k.right||controls.k.boost||controls.k.brake,false,key+' no game input');}
 assert.equal(press('KeyA').prevented,true);assert.equal(controls.k.left,true);controls.releaseAll();

@@ -10,6 +10,7 @@ import * as courses from '../src/sim/courses.mjs';
 import * as rescue from '../src/sim/rescue.mjs';
 import * as boss from '../src/sim/boss.mjs';
 import * as levi from '../src/sim/leviathan.mjs';
+import * as deck from '../src/sim/deck.mjs';
 import * as voyage from '../src/sim/voyages.mjs';
 import * as stats from '../src/sim/boat-stats.mjs';
 import * as governor from '../src/sim/governor.mjs';
@@ -61,7 +62,7 @@ class Stage {
   async setBoats(keys) { this.calls.push(['boats', [...keys]]); this.boats.forEach((boat, i) => { boat.key = keys[i]; }); }
   async setSkippers(ids) { this.skippers = [...ids]; this.calls.push(['skippers', [...ids]]); }
   async setRescue(value) { this.rescue = value; } async setBoss(value) { this.boss = value; }
-  setLevi(value) { this.levi = value; } setGhost(value) { this.ghost = value; }
+  setLevi(value) { this.levi = value; } setGhost(value) { this.ghost = value; } async setDeck(value) { this.deck = value; }
   async setVoyage(value) {
     if (value) assert.ok(value.race && value.me && Array.isArray(value.people), 'the scene receives a complete voyage snapshot');
     this.voyage = value;
@@ -105,6 +106,7 @@ async function createGame({ edition = 'bay', query = '', storage = new Map() } =
     Rescue: rescue.Rescue, arenaCourse: rescue.arenaCourse, rescueSettings: rescue.rescueSettings,
     ARENA: rescue.ARENA, RESCUE: rescue.RESCUE, SHARK: rescue.S,
     Boss: boss.Boss, dragonCourse: boss.dragonCourse, bossSettings: boss.bossSettings, DRAGON: boss.DRAGON, FIGHT: boss.BOSS,
+    DeckFight: deck.DeckFight, hawkCourse: deck.hawkCourse, hawkSettings: deck.hawkSettings, HAWK: deck.HAWK, DECK: deck.DECK, HALVES: deck.HALVES,
     Leviathan: levi.Leviathan, leviCourse: levi.leviCourse, leviSettings: levi.leviSettings, LEVI: levi.LEVI, LFIGHT: levi.FIGHT, PHASES: levi.PHASES,
     Stage, Sound, TiltInput, PR, PF, CAMS: {}, OWNER: 'f01', KING: 'king', JACK: 'jack', crewFor: () => [],
     FLEET: fleet, FLEET_KEYS: ['yacht', 'jukung'], rivalBoats: () => ['yacht', 'yacht', 'yacht'],

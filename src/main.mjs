@@ -16,8 +16,16 @@
 // 0.9.0 (the same day, after the owner's six pictures of 14:14: the project's research/A7-target-pictures): the jukung's look
 // follows the pictures (view/jukung.mjs), the telling on the beach has a table of planks with nine palm leaves and their signs,
 // the slopes are forested, a village is lit at night, rain falls under the squall, the overdue boat has a canopy.
-// 0.12.0 (2026-11-17): a dedicated Lipah Bay entry, voyage journal and Jack's optional three-step sailing lesson.
-// 0.11.0 (2026-11-17): Jack's separate sailing practice, researched racing geometry, trim/balance controls and corrected cast poses.
+// 0.13.0 (2026-11-17): two lines of work joined: this session's 0.12.1 (the level on the deck and its headset mode) and another
+// writer's sailing trial and bay entrance, which went live under version numbers of their own (the two lines marked "bay").
+// 0.12.1 (2026-11-17): in the headset mode two loops ran at once (the page's and the headset's): put right; the smoke test has a
+// part of its own for the headset path (tools/smoke.mjs, part l), which found it.
+// 0.12.0 (2026-11-17): a first headset mode for the level on the deck (WebXR): a VR button, the player on the foredeck, the gun
+// in the hand. Tried against a stand-in headset only (tools/lib/fake-xr.js): the first real try is the owner's.
+// 0.11.0 (2026-11-17): a third boss level, Iron Hawk: the level on the deck (sim/deck.mjs, view/deck-view.mjs): a shooter on
+// rails built on research step A8; the first weapon that is aimed by hand; its three models made by the model service.
+// bay 0.12.0 (2026-11-17): a dedicated Lipah Bay entry, voyage journal and Jack's optional three-step sailing lesson.
+// bay 0.11.0 (2026-11-17): Jack's separate sailing practice, researched racing geometry, trim/balance controls and corrected cast poses.
 // 0.10.1 (2026-11-17): the same game with lighter model files (tools/slim-assets.mjs): nothing that is shown has changed.
 // 0.10.0 (the same day): the two figures of the voyages (view/people.mjs, KING and JACK): the king at the helm of the jukung,
 // the little captain as its lookout, in his own boat or by his fire; and the artwork on the sail (view/jukung.mjs).
@@ -26,28 +34,29 @@
 // on the beach with nine lesson leaves a voyage; a Voyage tab in the menu; a film camera that travels with the boat.
 // 0.7.0 (the same day): each boat handles its own way (sim/boat-stats.mjs), a display inside the cockpit for the view from the
 // helm (view/dash.mjs), a fifth boat (the red catamaran without its lettering), and a ghost that remembers its boat.
-import { Stage, CAMS } from './view/stage.mjs?v=7d4a3824';
-import { LIVERIES, LIVERY_KEYS } from './view/boats.mjs?v=7d4a3824';
-import { OWNER, KING, JACK, crewFor } from './view/people.mjs?v=7d4a3824';
-import { WORLDS } from './view/sky.mjs?v=7d4a3824';
-import { getCourse, COURSE_DEFS, COURSE_KEYS, pointInto, wrapA, wrapS } from './sim/courses.mjs?v=7d4a3824';
-import { Race, defaultSettings, DT, TUNES, TUNE_KEYS, BOOST, SIM_VERSION, encodeInputs, decodeInputs } from './sim/race-sim.mjs?v=7d4a3824';
-import { Rescue, arenaCourse, rescueSettings, ARENA, RESCUE, S as SHARK } from './sim/rescue.mjs?v=7d4a3824';
-import { Boss, dragonCourse, bossSettings, DRAGON, BOSS as FIGHT } from './sim/boss.mjs?v=7d4a3824';
-import { Leviathan, leviCourse, leviSettings, LEVI, FIGHT as LFIGHT, PHASES } from './sim/leviathan.mjs?v=7d4a3824';
-import { makeVoyage, bayCourse, voyageSettings, voyageChoices, VOYAGES, VOYAGES_READY as VOYAGE_KEYS } from './sim/voyages.mjs?v=7d4a3824';
+import { Stage, CAMS } from './view/stage.mjs?v=55436194';
+import { LIVERIES, LIVERY_KEYS } from './view/boats.mjs?v=55436194';
+import { OWNER, KING, JACK, crewFor } from './view/people.mjs?v=55436194';
+import { WORLDS } from './view/sky.mjs?v=55436194';
+import { getCourse, COURSE_DEFS, COURSE_KEYS, pointInto, wrapA, wrapS } from './sim/courses.mjs?v=55436194';
+import { Race, defaultSettings, DT, TUNES, TUNE_KEYS, BOOST, SIM_VERSION, encodeInputs, decodeInputs } from './sim/race-sim.mjs?v=55436194';
+import { Rescue, arenaCourse, rescueSettings, ARENA, RESCUE, S as SHARK } from './sim/rescue.mjs?v=55436194';
+import { Boss, dragonCourse, bossSettings, DRAGON, BOSS as FIGHT } from './sim/boss.mjs?v=55436194';
+import { Leviathan, leviCourse, leviSettings, LEVI, FIGHT as LFIGHT, PHASES } from './sim/leviathan.mjs?v=55436194';
+import { DeckFight, hawkCourse, hawkSettings, HAWK, DECK, HALVES } from './sim/deck.mjs?v=55436194';
+import { makeVoyage, bayCourse, voyageSettings, voyageChoices, VOYAGES, VOYAGES_READY as VOYAGE_KEYS } from './sim/voyages.mjs?v=55436194';
 const VOYAGES_READY_ALL = VOYAGE_KEYS;
-import { FLEET, FLEET_KEYS, rivalBoats } from './view/fleet.mjs?v=7d4a3824';
-import { BOAT_STATS, boatTweak } from './sim/boat-stats.mjs?v=7d4a3824';
-import { Governor, RefreshWatch, measureRefresh } from './sim/governor.mjs?v=7d4a3824';
-import * as PR from './sim/progress.mjs?v=7d4a3824';
-import { Controls } from './ui/controls.mjs?v=7d4a3824';
-import { Sound } from './ui/sound.mjs?v=7d4a3824';
-import * as PF from './ui/platform.mjs?v=7d4a3824';
-import { BAY_SAVE_KEY, BAY_JOURNEYS, makeBaySave, bayProgress } from './ui/bay-flow.mjs?v=7d4a3824';
-import { makeSailingLesson, advanceSailingLesson } from './sim/sailing-lesson.mjs?v=7d4a3824';
+import { FLEET, FLEET_KEYS, rivalBoats } from './view/fleet.mjs?v=55436194';
+import { BOAT_STATS, boatTweak } from './sim/boat-stats.mjs?v=55436194';
+import { Governor, RefreshWatch, measureRefresh } from './sim/governor.mjs?v=55436194';
+import * as PR from './sim/progress.mjs?v=55436194';
+import { Controls } from './ui/controls.mjs?v=55436194';
+import { Sound } from './ui/sound.mjs?v=55436194';
+import * as PF from './ui/platform.mjs?v=55436194';
+import { BAY_SAVE_KEY, BAY_JOURNEYS, makeBaySave, bayProgress } from './ui/bay-flow.mjs?v=55436194';
+import { makeSailingLesson, advanceSailingLesson } from './sim/sailing-lesson.mjs?v=55436194';
 
-export const VERSION = 'crest-run 0.12.0', BUILD = '2026-11-17 #7d4a3824';
+export const VERSION = 'crest-run 0.13.0', BUILD = '2026-11-17 #55436194';
 const $ = (id) => document.getElementById(id);
 const Q = new URLSearchParams(location.search);
 const BAY_GAME = document.body.dataset.game === 'bay';
@@ -90,7 +99,7 @@ window.addEventListener('unhandledrejection', (e) => { G.errors.push('rejection:
 // the elements the race display writes every frame, looked up once (T-10)
 const E = {};
 for (const [k, id] of Object.entries({ fill: 'h-boost-fill', boost: 'h-boost', btn: 'h-boostbtn', knob: 'h-knob', prog: 'h-prog', progMe: 'h-prog-me', count: 'h-count', msg: 'h-msg', warn: 'h-warn', arrow: 'h-arrow', place: 'h-place',
-  edge: 'h-edge', calWheel: 'cal-wheel', calNeedle: 'cal-needle', toast: 'toast', hud: 'hud', play: 'play', nextCourse: 'b-nextcourse', retry: 'b-retry' })) E[k] = $(id);
+  edge: 'h-edge', calWheel: 'cal-wheel', calNeedle: 'cal-needle', toast: 'toast', hud: 'hud', play: 'play', cross: 'deck-cross', flare: 'h-flare', nextCourse: 'b-nextcourse', retry: 'b-retry' })) E[k] = $(id);
 
 // ---------- screens ----------
 const SCREENS = ['boot', 'title', 'cal', 'menu', 'bay', 'results', 'pause', 'settings', 'card', 'resume', 'sensors', 'rotate', 'kies', 'beach'];
@@ -100,6 +109,7 @@ function show(name) {
   for (const s of SCREENS) $('s-' + s).classList.toggle('show', s === name);
   const racing = name === 'race';
   E.hud.classList.toggle('hidden', !(racing && G.hudOn)); E.play.classList.toggle('hidden', !racing);
+  E.hud.classList.toggle('deck', !!G.rescue && G.rescue.kind === 'deck');   // the level on the deck has its own controls: a crosshair and a flare button
   E.toast.classList.toggle('race', racing);       // in a race notes sit under the clock, clear of speed and boost (P4)
 }
 let toastT = null;
@@ -151,14 +161,14 @@ function paintBay() {
   G.baySuggested = progress.sailingComplete ? progress.recommended : ':practice';
   $('bay-continue').textContent = !progress.sailingComplete ? 'LEARN TO SAIL WITH JACK' : `${progress.journeys.find((one) => one.key === next.key).visited ? 'RETURN TO' : 'BEGIN'} ${next.name.toUpperCase()}`;
   $('bay-continue-note').textContent = !progress.sailingComplete ? 'Three short exercises: wind, sail and balance. Every voyage is also open below.' : progress.explored === 3 ? 'Three stories explored. Choose a voyage to find something new.' : 'Your next suggested voyage. Choose any of the three whenever you like.';
-  $('bay-progress').textContent = `${progress.explored}/3 explored · ${progress.leaves}/27 leaves`;
+  $('bay-progress').textContent = `${progress.explored}/3 explored \u00B7 ${progress.leaves}/27 leaves`;
   $('bay-practice').querySelector('strong').textContent = progress.sailingComplete ? 'Free sailing with Jack' : 'Sail with Jack';
   $('bay-practice').querySelector('small').textContent = progress.sailingComplete ? 'Open water, at your own pace' : 'Wind, trim and the feel of the floats';
   $('bay-replay').classList.toggle('hidden', !progress.sailingComplete);
   $('bay-journeys').innerHTML = progress.journeys.map((one) => {
     const d = VOYAGES[one.key], card = BAY_CARDS[one.key];
-    const state = one.visited ? `${one.harmonies}/3 harmonies · ${one.leaves}/9 leaves${!one.reflected ? ' · reflection awaits' : ''}` : 'Ready to sail';
-    return `<button type="button" class="bay-journey${one.key === progress.recommended ? ' recommended' : ''}${one.explored ? ' complete' : ''}" data-voyage="${one.key}"><span class="bay-journey-scene ${card.scene}" aria-hidden="true"></span><span class="bay-journey-copy"><span class="bay-journey-kicker">0${one.index + 1} · ${card.time}</span><strong>${d.name}</strong><span class="bay-journey-story">${card.story}</span><span class="bay-journey-status">${state}</span></span><span class="bay-journey-arrow" aria-hidden="true">↗</span></button>`;
+    const state = one.visited ? `${one.harmonies}/3 harmonies \u00B7 ${one.leaves}/9 leaves${!one.reflected ? ' \u00B7 reflection awaits' : ''}` : 'Ready to sail';
+    return `<button type="button" class="bay-journey${one.key === progress.recommended ? ' recommended' : ''}${one.explored ? ' complete' : ''}" data-voyage="${one.key}"><span class="bay-journey-scene ${card.scene}" aria-hidden="true"></span><span class="bay-journey-copy"><span class="bay-journey-kicker">0${one.index + 1} \u00B7 ${card.time}</span><strong>${d.name}</strong><span class="bay-journey-story">${card.story}</span><span class="bay-journey-status">${state}</span></span><span class="bay-journey-arrow" aria-hidden="true">\u2197</span></button>`;
   }).join('');
 }
 function startBayDemo() {
@@ -194,7 +204,7 @@ function paintSailingLesson() {
   const lesson = G.sailLesson;
   $('sail-lesson').classList.toggle('hidden', !lesson);
   if (!lesson) return;
-  $('sail-lesson-step').textContent = lesson.complete ? 'THREE THINGS LEARNED' : `SAIL WITH JACK · ${lesson.step + 1}/3`;
+  $('sail-lesson-step').textContent = lesson.complete ? 'THREE THINGS LEARNED' : `SAIL WITH JACK \u00B7 ${lesson.step + 1}/3`;
   $('sail-lesson-title').textContent = lesson.title; $('sail-lesson-note').textContent = lesson.hint;
   $('sail-lesson-progress').value = lesson.progress;
   $('sail-lesson-skip').classList.toggle('hidden', lesson.complete);
@@ -302,14 +312,14 @@ function paintSailing(race, run, dt, me) {
   $('sail-wind-arrow').style.transform = `rotate(${s.awa * 180 / Math.PI}deg)`;
   $('sail-wind-speed').textContent = `${(Math.max(0, s.aws) * 1.94384).toFixed(1)} kn`;
   $('sail-wind-from').textContent = angle < 0.15 ? 'From ahead' : angle > Math.PI - 0.2 ? 'From astern' : `From ${side}${angle < 1.05 ? ' bow' : angle > 2.1 ? ' quarter' : ''}`;
-  const trim = s.noGo ? 'Head off the wind to fill the sail' : s.aws < 0.7 ? 'Waiting for the breeze' : s.luffing || s.fill < 0.25 ? 'Sail luffing — adjust the sheet' : s.trimEfficiency < 0.55 ? 'Try a little ease or trim' : G.sailInput.autoTrim ? 'Assist is keeping the sail filled' : 'Sail drawing well';
+  const trim = s.noGo ? 'Head off the wind to fill the sail' : s.aws < 0.7 ? 'Waiting for the breeze' : s.luffing || s.fill < 0.25 ? 'Sail luffing \u2014 adjust the sheet' : s.trimEfficiency < 0.55 ? 'Try a little ease or trim' : G.sailInput.autoTrim ? 'Assist is keeping the sail filled' : 'Sail drawing well';
   $('sail-trim-state').textContent = trim;
   $('sail-controls').classList.toggle('luffing', !!s.noGo || !!s.luffing);
   if (G.sailInput.autoTrim) { G.sailInput.sheet = s.sheet; $('sail-sheet').value = Math.round(s.sheet * 100); }
   $('sail-load-port').style.transform = `scaleX(${clamp(s.portLoad, 0, 1)})`;
   $('sail-load-starboard').style.transform = `scaleX(${clamp(s.starboardLoad, 0, 1)})`;
   const high = Math.max(s.portLoad, s.starboardLoad), difference = s.starboardLoad - s.portLoad;
-  $('sail-load-state').textContent = high > 0.9 ? 'Float pressed down — ease or balance' : Math.abs(difference) < 0.12 ? 'Floats sharing the load' : `${difference > 0 ? 'Starboard' : 'Port'} float taking the load`;
+  $('sail-load-state').textContent = high > 0.9 ? 'Float pressed down \u2014 ease or balance' : Math.abs(difference) < 0.12 ? 'Floats sharing the load' : `${difference > 0 ? 'Starboard' : 'Port'} float taking the load`;
   const warn = controls.mode === 'tilt' && controls.flat ? 'Tip the screen up towards you' : Math.abs(me.lat) > Math.max(10, race.c.halfWidth - 35) ? 'Near the edge of the sailing water' : '';
   E.warn.textContent = warn; E.warn.style.display = warn ? 'block' : 'none';
 }
@@ -319,6 +329,7 @@ function paintSailing(race, run, dt, me) {
 async function startRescue() {
   if (G.sel.level === DRAGON.key) return startBoss();
   if (G.sel.level === LEVI.key) return startLevi();
+  if (G.sel.level === HAWK.key) return startDeck();
   if (VOYAGES[G.sel.level]) return startVoyage();
   if (G.rescueStarting) return; G.rescueStarting = true;
   try {
@@ -345,6 +356,7 @@ async function startRescue() {
 }
 function endRescue() {
   if (G.rescue.kind === 'levi') return endLevi();
+  if (G.rescue.kind === 'deck') return endDeck();
   if (G.rescue.kind === 'voyage') return endVoyage();
   if (G.rescue.kind === 'boss') return endBoss();
   const race = G.race, run = G.run, R = G.rescue, sm = R.summary(), rs = race.summary();
@@ -536,6 +548,126 @@ function paintLevi(race, run, dt, me) {
     : under ? 'It is under you: move' : B.phase >= 2 && dO < 60 ? 'The maelstrom: steer out' : incoming ? 'Water ahead: turn' : q.on && !q.locked ? 'Its shadow follows you: keep moving' : '';
   if (warn !== H.warn) { H.warn = warn; E.warn.textContent = warn; E.warn.style.display = warn ? 'block' : 'none'; }
   if (run.coach && race.racing && !B.over && !run.coachAim && race.lapT > 3.5) { run.coachAim = true; hudMsg('SHOOT THE GLOWING LURES ON ITS BACK: POINT YOUR BOW AT THEM', 'tip', 2, true); }
+}
+// ---------- the third boss level: Iron Hawk, the level on the deck (sim/deck.mjs). The same frame as the other fights: G.rescue
+// holds it, its kind is 'deck'. The boat sails itself (the fight's handover); the player aims a gun: DK holds where it points
+// (radians from the bow, and up), whether it fires, and a flare that is asked for. A finger or the mouse drags the aim and
+// fires while it is down; the keys: arrows or WASD aim, the space bar fires, F sends a flare. ----------
+const DK = { ay: 0, ap: 0.12, fire: false, flare: false, id: null, x: 0, y: 0, keys: { left: false, right: false, up: false, down: false, fire: false } };
+const deckOn = () => !!G.rescue && G.rescue.kind === 'deck' && G.mode === 'race';
+const DECK_KEYS = { ArrowLeft: 'left', KeyA: 'left', ArrowRight: 'right', KeyD: 'right', ArrowUp: 'up', KeyW: 'up', ArrowDown: 'down', KeyS: 'down', Space: 'fire' };
+function deckKey(code, down) { if (code === 'KeyF') { if (down) DK.flare = true; return true; } const k = DECK_KEYS[code]; if (!k) return false; DK.keys[k] = down; return true; }
+function deckPointer(kind, e) {
+  if (kind === 'down') { DK.id = e.pointerId; DK.x = e.clientX; DK.y = e.clientY; DK.fire = true; }
+  else if (kind === 'move' && e.pointerId === DK.id) { const k = 1.7 / Math.max(240, window.innerHeight); DK.ay = wrapA(DK.ay + (e.clientX - DK.x) * k); DK.ap = clamp(DK.ap - (e.clientY - DK.y) * k, HAWK.aim.down, HAWK.aim.up); DK.x = e.clientX; DK.y = e.clientY; }
+  else if (kind === 'up' && e.pointerId === DK.id) { DK.id = null; DK.fire = false; }
+}
+// ---- the headset (WebXR): a VR button on this level, where the browser offers an immersive session. In it the frame loop
+// runs on the headset's clock, nothing pauses the game, the hand's controller aims and its trigger fires. NOT TRIED in a
+// headset on this PC: the first try is the owner's. ----
+const XR = { ok: false, on: false, session: null, pulls: 0, overAt: 0 }; G.xr = XR;
+// (asked once, when this level first starts: asked at every page start it cost the first seconds their smoothness on the PC of the tests)
+function askXr() { if (XR.asked || !navigator.xr || !navigator.xr.isSessionSupported) return; XR.asked = true; navigator.xr.isSessionSupported('immersive-vr').then((ok) => { XR.ok = !!ok; $('h-vr').classList.toggle('hidden', !XR.ok); }).catch(() => {}); }
+async function enterXr() {
+  if (XR.on || !XR.ok || !deckOn()) return;
+  try {
+    const session = await navigator.xr.requestSession('immersive-vr', { requiredFeatures: ['local-floor'] });
+    XR.session = session; XR.on = true; session.addEventListener('end', leaveXr);
+    last = null; stage.renderer.setAnimationLoop(frame); await stage.enterXr(session);   // the loop is handed over BEFORE the session starts: the renderer then stops its page loop by itself (handed over after, two loops ran at once: the smoke test's part l found it)
+    G.paused = false; startRace();                              // the fight begins again, in the headset
+  } catch (e) { const was = XR.on; XR.on = false; XR.session = null; if (was) { stage.renderer.setAnimationLoop(null); stage.exitXr(); last = null; requestAnimationFrame(frame); } toast('The headset did not start: ' + String((e && e.message) || e).slice(0, 80), 6000); }
+}
+function leaveXr() { if (!XR.on) return; XR.on = false; XR.session = null; stage.renderer.setAnimationLoop(null); stage.exitXr(); last = null; G.dirty = true; requestAnimationFrame(frame); }
+// after a fight in the headset no results screen can be seen there: a new pull of the trigger, two and a half seconds on, starts it again
+function xrAgain() { const F = G.rescue; if (!F || F.kind !== 'deck' || !F.over || stage.xrInput.pulls === XR.pulls || performance.now() - XR.overAt < 2500 || G.rescueStarting) return; XR.pulls = stage.xrInput.pulls; G.sel.mode = 'rescue'; G.sel.level = HAWK.key; G.paused = false; startRace(); }
+// one step of the fight's input: the computer's gunner (tests and film), or the player's hand
+function deckInput(F) {
+  if (G.auto) { F.gunner(0.85); DK.ay = F.input.ay; DK.ap = F.input.ap; return; }
+  if (XR.on) {                                                 // in the headset: the hand aims, the trigger fires, the grip sends a flare
+    const I = stage.xrInput, A = stage.xrAim(F.me.h, DK); if (A) DK.ap = clamp(DK.ap, HAWK.aim.down, HAWK.aim.up);
+    F.input.ay = DK.ay; F.input.ap = DK.ap; F.input.fire = I.fire; F.input.flare = I.flare; I.flare = false; return;
+  }
+  const K = DK.keys; DK.ay = wrapA(DK.ay + ((K.right ? 1 : 0) - (K.left ? 1 : 0)) * 1.5 * DT); DK.ap = clamp(DK.ap + ((K.up ? 1 : 0) - (K.down ? 1 : 0)) * 1.1 * DT, HAWK.aim.down, HAWK.aim.up);
+  F.input.ay = DK.ay; F.input.ap = DK.ap; F.input.fire = DK.fire || K.fire; F.input.flare = DK.flare; DK.flare = false;
+}
+async function startDeck() {
+  if (G.rescueStarting) return; G.rescueStarting = true;
+  try {
+    const { tune, livery, difficulty } = G.sel, c = hawkCourse(), seed = DEV && Q.get('seed') ? +Q.get('seed') : 5;
+    stage.setWorld(Q.get('world') || HAWK.world); stage.setCourse(c);
+    const race = new Race(mine(hawkSettings(c, { tune })), c), F = new DeckFight(race, { difficulty, seed });
+    G.race = race; G.rescue = F; G.ghost = null; G.mode = 'race'; G.acc = 0; G.timeScale = 1; G.slowLeft = 0; G.slowArmed = false; G.paused = false; G.pausedBy = null; G.resultsAt = null; G.resumeLeft = 0;
+    G.run = { mode: 'deck', course: HAWK.key, tune, livery, difficulty, at: new Date().toISOString(), frames: 0, late: 0, worst: 0, sumMs: 0, mot0: controls.tilt.counts.mot, th0: performance.now(), steerMode: controls.mode, recentres0: controls.recentres,
+      lastHud: 0, countShown: '', dots: [], trackW: 1, wake0: PF.wake.releases, marks: [new Float32Array(1)], markN: new Int32Array(1), gmarks: null, gmarkN: 0, named: false, toldRocket: false, bpm0: sound.bpm0 };
+    askXr(); Object.assign(DK, { ay: 0, ap: 0.12, fire: false, flare: false, id: null }); for (const k of Object.keys(DK.keys)) DK.keys[k] = false;
+    stage.setRescue(null); stage.setBoss(null); stage.setLevi(null); stage.setVoyage(null); stage.setRace(race, [livery], 0); stage.setGhost(null); const models = stage.setDeck(F);
+    const ready = Promise.all([stage.setBoats([G.sel.boat]), stage.setSkippers([OWNER]), models]); if (G.film) await ready;
+    stage.setCameraMode('chase'); controls.releaseAll();
+    E.hud.classList.remove('final'); E.hud.classList.add('rescue', 'bossfight', 'deck'); $('h-of').textContent = '%'; E.place.textContent = '0'; E.count.textContent = ''; E.warn.style.display = 'none';
+    for (const k of Object.keys(H)) H[k] = null;
+    clearTimeout(msgT); E.msg.className = ''; msgPri = 0; msgUntil = 0;
+    E.prog.querySelectorAll('i.rv').forEach((e) => e.remove());
+    clearTimeout(toastT); E.toast.classList.remove('show');
+    show('race'); sound.music('race'); keepAwake();
+  } finally { G.rescueStarting = false; }
+}
+function endDeck() {
+  const race = G.race, run = G.run, F = G.rescue, sm = F.summary(), rs = race.summary();
+  sound.bpm = run.bpm0; E.hud.classList.remove('deck');
+  const result = { mode: 'rescue', course: HAWK.key, tune: run.tune, livery: run.livery, difficulty: run.difficulty, finished: sm.finished, saved: sm.saved, total: sm.total, time: sm.time, medal: sm.medal, boss: true, won: sm.won };
+  const old = G.save.best[`${HAWK.key}:rescue`], r = PR.applyRescue(G.save, result);
+  G.save = r.save; saveNow();
+  const dur = Math.max(0.001, (performance.now() - run.th0) / 1000);
+  G.lastRuns.push({ at: run.at, course: HAWK.key, mode: 'deck', tune: run.tune, steer: G.auto ? 'computer' : DK.keys.fire || Object.values(DK.keys).some(Boolean) ? 'keys' : 'drag', difficulty: run.difficulty, saved: sm.saved, half: sm.half, hull: sm.hull, time: sm.time, shots: sm.shots, hits: sm.hits, down: sm.down, breaks: sm.breaks, passes: sm.passes, stuns: sm.stuns, bites: sm.bites, wasted: sm.wasted, flares: sm.flares,
+    topKmh: rs.topKmh, boostS: rs.boostS, why: !sm.finished ? 'left early' : sm.won ? 'boss beaten' : sm.hull <= 0 ? 'boat sunk' : 'time up', frames: run.frames, latePct: run.frames ? +(100 * run.late / run.frames).toFixed(1) : null, meanMs: run.frames ? +(run.sumMs / run.frames).toFixed(1) : null, worstMs: Math.round(run.worst),
+    motPerS: +((controls.tilt.counts.mot - run.mot0) / dur).toFixed(0), recentres: controls.recentres - run.recentres0, tier: stage.tierKey, scale: stage.scale, render: stage.renderSize(), wake: PF.wake.state, wakeLost: PF.wake.releases - run.wake0 });
+  if (G.lastRuns.length > 6) G.lastRuns.shift();
+  const lvl = run.difficulty[0].toUpperCase() + run.difficulty.slice(1);
+  $('r-place').innerHTML = `${sm.saved}<small>%</small>`;
+  $('r-title').textContent = `${HAWK.name}: boss, fury on ${lvl}`;
+  $('r-time').textContent = !sm.finished ? 'Left before the end' : sm.won ? 'The megalodon took the Iron Hawk' : sm.hull <= 0 ? 'Your boat was sunk' : 'Time ran out';
+  $('r-best').textContent = !sm.finished ? '' : old ? (sm.saved > old.saved ? `New best: ${sm.saved - old.saved} % more than before` : `Best so far: ${old.saved} % of its armour`) : 'First fight on the board';
+  $('r-medal').innerHTML = sm.medal ? `<span class="medal-dot ${sm.medal}"></span><span class="name">${sm.medal}</span>` : '';
+  const NEWS = { best: () => 'New best fight', medal: (n) => `${n.medal[0].toUpperCase() + n.medal.slice(1)} medal` };
+  $('r-news').innerHTML = r.news.map((n, i) => `<li style="animation-delay:${(0.9 + 0.4 * i).toFixed(1)}s">${NEWS[n.type](n)}</li>`).join('');
+  r.news.forEach((n, i) => setTimeout(() => { if (G.screen === 'results' && G.race === race) sound.sfx('chip', i); }, 900 + 400 * i));
+  $('r-table').innerHTML = [['Hull left', `${sm.hull}/${DECK.hull}`], ['Rockets shot down', String(sm.down)], ['Passes broken', `${sm.breaks} of ${sm.passes}`], ['Bites and flares left', `${sm.bites} and ${sm.flares}`]].map(([k, v]) => `<span></span><span>${k}</span><span>${v}</span>`).join('');
+  $('r-stats').innerHTML = [`time ${sm.time === null ? '-' : PR.fmtTime(sm.time)}`, `hits ${sm.hits} of ${sm.shots}`, `staggered ${sm.stuns} time${sm.stuns === 1 ? '' : 's'}`].map((t) => `<span>${t}</span>`).join('');
+  $('r-tip').textContent = !sm.finished ? '' : !sm.won ? (run.difficulty !== 'easy' ? 'Tip: on the course screen you can set its fury to Easy.' : 'Tip: keep the magazine for its low passes, and shoot the rockets first.')
+    : sm.wasted > 0 ? 'Tip: a flare only counts while it is low: on a pass, or when it hangs staggered.' : sm.medal === 'gold' && run.difficulty !== 'hard' ? 'Tip: gold. Try its fury one level up.' : '';
+  G.nextCourse = null; E.nextCourse.classList.add('hidden'); E.retry.textContent = 'FIGHT AGAIN'; E.retry.className = 'cta';
+  if (sm.medal && r.news.some((n) => n.type === 'medal')) setTimeout(() => { if (G.screen === 'results' && G.race === race) sound.sfx('medal'); }, 450);
+  race.afterglow = true;
+  G.mode = 'after'; G.acc = 0; stage.setCameraMode('orbit'); sound.music('menu'); show('results'); PF.releaseWake();
+}
+// its display: how much of its armour is gone in place of the race position, the hull under the clock, the magazine and the
+// flares beside it, the boss bar (name and half, armour, stagger, what it does now), and an arrow to it when it is not in view
+function paintDeck(race, run, dt, me) {
+  const F = G.rescue;
+  const left = race.go - race.t, ct = left > 0 ? String(Math.ceil(left)) : left > -0.8 ? 'GO' : '';
+  if (ct !== run.countShown) { run.countShown = ct; E.count.textContent = ct; if (ct && ct !== 'GO') sound.sfx('count'); }
+  run.lastHud += dt; if (run.lastHud < 0.09) return; run.lastHud = 0;
+  const t = race.lapT; setText('h-time', 'time', `${Math.floor(t / 60)}:${(t % 60).toFixed(1).padStart(4, '0')}`);
+  const done = Math.round(100 * (F.hpMax - Math.max(0, F.hp)) / F.hpMax);
+  setText('h-place', 'place', String(done)); setText('h-lap', 'lap', 'TAKEN');
+  setText('h-gap', 'gap', F.over ? '' : `hull ${Math.max(0, F.hull)} of ${DECK.hull}`);
+  setText('h-chain', 'chain', F.over ? '' : F.reload > 0 ? 'RELOADING' : `${F.mag} / ${F.gun.mag}`);
+  const fl = F.half === 2 && !F.over ? String(F.flares) : ''; if (fl !== H.flares) { H.flares = fl; E.flare.classList.toggle('hidden', fl === ''); E.flare.classList.toggle('none', fl === '0'); $('h-flares').textContent = fl; }
+  const low = F.low && F.half === 2 && F.flares > 0 && !F.breach.on; if (low !== H.flareOn) { H.flareOn = low; E.flare.classList.toggle('ready', low); }
+  setText('bb-name', 'bbname', `${HAWK.name}: ${HALVES[F.half - 1]}`);
+  const hp = Math.round(100 * Math.max(0, F.hp) / F.hpMax), stun = F.st === 'stun', st = stun ? Math.round(100 * (1 - F.t / DECK.stunS)) : Math.round(100 * Math.min(1, F.stag / DECK.stagger));
+  if (H.bbhp !== hp) { H.bbhp = hp; $('bb-hp-fill').style.width = hp + '%'; }
+  if (H.bbst !== st) { H.bbst = st; $('bb-st-fill').style.width = st + '%'; }
+  if (H.bbstun !== stun) { H.bbstun = stun; $('bb-st').classList.toggle('stun', stun); }
+  setText('bb-cast', 'bbcast', F.over ? '' : F.st === 'aim' || (F.st === 'pass' && !F.struck && !F.broken) ? `THE PASS: ${F.podHits} of ${F.need} hits on its gun pod` : F.st === 'pass' ? (F.broken ? 'pass broken: it is low' : 'it is low')
+    : stun ? (F.half === 2 && F.flares > 0 ? 'STAGGERED AND LOW: FIRE A FLARE' : 'staggered: more harm') : F.st === 'crip' ? (F.flares > 0 ? 'CRIPPLED: FIRE A FLARE' : 'crippled: the sea is coming') : F.rockets.some((q) => q.on) ? 'rockets: shoot them down' : 'out of reach: keep the magazine');
+  if (F.half !== run.half) { run.half = F.half; sound.bpm = Math.round(run.bpm0 * (1 + 0.08 * (F.half - 1))); }
+  if (!run.named && race.racing) { run.named = true; hudMsg(`I: ${HALVES[0].toUpperCase()}. DRAG TO AIM, HOLD TO FIRE`, 'tip', 3, true); }
+  const ang = wrapA(Math.atan2(-(F.x - me.x), F.z - me.z) - me.h - DK.ay), far = Math.abs(ang) > 0.5 && race.racing && !F.over;
+  if (far !== H.arrowOn) { H.arrowOn = far; E.arrow.style.opacity = far ? '1' : '0'; }
+  if (far) { const a = Math.round(ang * 180 / Math.PI / 3) * 3; if (a !== H.arrow) { H.arrow = a; E.arrow.style.transform = `rotate(${a}deg)`; } }
+  const warn = F.over || !race.racing ? '' : F.mag === 0 || F.reload > 0 ? '' : F.st === 'crip' && F.flares > 0 ? 'Its armour holds: the FLARE button' : '';
+  if (warn !== H.warn) { H.warn = warn; E.warn.textContent = warn; E.warn.style.display = warn ? 'block' : 'none'; }
 }
 // ---------- the rescue voyages in the bay (sim/voyage.mjs; PLAN-MONKEYKING.md). The same frame again: G.rescue holds the voyage,
 // its kind is 'voyage'. The boat is the jukung, whatever boat the races use; nothing is fought. The display shows who is home
@@ -738,7 +870,7 @@ function paintHud(race, run, dt) {
   const ready = me.boostE >= BOOST.minStart || me.boosting, bs = me.boosting ? 2 : ready ? 1 : 0;
   if (bs !== H.bs) { H.bs = bs; E.boost.classList.toggle('ready', bs === 1); E.boost.classList.toggle('on', bs === 2); E.btn.classList.toggle('ready', bs >= 1); E.btn.classList.toggle('on', bs === 2); }
   if (controls.mode === 'touch') { const kx = Math.round(78 * controls.steer); if (kx !== H.knob) { H.knob = kx; E.knob.style.transform = `translateX(${kx}px)`; } }
-  if (G.rescue) return G.rescue.kind === 'voyage' ? paintVoyage(race, run, dt, me) : G.rescue.kind === 'levi' ? paintLevi(race, run, dt, me) : G.rescue.kind === 'boss' ? paintBoss(race, run, dt, me) : paintRescue(race, run, dt, me, ready);
+  if (G.rescue) return G.rescue.kind === 'voyage' ? paintVoyage(race, run, dt, me) : G.rescue.kind === 'levi' ? paintLevi(race, run, dt, me) : G.rescue.kind === 'deck' ? paintDeck(race, run, dt, me) : G.rescue.kind === 'boss' ? paintBoss(race, run, dt, me) : paintRescue(race, run, dt, me, ready);
   const total = laps * c.len, tw = run.trackW, px = Math.round(tw * clamp(me.prog / total, 0, 1));
   if (px !== H.me) { H.me = px; E.progMe.style.transform = `translateX(${px}px)`; }
   for (let k = 0; k < run.dots.length; k++) { const d = run.dots[k], x = Math.round(tw * clamp(race.boats[d.i].prog / total, 0, 1)); if (x !== d.x) { d.x = x; d.el.style.transform = `translateX(${x}px)`; } }
@@ -862,6 +994,24 @@ function onRescueEvent(e) {
     case 'vLost': sound.sfx('miss'); hudMsg('A GUEST DRIFTED OUT OF THE BAY', 'bad', 6, true); break;
     case 'vHome': sound.sfx('finish'); hudMsg(`HOME: ${e.home} OF ${e.total}`, 'good', 5); break;
     case 'vEnd': sound.sfx(e.stars >= 2 ? 'finish' : 'miss'); hudMsg(e.home === e.total ? 'EVERYONE IS HOME' : 'THE VOYAGE IS OVER', e.stars >= 2 ? 'good' : 'bad', 7, true); G.resultsAt = performance.now() + (G.film ? 1e9 : 2600); break;
+    // ---- the level on the deck (sim/deck.mjs): what the gun, the helicopter and the megalodon say ----
+    case 'dShot': sound.sfx('shot'); if (e.hit) pulse(E.cross, 'hit'); break;
+    case 'dReload': sound.sfx('empty'); break;
+    case 'dLoaded': sound.sfx('click'); break;
+    case 'dRocket': sound.sfx('launch'); if (!G.run.toldRocket) { G.run.toldRocket = true; hudMsg('ROCKETS: SHOOT THEM DOWN', 'tip', 4, true); } break;
+    case 'dRocketDown': sound.sfx('chip', 1); break;
+    case 'dRocketHit': if (e.hit) { sound.sfx('ram'); hudMsg(`A ROCKET HIT: HULL ${Math.max(0, e.hull)} OF ${DECK.hull}`, 'bad', 4); pulse(E.edge, 'hit'); } else sound.sfx('splash'); break;
+    case 'dAim': sound.sfx('count'); hudMsg(`IT TURNS ON YOU: ${e.need} HITS ON ITS GUN POD BREAK THE PASS`, 'tip', 5, true); break;
+    case 'dBroken': sound.sfx('perfect', 2); hudMsg('THE PASS IS BROKEN', 'good', 5); break;
+    case 'dStrafe': if (e.hit) { sound.sfx('ram'); hudMsg(`STRAFED: HULL ${Math.max(0, e.hull)} OF ${DECK.hull}`, 'bad', 5); pulse(E.edge, 'hit'); } break;
+    case 'dStun': sound.sfx('land'); hudMsg(G.rescue.half === 2 ? 'IT HANGS LOW: FIRE A FLARE' : 'STAGGERED: IT HANGS LOW. UNLOAD', 'good', 6, true); break;
+    case 'dHalf': sound.sfx('final'); stage.setWorld(HAWK.world2); hudMsg(`II: ${e.name.toUpperCase()}. THREE FLARES: FIRE ONE WHILE IT IS LOW`, 'tip', 7, true); break;
+    case 'dFlare': sound.sfx('launch'); hudMsg(e.ok ? 'THE FLARE IS ON IT: THE SEA ANSWERS' : G.rescue.low ? 'THE FLARE MISSED IT' : 'TOO HIGH: THE FLARE IS WASTED', e.ok ? 'good' : 'bad', 5, true); break;
+    case 'dBite': sound.sfx('rough'); hudMsg('THE MEGALODON TEARS AT IT', 'good', 6, true); break;
+    case 'dBreachMiss': sound.sfx('splash'); break;
+    case 'dCrippled': sound.sfx('final'); hudMsg(G.rescue.flares > 0 ? 'CRIPPLED: ITS ARMOUR HOLDS. FIRE A FLARE' : 'CRIPPLED: THE SEA IS COMING FOR IT', 'tip', 7, true); break;
+    case 'dDevour': sound.sfx('rough'); break;
+    case 'dEnd': XR.pulls = stage.xrInput.pulls; XR.overAt = performance.now(); sound.sfx(e.won ? 'finish' : 'miss'); hudMsg(e.won ? 'THE MEGALODON TAKES THE IRON HAWK' : e.hull <= 0 ? 'YOUR BOAT IS SUNK' : 'TIME IS UP', e.won ? 'good' : 'bad', 7, true); G.resultsAt = performance.now() + (e.won ? 4200 : 3000); if (!e.won) stage.setCameraMode('orbit'); break;
     case 'leviEnd': sound.sfx(e.won ? 'finish' : 'miss'); hudMsg(e.won ? 'THE LEVIATHAN IS BEATEN' : e.hull <= 0 ? 'YOUR YACHT IS SUNK' : 'TIME IS UP', e.won ? 'good' : 'bad', 7, true); G.resultsAt = performance.now() + 3000; stage.setCameraMode('orbit'); break;
     // the boss level
     case 'throw': sound.sfx('alarm'); break;
@@ -900,6 +1050,7 @@ function boostPressed() { const r = G.race; if (G.mode !== 'race' || G.paused ||
 // by: 'button', 'hidden' (the page went to the background), 'away' (the window lost the focus: a system panel over the game,
 // another window in front), 'rotate' (the phone was turned upright), 'sensors' (motion data stopped)
 function pause(by = 'button') {
+  if (XR.on) return;                                             // in the headset the page loses its focus: that is no reason to pause
   if (G.mode !== 'race' || !G.race || G.race.over) return;
   if (G.paused && !(G.resumeLeft > 0)) return;                       // already on a pause screen
   G.paused = true; G.pausedBy = by; G.resumeLeft = 0; G.dirty = true; E.count.textContent = ''; if (G.run) G.run.countShown = null;
@@ -1013,7 +1164,7 @@ function paintMenu() {
   $('m-modes').querySelectorAll('button').forEach((b) => b.classList.toggle('on', b.dataset.mode === 'voyage' ? voyTab : b.dataset.mode === sel.mode && !voyTab));
   if (sailing) {
     $('m-diff-wrap').classList.add('hidden');
-    $('m-courses').innerHTML = '<article class="sailing-card"><div><span class="sail-eyebrow">OPEN WATER · JUKUNG</span><h2>Jack’s sailing trial</h2><p>Read the breeze. Feel the floats. Find the balance.</p><p class="dim small">A sailing practice inspired by traditional boat craft, ready for Jack to put through its paces.</p></div><div class="sailing-card-notes"><span><b>01</b> Steer across the wind</span><span><b>02</b> Ease and trim the sheet</span><span><b>03</b> Balance rig and crew</span></div></article>';
+    $('m-courses').innerHTML = '<article class="sailing-card"><div><span class="sail-eyebrow">OPEN WATER \u00B7 JUKUNG</span><h2>Jack\u2019s sailing trial</h2><p>Read the breeze. Feel the floats. Find the balance.</p><p class="dim small">A sailing practice inspired by traditional boat craft, ready for Jack to put through its paces.</p></div><div class="sailing-card-notes"><span><b>01</b> Steer across the wind</span><span><b>02</b> Ease and trim the sheet</span><span><b>03</b> Balance rig and crew</span></div></article>';
     $('m-hint').textContent = 'Trim assist starts on. Move the sheet for manual control; open Balance the boat to adjust rig and crew weight.';
     $('b-go').textContent = 'SAIL'; return;
   }
@@ -1026,7 +1177,8 @@ function paintMenu() {
     if (voyTab) $('m-courses').innerHTML = VOYAGE_KEYS.map((k) => card(VOYAGES[k], `${VOYAGES[k].depth}: ${VOYAGES[k].trip}`, (b) => `Best: ${b.saved} of 3 harmonies, ${((s.leaves || {})[k] || []).filter(Boolean).length} of 9 leaves`)).join('');
     else $('m-courses').innerHTML = card(ARENA, 'Nine llamas and three of the crew leave the ship', (b) => `Best: ${b.saved} of ${b.total} safe`)
       + card(DRAGON, 'A boss on a dragon the size of an island', (b) => `Best: ${b.saved} of ${b.total} crystals`)
-      + card(LEVI, 'A sea guardian in three phases', (b) => `Best: ${b.saved} % of its health`);
+      + card(LEVI, 'A sea guardian in three phases', (b) => `Best: ${b.saved} % of its health`)
+      + card(HAWK, 'On the deck with a gun: a gunship above, something below', (b) => `Best: ${b.saved} % of its armour`);
   } else
   $('m-courses').innerHTML = COURSE_KEYS.map((k, i) => {
     const d = COURSE_DEFS[k], open = PR.courseOpen(s, COURSE_KEYS, k), best = s.best[`${k}:${sel.mode}`], medal = s.medals[`${k}:${sel.mode}`], w = WORLDS[d.world] || WORLDS.sunset;
@@ -1039,10 +1191,11 @@ function paintMenu() {
     return `<button data-livery="${k}" aria-label="${L.label}" class="${k === sel.livery && sel.boat === 'yacht' ? 'on' : ''} ${open ? '' : 'locked'}"><i style="background:${col}"></i>${open ? '' : '<span class="lock"></span>'}</button>`; }).join('')
     + `<button data-boat="next" aria-label="Boat: ${FLEET[sel.boat].label}. Tap for the next boat" class="boat ${sel.boat !== 'yacht' ? 'on' : ''}">${FLEET[sel.boat].label}</button>`;   // the yacht's six colours, then one button that steps through the boats (three chips did not fit a phone: smoke part f)
   $('m-diff').querySelectorAll('button').forEach((b) => b.classList.toggle('on', b.dataset.diff === sel.difficulty));
-  $('m-diff-wrap').classList.toggle('hidden', sel.mode === 'trial'); $('m-diff-label').textContent = rescue ? (sel.level === DRAGON.key ? 'Fire' : sel.level === LEVI.key ? 'Fury' : VOYAGES[sel.level] ? 'Current' : 'Sharks') : 'Rivals';
-  $('b-go').textContent = sel.mode === 'race' ? 'RACE' : rescue ? (sel.level === DRAGON.key || sel.level === LEVI.key ? 'FIGHT' : VOYAGES[sel.level] ? 'SAIL' : 'RESCUE') : 'GO';
+  $('m-diff-wrap').classList.toggle('hidden', sel.mode === 'trial'); $('m-diff-label').textContent = rescue ? (sel.level === DRAGON.key ? 'Fire' : sel.level === LEVI.key || sel.level === HAWK.key ? 'Fury' : VOYAGES[sel.level] ? 'Current' : 'Sharks') : 'Rivals';
+  $('b-go').textContent = sel.mode === 'race' ? 'RACE' : rescue ? (sel.level === DRAGON.key || sel.level === LEVI.key || sel.level === HAWK.key ? 'FIGHT' : VOYAGES[sel.level] ? 'SAIL' : 'RESCUE') : 'GO';
   const T = TUNES[sel.tune];
   if (rescue && VOYAGES[sel.level]) { $('m-hint').innerHTML = 'The lookout points the way. A guest comes aboard when the boat lies close and slow.<span class="more"> You sail the jukung; nothing is fought.</span>'; return; }
+  if (rescue && sel.level === HAWK.key) { $('m-hint').innerHTML = 'The boat sails itself: drag to aim, hold to fire. Shoot its rockets down; hit the gun pod on its low passes.<span class="more"> Later a flare, fired while it is low, calls what swims below.</span>'; return; }
   if (rescue && sel.level === LEVI.key) { $('m-hint').innerHTML = 'Shoot the glowing lures on its back while it is up.<span class="more"> Stagger it, then ram it at full boost.</span>'; return; }
   if (rescue && sel.level === DRAGON.key) { $('m-hint').innerHTML = 'Point your bow at the glowing crystal and the cannon fires.<span class="more"> Keep turning: the fire lands where you were heading.</span>'; return; }
   if (rescue) { $('m-hint').innerHTML = 'Point your bow at a shark and the cannon fires; ram one at speed.<span class="more"> Swimmers near your yacht follow its wake to the shore.</span>'; return; }
@@ -1084,7 +1237,8 @@ function cardText() {
   L.push(`Steering: ${I.mode} (setting ${s.steering}) | permission ${I.perm ? `${I.perm.motion}/${I.perm.orientation}` : 'not asked'} | gyro ${I.tilt.gyro} | events/s motion ${I.rates.mot.toFixed(0)}, orientation ${I.rates.ori.toFixed(0)} | interval ${I.tilt.interval || '?'} | calibrations ${I.tilt.calOk} ok, ${I.tilt.calRejected} refused${I.tilt.cal ? ` (last: moved ${I.tilt.cal.spread} deg, tilted back ${I.tilt.cal.tiltBack} deg)` : ''} | recentres ${I.recentres} | full lock ${I.maxDeg} deg, reverse ${I.invert ? 'on' : 'off'}`);
   L.push(`Sound: ${s.sound ? 'on' : 'off'}, music ${s.music ? 'on' : 'off'}, engine ${sound.state}, audio session ${sound.session}, effects played ${sound.tones} | screen lock ${PF.wake.state} (taken away by the phone ${PF.wake.releases}x, let go by the game ${PF.wake.given}x)${G.wakeTold ? ', the player was told to touch the screen' : ''} | storage ${G.storage ? 'ok' : 'FAILED'} | camera ${s.camera}, motion ${s.motion}`);
   if (!G.lastRuns.length) L.push('Runs: none yet');
-  G.lastRuns.forEach((r, i) => L.push((r.mode === 'levi' ? `Run ${i + 1} ${r.course} boss ${r.tune} (${r.steer}), fury ${r.difficulty}: ${r.why}, health taken ${r.saved} %, phase ${r.phase}, hull ${r.hull}/${LFIGHT.hull}, time ${r.time ?? '-'} s, stuns ${r.stuns}, rams ${r.rams}, cannon hits ${r.hits}/${r.shots}, top ${r.topKmh} km/h, boost ${r.boostS} s`
+  G.lastRuns.forEach((r, i) => L.push((r.mode === 'deck' ? `Run ${i + 1} ${r.course} deck ${r.tune} (${r.steer}), fury ${r.difficulty}: ${r.why}, armour taken ${r.saved} %, half ${r.half}, hull ${r.hull}/${DECK.hull}, time ${r.time ?? '-'} s, shots ${r.hits}/${r.shots}, rockets down ${r.down}, passes broken ${r.breaks}/${r.passes}, stuns ${r.stuns}, bites ${r.bites}, flares wasted ${r.wasted}, left ${r.flares}`
+    : r.mode === 'levi' ? `Run ${i + 1} ${r.course} boss ${r.tune} (${r.steer}), fury ${r.difficulty}: ${r.why}, health taken ${r.saved} %, phase ${r.phase}, hull ${r.hull}/${LFIGHT.hull}, time ${r.time ?? '-'} s, stuns ${r.stuns}, rams ${r.rams}, cannon hits ${r.hits}/${r.shots}, top ${r.topKmh} km/h, boost ${r.boostS} s`
     : r.mode === 'boss' ? `Run ${i + 1} ${r.course} boss ${r.tune} (${r.steer}), fire ${r.difficulty}: ${r.why}, crystals ${r.saved}/${r.total}, hull ${r.hull}/${FIGHT.hull}, time ${r.time ?? '-'} s, cannon hits ${r.hits}/${r.shots}, top ${r.topKmh} km/h, boost ${r.boostS} s`
     : r.mode === 'rescue' ? `Run ${i + 1} ${r.course} rescue ${r.tune} (${r.steer}), sharks ${r.difficulty}: ${r.why}, safe ${r.saved}/${r.total}, time ${r.time ?? '-'} s, sharks sunk ${r.sunk} (${r.rams} rammed), cannon hits ${r.hits}/${r.shots}, top ${r.topKmh} km/h, boost ${r.boostS} s`
     : `Run ${i + 1} ${r.course} ${r.mode} ${r.tune} (${r.steer}): ${r.why}, place ${r.place}/${r.boats}, time ${r.time ?? '-'} s, gates ${r.passed}/${r.gates} (${r.perfects} perfect), landings ${r.clean} clean ${r.rough} rough, contacts ${r.contacts}, top ${r.topKmh} km/h, boost ${r.boostS} s`)
@@ -1114,6 +1268,7 @@ function stepRace(race, run) {
   }
   if (G.auto || (G.rescue && G.rescue.handover && !G.rescue.over)) { if (G.rescue) G.rescue.pilot(AUTO); else race.drive(race.boats[race.player], AUTO); race.step(AUTO.steer, AUTO.brake, AUTO.boost); }
   else race.step(controls.steer, controls.brake, controls.boost);
+  if (G.rescue && G.rescue.kind === 'deck') deckInput(G.rescue);
   if (G.rescue) G.rescue.step();
   if (G.ghost && !G.ghost.race.done) { const gh = G.ghost, k = gh.race.step_; if (k < gh.steer.length) gh.race.step(gh.steer[k] / 100, gh.flags[k] & 1, (gh.flags[k] >> 1) & 1); gh.race.events.length = 0; }
   // when each boat passes each 10 m mark, for the time gaps of the display (P13)
@@ -1139,6 +1294,8 @@ function simulate(dt) {
     paintHud(race, run, dt);
     // the display inside the cockpit shows what the flat display shows (view/dash.mjs; drawn only in the view from the helm)
     stage.dash.set({ speed: E.kmh ? E.kmh.textContent : $('h-kmh').textContent, unit: settings().units === 'kn' ? 'kn' : 'km/h', boost: me.boostE / BOOST.max, place: E.place.textContent + $('h-of').textContent });
+    // on the deck the panel shows the magazine, the hull, the flares and the helicopter's armour (in a headset it is the only display)
+    if (G.rescue && G.rescue.kind === 'deck') { const F = G.rescue; stage.dash.set({ speed: F.over ? (F.won ? 'WON' : 'LOST') : F.reload > 0 ? '...' : String(F.mag), unit: F.over ? 'trigger: again' : F.reload > 0 ? 'reloading' : 'rounds', boost: Math.max(0, F.hp) / F.hpMax, place: `H${Math.max(0, F.hull)}${F.half === 2 ? ' F' + F.flares : ''}` }); }
     sound.frame({ speed: run.mode === 'sailing' ? me.u / 6 : me.u / me.P.top, boost: me.boostLv, air: me.air, active: !me.finished,
       sailing: run.mode === 'sailing', wind: me.sailing ? me.sailing.aws : 0 });
   } else if (G.mode === 'demo' || G.mode === 'after') {
@@ -1161,7 +1318,8 @@ function endProbe(P) {
 }
 function reprobe() { if (G.film || !G.refresh) return; G.refresh = null; G.probe = { n: 0, deltas: [], again: true }; stage.setScale(0.5); }
 function frame(ts) {
-  if (!G.film) requestAnimationFrame(frame);
+  if (!G.film && !XR.on) requestAnimationFrame(frame);          // in the headset the renderer calls this, on the headset's clock
+  if (XR.on) xrAgain();
   const d = last === null ? 16.7 : ts - last, dt = Math.min(0.1, d / 1000); last = ts; G.frames++;
   if (!G.refresh) { const P = G.probe; if (P.n++ > 4 && d > 0) P.deltas.push(d); if (P.deltas.length >= 36) endProbe(P); }
   else if (!G.paused) {
@@ -1181,7 +1339,7 @@ function frame(ts) {
     stage.update(G.acc / DT, still ? 0 : dt * (G.mode === 'race' ? G.timeScale : 1), G.race.t - (1 - G.acc / DT) * DT);
     // behind a menu or a result that nobody has touched for a while the sea is drawn every second frame: half the work (finding 4)
     const every = still ? 6 : G.mode !== 'race' && !G.film && performance.now() - G.inputAt > IDLE_MS ? 2 : 1;
-    if (G.dirty || G.frames % every === 0) { stage.render(); G.dirty = false; G.draws++; }
+    if (XR.on || G.dirty || G.frames % every === 0) { stage.render(); G.dirty = false; G.draws++; }    // a headset needs every frame
   }
   // test hook: play a display with this frame time (ms), whatever the frame itself cost: wait out the rest of the interval
   // (measured on the page's own clock from the end of the last frame: the time stamp a frame is given can be milliseconds old)
@@ -1228,6 +1386,7 @@ function wire() {
   tap('b-nextcourse', () => { if (G.nextCourse === ':beach') return openBeach(); if (BAY_GAME) return returnToBay(); if (G.nextCourse && PR.courseOpen(G.save, COURSE_KEYS, G.nextCourse)) G.sel.course = G.nextCourse; startRace(); });
   tap('b-next', () => { if (BAY_GAME) return returnToBay(); startDemo(G.sel.course); paintMenu(); show('menu'); });
   tap('h-pause', () => pause('button'));
+  tap('h-vr', () => { enterXr(); });
   tap('h-view', toggleView);
   tap('h-recentre', () => { const r = controls.recentre(); toast(r.ok ? 'Straight ahead set again.' : 'Hold the phone still to recentre.', 1500); });
   tap('b-resume', resume); tap('b-resume2', resume); tap('b-resume3', resume);
@@ -1242,9 +1401,10 @@ function wire() {
   for (const ev of ['pointerdown', 'pointermove', 'pointerup', 'pointercancel']) $('sail-controls').addEventListener(ev, (e) => e.stopPropagation());
   // the play layer: thumbs
   const play = E.play;
-  play.addEventListener('pointerdown', (e) => { e.preventDefault(); try { play.setPointerCapture(e.pointerId); } catch (x) { /* older browsers */ } const k = controls.down(e.pointerId, e.clientX, window.innerWidth); if (k === 'boost') { PF.haptic(); boostPressed(); } });
-  play.addEventListener('pointermove', (e) => controls.move(e.pointerId, e.clientX));
-  for (const ev of ['pointerup', 'pointercancel', 'lostpointercapture']) play.addEventListener(ev, (e) => controls.up(e.pointerId));
+  play.addEventListener('pointerdown', (e) => { e.preventDefault(); try { play.setPointerCapture(e.pointerId); } catch (x) { /* older browsers */ } if (deckOn()) { deckPointer('down', e); return; } const k = controls.down(e.pointerId, e.clientX, window.innerWidth); if (k === 'boost') { PF.haptic(); boostPressed(); } });
+  play.addEventListener('pointermove', (e) => { if (deckOn()) deckPointer('move', e); else controls.move(e.pointerId, e.clientX); });
+  for (const ev of ['pointerup', 'pointercancel', 'lostpointercapture']) play.addEventListener(ev, (e) => { deckPointer('up', e); controls.up(e.pointerId); });
+  tap('h-flare', () => { if (deckOn()) { DK.flare = true; PF.haptic(); } });
   window.addEventListener('keydown', (e) => {
     const editing = e.target instanceof Element && e.target.closest('input, textarea, select, [contenteditable="true"]');
     // A focused slider keeps its native navigation keys; the sailing shortcuts still work after a drag.
@@ -1258,9 +1418,10 @@ function wire() {
     if (e.repeat) return;
     if (e.code === 'KeyC' && G.screen === 'race') { toggleView(); return; }
     if (e.code === 'Escape' || e.code === 'KeyP') { if (['pause', 'resume', 'sensors'].includes(G.screen)) resume(); else if (G.screen === 'race') pause('button'); return; }
+    if (deckOn() && deckKey(e.code, true)) { e.preventDefault(); return; }
     if (controls.key(e.code, true)) { e.preventDefault(); if (controls.k.boost && (e.code === 'Space' || e.code === 'ArrowUp' || e.code === 'KeyW')) boostPressed(); }
   });
-  window.addEventListener('keyup', (e) => { controls.key(e.code, false); });
+  window.addEventListener('keyup', (e) => { deckKey(e.code, false); controls.key(e.code, false); });
   for (const ev of ['contextmenu', 'gesturestart', 'dblclick']) document.addEventListener(ev, (e) => e.preventDefault());
   // a sound engine that was interrupted starts again only inside a tap: every tap and key press tries (T-09)
   for (const ev of ['pointerup', 'touchend', 'click', 'keydown']) document.addEventListener(ev, () => sound.resume(), { capture: true, passive: true });
@@ -1332,7 +1493,7 @@ try {
   if (Q.get('sailing') === '1') {
     $('b-start').textContent = BAY_GAME ? 'SAIL WITH JACK' : 'SAILING TRIAL';
     document.querySelector('#s-title .tag').textContent = 'Read the wind. Feel the floats. Find the balance.';
-    $('title-note').textContent = PF.env.touch ? 'Hold the phone sideways. Start sets up steering and sound.' : 'A/D or arrows steer · Q/E trim · T toggles trim assist';
+    $('title-note').textContent = PF.env.touch ? 'Hold the phone sideways. Start sets up steering and sound.' : 'A/D or arrows steer \u00B7 Q/E trim \u00B7 T toggles trim assist';
   }
   show('title'); checkRotation();
   // film: no menus; the race starts at once with the computer at the wheel and the caller owns the clock (G.filmStep)
@@ -1344,6 +1505,7 @@ try {
       if (Q.get('mode') === 'rescue') G.sel.mode = 'rescue';
       if (Q.get('level') === DRAGON.key) G.sel.level = DRAGON.key;
       if (Q.get('level') === LEVI.key) G.sel.level = LEVI.key;
+      if (Q.get('level') === HAWK.key) G.sel.level = HAWK.key;
     }
     if (VOYAGES[Q.get('level')]) G.sel.level = Q.get('level');
     await startRace();

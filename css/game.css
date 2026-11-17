@@ -213,6 +213,21 @@ pre { text-align: left; white-space: pre-wrap; word-break: break-word; font-size
 /* the rescue level: no course bar; the arrow points at a shark, the line over the speed counts llamas lost */
 /* the boss bar of the second boss level: its name and phase, its health, its stagger, the cast of its great attack */
 #bossbar { display: none; position: absolute; left: calc(30% + var(--sl)); right: calc(30% + var(--sr)); top: calc(67px + var(--st)); text-align: center; pointer-events: none; }
+/* the level on the deck: no steering, no boost; a crosshair in the middle, the magazine where the speed was, a flare button */
+#hud.deck #h-left, #hud.deck #h-boostbtn, #hud.deck #h-view, #hud.deck #h-recentre, #hud.deck #h-boost, #hud.deck #h-speed { display: none; }
+#hud.deck #h-chain { font-size: 22px; font-weight: 900; color: #fff; letter-spacing: 0.04em; }
+#deck-cross { display: none; position: absolute; left: 50%; top: 50%; width: 46px; height: 46px; margin: -23px 0 0 -23px; pointer-events: none; border: 2px solid rgba(255, 255, 255, 0.75); border-radius: 50%; box-shadow: 0 0 6px rgba(0, 0, 0, 0.6); }
+#deck-cross i { position: absolute; left: 50%; top: 50%; width: 6px; height: 6px; margin: -3px 0 0 -3px; border-radius: 50%; background: #fff; }
+#deck-cross.hit { animation: crosshit 0.14s ease-out; }
+@keyframes crosshit { from { border-color: #ffc24a; transform: scale(1.35); } to { border-color: rgba(255, 255, 255, 0.75); transform: scale(1); } }
+#h-vr { color: #fff; font-weight: 900; font-size: 15px; letter-spacing: 0.04em; border-color: #ffc24a; } #hud:not(.deck) #h-vr { display: none; }
+#hud.deck #deck-cross { display: block; } #hud.deck #h-msg { top: 23%; font-size: 20px; }
+#h-flare { display: none; position: absolute; right: calc(20px + var(--sr)); bottom: calc(18px + var(--sb)); width: 92px; height: 92px; border-radius: 50%; border: 3px solid rgba(255, 120, 100, 0.6); background: rgba(60, 12, 8, 0.55); color: #ffb0a0; font-weight: 900; letter-spacing: 0.06em; pointer-events: auto; flex-direction: column; align-items: center; justify-content: center; opacity: 0.8; }
+#h-flare small { font-size: 18px; line-height: 20px; } #h-flare b { font-size: 14px; }
+#hud.deck #h-flare { display: flex; } #hud.deck #h-flare.hidden { display: none; }
+#h-flare.ready { border-color: #ff5a4a; color: #fff; opacity: 1; box-shadow: 0 0 24px rgba(255, 90, 74, 0.7); animation: flareready 0.5s ease-in-out infinite alternate; }
+@keyframes flareready { from { transform: scale(1); } to { transform: scale(1.1); } }
+#h-flare.none { opacity: 0.35; }
 #hud.bossfight #bossbar { display: block; } #hud.bossfight #h-warn { top: calc(120px + var(--st)); } #hud.bossfight #h-msg { top: 38%; }
 #bossbar b { display: block; font-size: 12px; line-height: 14px; font-weight: 900; letter-spacing: 0.08em; text-transform: uppercase; white-space: nowrap; }
 #bb-hp, #bb-st { height: 7px; margin-top: 3px; background: rgba(0, 0, 0, 0.5); border-radius: 4px; overflow: hidden; } #bb-st { height: 4px; }
@@ -268,7 +283,7 @@ pre { text-align: left; white-space: pre-wrap; word-break: break-word; font-size
 #sail-balance summary { min-height: 44px; display: flex; align-items: center; justify-content: space-between; font-size: 12px; font-weight: 700; cursor: pointer; list-style: none; }
 #sail-balance summary::-webkit-details-marker { display: none; }
 #sail-balance summary::after { content: '+'; font-size: 20px; color: var(--teal); }
-#sail-balance[open] summary::after { content: '−'; }
+#sail-balance[open] summary::after { content: '\2212'; }
 #sail-balance label { display: flex; justify-content: space-between; font-size: 12px; margin-top: 8px; }
 #sail-balance label span { color: var(--teal); font-size: 11px; }
 #sail-balance .sail-range-label { margin: -4px 0 10px; }
