@@ -1,13 +1,13 @@
 // voyages.mjs: all the rescue voyages together (PLAN-MONKEYKING.md): MK-1 in sim/voyage.mjs, the others in files of their own.
 // The page and the tests take everything from here, so that every voyage has put its entry into VOYAGES.
 // Written 2026-11-16 by the yacht project session.
-import { DT, Race } from './race-sim.mjs?v=ec4fc7a6';
-import { Voyage, VOYAGES, bayCourse, voyageSettings } from './voyage.mjs?v=ec4fc7a6';
-import { WindVoyage } from './voyage2.mjs?v=ec4fc7a6';
-import { NightVoyage } from './voyage3.mjs?v=ec4fc7a6';
-export * from './voyage.mjs?v=ec4fc7a6';
-export { WIND, B as BOAT } from './voyage2.mjs?v=ec4fc7a6';
-export { NIGHT, CHAIN, Q as WHO } from './voyage3.mjs?v=ec4fc7a6';
+import { DT, Race } from './race-sim.mjs?v=5e9464f8';
+import { Voyage, VOYAGES, bayCourse, voyageSettings } from './voyage.mjs?v=5e9464f8';
+import { WindVoyage } from './voyage2.mjs?v=5e9464f8';
+import { NightVoyage } from './voyage3.mjs?v=5e9464f8';
+export * from './voyage.mjs?v=5e9464f8';
+export { WIND, B as BOAT } from './voyage2.mjs?v=5e9464f8';
+export { NIGHT, CHAIN, Q as WHO } from './voyage3.mjs?v=5e9464f8';
 
 const MAKERS = { mk1: Voyage, mk2: WindVoyage, mk3: NightVoyage };
 export function makeVoyage(race, opts = {}) { const M = MAKERS[opts.level] || Voyage; return new M(race, { ...opts, level: MAKERS[opts.level] ? opts.level : 'mk1' }); }

@@ -101,5 +101,13 @@ export function addLeaves(save, course, idx) {
   for (const i of idx) if (i >= 0 && i < 9 && !now[i]) { now[i] = true; fresh++; }
   s.leaves[course] = now; return { save: s, fresh };
 }
+// The pay-off of a full count (0.14.0): when every leaf of the three voyages is earned, their three tables of nine fold into a
+// cube. faces: nine places for each voyage, in the order of keys; whole only for exactly three voyages with nine leaves each.
+export function leafCube(save, keys) {
+  const L = save && save.leaves && typeof save.leaves === 'object' ? save.leaves : {};
+  const faces = (Array.isArray(keys) ? keys : []).map((k) => Array.from({ length: 9 }, (_, n) => !!(Array.isArray(L[k]) && L[k][n])));
+  const count = faces.reduce((a, f) => a + f.filter(Boolean).length, 0);
+  return { faces, count, whole: faces.length === 3 && count === 27 };
+}
 export const courseOpen = (save, courseKeys, key) => courseKeys.indexOf(key) === 0 || save.unlocked.courses.includes(key);
 export function fmtTime(t) { if (typeof t !== 'number' || !(t >= 0)) return '-:--.--'; const m = Math.floor(t / 60), s = t - 60 * m; return `${m}:${s.toFixed(2).padStart(5, '0')}`; }

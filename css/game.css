@@ -86,6 +86,28 @@ p { margin: 6px 0; }
 .leaves .leaf.sel { filter: drop-shadow(0 0 5px rgba(255, 194, 74, 0.9)); }
 .leaves .hd { color: #f1e2c4; } #v-leaftext { grid-column: 1 / -1; color: #f6ead0; font-size: 12px; min-height: 30px; padding: 3px 4px 0 6px; line-height: 1.25; }
 @media (max-width: 560px) { .vcols { grid-template-columns: 1fr; } }
+/* the pay-off of a full count (0.14.0): the three tables of nine fold into a cube. Front = the first voyage, right = the second,
+   top = the third. The two outer tables hang on the front's edges and swing back a quarter turn while the whole turns to show
+   three faces. Sizes hang on --s, the edge of the cube. */
+.cube-scene { --s: 96px; height: calc(var(--s) * 2.1); perspective: 640px; display: grid; place-items: center; }
+.cube { position: relative; width: var(--s); height: var(--s); transform-style: preserve-3d; transform: translate3d(0, calc(var(--s) * 0.2), 0) rotateX(-26deg) rotateY(-36deg); }
+.cube .face { position: absolute; left: 0; top: 0; width: 100%; height: 100%; box-sizing: border-box; display: grid; grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(3, 1fr); gap: 1px; padding: 3px; background: #2c1d10; border: 1px solid #b99a5a; border-radius: 3px; }
+.cube .f0 { transform: translateZ(calc(var(--s) / 2)); }
+.cube .f1 { left: 100%; transform-origin: 0 50%; transform: translateZ(calc(var(--s) / 2)) rotateY(90deg); filter: brightness(0.8); }
+.cube .f2 { top: -100%; transform-origin: 50% 100%; transform: translateZ(calc(var(--s) / 2)) rotateX(90deg); filter: brightness(1.1); }
+.cube i { display: grid; place-items: center; background: #3d2a18; border-radius: 2px; overflow: hidden; } .cube i svg { width: 100%; height: auto; display: block; }
+.cube i .blade { fill: #3d2a18; stroke: #2c1d10; } .cube i .sign { stroke: #5a4026; opacity: 0.55; } .cube i .rib { stroke: #2c1d10; }
+.cube i.on .blade { fill: #ecdcae; stroke: #b99a5a; } .cube i.on .sign { stroke: #4a2c12; opacity: 1; } .cube i.on .rib { stroke: #d2bd86; }
+.cube.play { animation: cube-turn 1.5s 0.6s cubic-bezier(0.4, 0, 0.2, 1) both, cube-rock 7s 2.6s ease-in-out infinite alternate; }
+.cube.play .f1 { animation: cube-f1 1.5s 0.6s cubic-bezier(0.4, 0, 0.2, 1) both; } .cube.play .f2 { animation: cube-f2 1.5s 0.6s cubic-bezier(0.4, 0, 0.2, 1) both; }
+@keyframes cube-turn { from { transform: translate3d(calc(var(--s) * -0.5), calc(var(--s) * 0.5), 0) rotateX(0deg) rotateY(0deg); } to { transform: translate3d(0, calc(var(--s) * 0.2), 0) rotateX(-26deg) rotateY(-36deg); } }
+@keyframes cube-f1 { from { transform: translateZ(calc(var(--s) / 2)) rotateY(0deg); filter: brightness(1); } to { transform: translateZ(calc(var(--s) / 2)) rotateY(90deg); filter: brightness(0.8); } }
+@keyframes cube-f2 { from { transform: translateZ(calc(var(--s) / 2)) rotateX(0deg); filter: brightness(1); } to { transform: translateZ(calc(var(--s) / 2)) rotateX(90deg); filter: brightness(1.1); } }
+@keyframes cube-rock { from { transform: translate3d(0, calc(var(--s) * 0.2), 0) rotateX(-26deg) rotateY(-36deg); } to { transform: translate3d(0, calc(var(--s) * 0.2), 0) rotateX(-22deg) rotateY(-52deg); } }
+.cubetext { color: #f6ead0; font-size: 12.5px; text-align: center; min-height: 30px; padding-top: 2px; }
+.cube-scene:has(.play) + .cubetext { animation: cube-say 0.8s 1.9s both; } @keyframes cube-say { from { opacity: 0; } to { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .cube.play, .cube.play .face, .cube-scene:has(.play) + .cubetext { animation: none; } }
+@media (max-height: 380px) { .cube-scene { --s: 78px; } }
 .leaves-old { display: grid; grid-template-columns: 70px repeat(3, 1fr); gap: 4px; margin-top: 8px; font-size: 11.5px; text-align: left; }
 .leaves .hd { font-weight: 800; letter-spacing: 0.06em; opacity: 0.8; align-self: center; } .leaves .hd small { display: block; font-weight: 400; opacity: 0.8; letter-spacing: 0; }
 

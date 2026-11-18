@@ -16,6 +16,9 @@
 // 0.9.0 (the same day, after the owner's six pictures of 14:14: the project's research/A7-target-pictures): the jukung's look
 // follows the pictures (view/jukung.mjs), the telling on the beach has a table of planks with nine palm leaves and their signs,
 // the slopes are forested, a village is lit at night, rain falls under the squall, the overdue boat has a canopy.
+// 0.14.0 (2026-11-18, on the owner's words of 10:59:32: "the 27 leaves folding into a cube sounds perfect, please do build and
+// deploy it"): with all 27 leaves the three tables of nine fold into a cube, on the beach after the last telling and in the book
+// of leaves. The three tables are its three faces in sight. No word of the method stands on it (the rule of 0.13.1 holds).
 // 0.13.1 (2026-11-17, on the owner's words of 19:59:40): the method behind the voyages no longer shows its own words. The telling
 // on the beach, the book of leaves and the voyage cards carry no ring, verb or depth word and not the method's name: the lesson
 // stays in what is played, asked and told. The data keeps its order (nine leaves, three questions); tools/smoke.mjs part j checks it.
@@ -37,29 +40,29 @@
 // on the beach with nine lesson leaves a voyage; a Voyage tab in the menu; a film camera that travels with the boat.
 // 0.7.0 (the same day): each boat handles its own way (sim/boat-stats.mjs), a display inside the cockpit for the view from the
 // helm (view/dash.mjs), a fifth boat (the red catamaran without its lettering), and a ghost that remembers its boat.
-import { Stage, CAMS } from './view/stage.mjs?v=ec4fc7a6';
-import { LIVERIES, LIVERY_KEYS } from './view/boats.mjs?v=ec4fc7a6';
-import { OWNER, KING, JACK, crewFor } from './view/people.mjs?v=ec4fc7a6';
-import { WORLDS } from './view/sky.mjs?v=ec4fc7a6';
-import { getCourse, COURSE_DEFS, COURSE_KEYS, pointInto, wrapA, wrapS } from './sim/courses.mjs?v=ec4fc7a6';
-import { Race, defaultSettings, DT, TUNES, TUNE_KEYS, BOOST, SIM_VERSION, encodeInputs, decodeInputs } from './sim/race-sim.mjs?v=ec4fc7a6';
-import { Rescue, arenaCourse, rescueSettings, ARENA, RESCUE, S as SHARK } from './sim/rescue.mjs?v=ec4fc7a6';
-import { Boss, dragonCourse, bossSettings, DRAGON, BOSS as FIGHT } from './sim/boss.mjs?v=ec4fc7a6';
-import { Leviathan, leviCourse, leviSettings, LEVI, FIGHT as LFIGHT, PHASES } from './sim/leviathan.mjs?v=ec4fc7a6';
-import { DeckFight, hawkCourse, hawkSettings, HAWK, DECK, HALVES } from './sim/deck.mjs?v=ec4fc7a6';
-import { makeVoyage, bayCourse, voyageSettings, voyageChoices, VOYAGES, VOYAGES_READY as VOYAGE_KEYS } from './sim/voyages.mjs?v=ec4fc7a6';
+import { Stage, CAMS } from './view/stage.mjs?v=5e9464f8';
+import { LIVERIES, LIVERY_KEYS } from './view/boats.mjs?v=5e9464f8';
+import { OWNER, KING, JACK, crewFor } from './view/people.mjs?v=5e9464f8';
+import { WORLDS } from './view/sky.mjs?v=5e9464f8';
+import { getCourse, COURSE_DEFS, COURSE_KEYS, pointInto, wrapA, wrapS } from './sim/courses.mjs?v=5e9464f8';
+import { Race, defaultSettings, DT, TUNES, TUNE_KEYS, BOOST, SIM_VERSION, encodeInputs, decodeInputs } from './sim/race-sim.mjs?v=5e9464f8';
+import { Rescue, arenaCourse, rescueSettings, ARENA, RESCUE, S as SHARK } from './sim/rescue.mjs?v=5e9464f8';
+import { Boss, dragonCourse, bossSettings, DRAGON, BOSS as FIGHT } from './sim/boss.mjs?v=5e9464f8';
+import { Leviathan, leviCourse, leviSettings, LEVI, FIGHT as LFIGHT, PHASES } from './sim/leviathan.mjs?v=5e9464f8';
+import { DeckFight, hawkCourse, hawkSettings, HAWK, DECK, HALVES } from './sim/deck.mjs?v=5e9464f8';
+import { makeVoyage, bayCourse, voyageSettings, voyageChoices, VOYAGES, VOYAGES_READY as VOYAGE_KEYS } from './sim/voyages.mjs?v=5e9464f8';
 const VOYAGES_READY_ALL = VOYAGE_KEYS;
-import { FLEET, FLEET_KEYS, rivalBoats } from './view/fleet.mjs?v=ec4fc7a6';
-import { BOAT_STATS, boatTweak } from './sim/boat-stats.mjs?v=ec4fc7a6';
-import { Governor, RefreshWatch, measureRefresh } from './sim/governor.mjs?v=ec4fc7a6';
-import * as PR from './sim/progress.mjs?v=ec4fc7a6';
-import { Controls } from './ui/controls.mjs?v=ec4fc7a6';
-import { Sound } from './ui/sound.mjs?v=ec4fc7a6';
-import * as PF from './ui/platform.mjs?v=ec4fc7a6';
-import { BAY_SAVE_KEY, BAY_JOURNEYS, makeBaySave, bayProgress } from './ui/bay-flow.mjs?v=ec4fc7a6';
-import { makeSailingLesson, advanceSailingLesson } from './sim/sailing-lesson.mjs?v=ec4fc7a6';
+import { FLEET, FLEET_KEYS, rivalBoats } from './view/fleet.mjs?v=5e9464f8';
+import { BOAT_STATS, boatTweak } from './sim/boat-stats.mjs?v=5e9464f8';
+import { Governor, RefreshWatch, measureRefresh } from './sim/governor.mjs?v=5e9464f8';
+import * as PR from './sim/progress.mjs?v=5e9464f8';
+import { Controls } from './ui/controls.mjs?v=5e9464f8';
+import { Sound } from './ui/sound.mjs?v=5e9464f8';
+import * as PF from './ui/platform.mjs?v=5e9464f8';
+import { BAY_SAVE_KEY, BAY_JOURNEYS, makeBaySave, bayProgress } from './ui/bay-flow.mjs?v=5e9464f8';
+import { makeSailingLesson, advanceSailingLesson } from './sim/sailing-lesson.mjs?v=5e9464f8';
 
-export const VERSION = 'crest-run 0.13.1', BUILD = '2026-11-17 #ec4fc7a6';
+export const VERSION = 'crest-run 0.14.0', BUILD = '2026-11-18 #5e9464f8';
 const $ = (id) => document.getElementById(id);
 const Q = new URLSearchParams(location.search);
 const BAY_GAME = document.body.dataset.game === 'bay';
@@ -725,17 +728,29 @@ const SIGN_NAMES = ['a wave', 'a leaf', 'a star', 'a spiral', 'a mountain', 'the
 function openBeach() { if (!G.beach) return; paintBeach(); show('beach'); }
 function paintBeach() {
   const Bc = G.beach, D = VOYAGES[Bc.key], have = (G.save.leaves || {})[Bc.key] || [];
+  // the pay-off of a full count (0.14.0): with all 27 leaves the three tables of nine fold into a cube. No word stands on it
+  const cube = PR.leafCube(G.save, VOYAGES_READY_ALL), foldBtn = () => (cube.whole ? `<button data-fold="1" class="next">${Bc.fold ? 'Open the leaves' : 'Fold the leaves'}</button>` : '');
   // the book: the 27 leaves, nine a voyage, one voyage at a time
   if (Bc.book) { const n = (k) => ((G.save.leaves || {})[k] || []).filter(Boolean).length, all = VOYAGES_READY_ALL.reduce((a, k) => a + n(k), 0);
     $('v-title').textContent = `The leaves: ${all} of 27`;
-    $('v-qs').innerHTML = '<div class="vq"><span>VOYAGES</span><p></p><div class="opts">' + VOYAGES_READY_ALL.map((k) => `<button data-book="${k}" class="tab ${k === Bc.key ? 'on' : ''}">${VOYAGES[k].name}, ${n(k)} of 9</button>`).join('') + '</div><div class="told"></div></div>'; }
+    if (cube.whole && Bc.fold === undefined) Bc.fold = 1;   // the book of a full count opens folded
+    $('v-qs').innerHTML = '<div class="vq"><span>VOYAGES</span><p></p><div class="opts">' + VOYAGES_READY_ALL.map((k) => `<button data-book="${k}" class="tab ${!Bc.fold && k === Bc.key ? 'on' : ''}">${VOYAGES[k].name}, ${n(k)} of 9</button>`).join('') + foldBtn() + '</div><div class="told"></div></div>'; }
   else {
   const told = D.tell(Bc.sm); $('v-title').textContent = `On the beach: ${D.name}`;
   const i = Math.min(Bc.step, D.ask.length - 1), q = D.ask[i], done = Bc.ans[i] >= 0;   // one question at a time: the nine leaves stay in sight under it
+  const toldAll = D.ask.every((_, k) => Bc.ans[k] >= 0);
+  if (cube.whole && toldAll && Bc.fold === undefined) Bc.fold = 1;   // the telling is over and the count is full: the leaves fold by themselves
   $('v-qs').innerHTML = `<div class="vq"><span>QUESTION<small>${i + 1} of ${D.ask.length}</small></span><p>${q.q}</p><div class="opts">` + q.a.map((a, j) => `<button data-q="${i}" data-a="${j}" class="${Bc.ans[i] === j ? 'on' : ''}">${a}</button>`).join('')
-    + (done && i < D.ask.length - 1 ? '<button data-next="1" class="next">Next question</button>' : '') + `</div><div class="told">${done ? told[i] : ''}</div></div>`; }
+    + (done && i < D.ask.length - 1 ? '<button data-next="1" class="next">Next question</button>' : '') + (toldAll ? foldBtn() : '') + `</div><div class="told">${done ? told[i] : ''}</div></div>`; }
   // the table has no headings: the method behind the leaves is not named on any screen (0.13.1); the order of the nine stays
   // the table: nine leaves, each with its sign; a leaf that was earned is pale and can be read, one not yet earned lies dark
+  // the cube: the three tables are its three faces in sight, one for each voyage; it plays its folding once and then stands
+  if (Bc.fold && cube.whole) { const play = Bc.fold === 1; Bc.fold = 2;
+    $('v-leaves').innerHTML = `<div class="cube-scene"><div class="cube${play ? ' play' : ''}" role="img" aria-label="The twenty-seven leaves of the three voyages, folded into a cube">`
+      + cube.faces.map((face, f) => `<div class="face f${f}">` + face.map((on, n) => `<i class="${on ? 'on' : ''}">${leafSvg(n)}</i>`).join('') + '</div>').join('')
+      + '</div></div><div id="v-leaftext" class="cubetext">Twenty-seven leaves, and they hold together.</div>';
+    if (play) sound.sfx('perfect');
+    return; }
   if (Bc.sel === undefined || Bc.selKey !== Bc.key) { Bc.selKey = Bc.key; Bc.sel = -1; }
   const said = Bc.sel >= 0 ? (have[Bc.sel] ? D.leaves[Bc.sel] : 'Not earned yet: ' + D.leaves[Bc.sel]) : `${have.filter(Boolean).length} of 9 leaves. Tap a leaf to read it.`;
   $('v-leaves').innerHTML = '<div class="leaves">'
@@ -1387,7 +1402,7 @@ function wire() {
   tap('b-beach-done', () => { if (G.beach && G.beach.book) { G.beach = G.beach.keep; paintKies(); return show('kies'); } if (BAY_GAME) return returnToBay(); show('results'); });
   $('v-leaves').addEventListener('click', (e) => { const b = e.target.closest('button[data-leaf]'); if (!b || !G.beach) return; sound.resume(); sound.sfx('click'); G.beach.sel = +b.dataset.leaf; G.beach.selKey = G.beach.key; paintBeach(); });
   tap('b-kies-book', () => { G.beach = { book: true, key: G.sel.level, keep: G.beach }; paintBeach(); show('beach'); });
-  $('v-qs').addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b || !G.beach) return; sound.resume(); if (b.dataset.book) { sound.sfx('click'); G.beach.key = b.dataset.book; return paintBeach(); } if (b.dataset.next) { sound.sfx('click'); G.beach.step++; return paintBeach(); } sound.sfx('chip', +b.dataset.q); G.beach.ans[+b.dataset.q] = +b.dataset.a; const r = PR.addLeaves(G.save, G.beach.key, [6 + +b.dataset.q]); if (r.fresh) { G.save = r.save; saveNow(); } paintBeach(); });
+  $('v-qs').addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b || !G.beach) return; sound.resume(); if (b.dataset.fold) { sound.sfx('click'); G.beach.fold = G.beach.fold ? 0 : 1; return paintBeach(); } if (b.dataset.book) { sound.sfx('click'); G.beach.key = b.dataset.book; if (G.beach.fold) G.beach.fold = 0; return paintBeach(); } if (b.dataset.next) { sound.sfx('click'); G.beach.step++; return paintBeach(); } sound.sfx('chip', +b.dataset.q); G.beach.ans[+b.dataset.q] = +b.dataset.a; const r = PR.addLeaves(G.save, G.beach.key, [6 + +b.dataset.q]); if (r.fresh) { G.save = r.save; saveNow(); } paintBeach(); });
   tap('b-retry', startRace);
   tap('b-nextcourse', () => { if (G.nextCourse === ':beach') return openBeach(); if (BAY_GAME) return returnToBay(); if (G.nextCourse && PR.courseOpen(G.save, COURSE_KEYS, G.nextCourse)) G.sel.course = G.nextCourse; startRace(); });
   tap('b-next', () => { if (BAY_GAME) return returnToBay(); startDemo(G.sel.course); paintMenu(); show('menu'); });
