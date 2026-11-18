@@ -78,7 +78,7 @@ p { margin: 6px 0; }
 .vcols { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.12fr); gap: 14px; align-items: start; margin-top: 4px; }
 .beach .vq { grid-template-columns: 1fr; margin: 0; } .beach .vq .opts, .beach .vq .told { grid-column: 1; } .beach .vq > span small { display: inline; margin-left: 8px; }
 .beach .vq .opts { flex-direction: column; align-items: stretch; flex-wrap: nowrap; } .beach .vq button.next { margin-left: 0; }
-.leaves { display: grid; grid-template-columns: 54px repeat(3, 1fr); gap: 3px 5px; font-size: 11px; text-align: left; padding: 6px 9px 6px 5px; border-radius: 12px; max-width: 336px; margin: 0 auto;
+.leaves { display: grid; grid-template-columns: repeat(3, 1fr); gap: 3px 5px; font-size: 11px; text-align: left; padding: 6px 9px; border-radius: 12px; max-width: 281px; margin: 0 auto;
   background: repeating-linear-gradient(180deg, #6a4526 0 31%, #57371d 31% 33.3%), #6a4526; box-shadow: inset 0 0 0 2px rgba(0, 0, 0, 0.28), 0 6px 18px rgba(0, 0, 0, 0.35); }
 .leaves .leaf { border: 0; background: none; padding: 0; min-height: 0; opacity: 1; line-height: 0; cursor: pointer; border-radius: 50%; }
 .leaves .leaf svg { width: 100%; height: auto; display: block; } .leaves .leaf .blade { fill: #3d2a18; stroke: #2c1d10; } .leaves .leaf .sign { stroke: #5a4026; opacity: 0.55; } .leaves .leaf .rib { stroke: #2c1d10; }
@@ -89,7 +89,7 @@ p { margin: 6px 0; }
 .leaves-old { display: grid; grid-template-columns: 70px repeat(3, 1fr); gap: 4px; margin-top: 8px; font-size: 11.5px; text-align: left; }
 .leaves .hd { font-weight: 800; letter-spacing: 0.06em; opacity: 0.8; align-self: center; } .leaves .hd small { display: block; font-weight: 400; opacity: 0.8; letter-spacing: 0; }
 
-@media (max-height: 380px) { .krow { margin: 4px 0; } .krow button { min-height: 44px; padding: 3px 10px; } .leaves { font-size: 10px; gap: 2px 4px; padding: 5px 7px 6px 4px; } #v-leaftext { min-height: 26px; font-size: 11.5px; } .vq { margin: 3px 0; } }
+@media (max-height: 380px) { .krow { margin: 4px 0; } .krow button { min-height: 44px; padding: 3px 10px; } .leaves { font-size: 10px; gap: 2px 4px; padding: 5px 7px 6px; } #v-leaftext { min-height: 26px; font-size: 11.5px; } .vq { margin: 3px 0; } }
 .tabs { display: inline-flex; background: var(--panel); border: 1px solid var(--line); border-radius: 999px; padding: 3px; }
 .tabs button { padding: 0 18px; min-height: 44px; border-radius: 999px; font-weight: 700; font-size: 13.5px; }
 .cards { flex: 1; display: flex; gap: 12px; align-items: stretch; justify-content: center; min-height: 0; }

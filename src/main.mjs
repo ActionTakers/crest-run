@@ -16,6 +16,9 @@
 // 0.9.0 (the same day, after the owner's six pictures of 14:14: the project's research/A7-target-pictures): the jukung's look
 // follows the pictures (view/jukung.mjs), the telling on the beach has a table of planks with nine palm leaves and their signs,
 // the slopes are forested, a village is lit at night, rain falls under the squall, the overdue boat has a canopy.
+// 0.13.1 (2026-11-17, on the owner's words of 19:59:40): the method behind the voyages no longer shows its own words. The telling
+// on the beach, the book of leaves and the voyage cards carry no ring, verb or depth word and not the method's name: the lesson
+// stays in what is played, asked and told. The data keeps its order (nine leaves, three questions); tools/smoke.mjs part j checks it.
 // 0.13.0 (2026-11-17): two lines of work joined: this session's 0.12.1 (the level on the deck and its headset mode) and another
 // writer's sailing trial and bay entrance, which went live under version numbers of their own (the two lines marked "bay").
 // 0.12.1 (2026-11-17): in the headset mode two loops ran at once (the page's and the headset's): put right; the smoke test has a
@@ -34,29 +37,29 @@
 // on the beach with nine lesson leaves a voyage; a Voyage tab in the menu; a film camera that travels with the boat.
 // 0.7.0 (the same day): each boat handles its own way (sim/boat-stats.mjs), a display inside the cockpit for the view from the
 // helm (view/dash.mjs), a fifth boat (the red catamaran without its lettering), and a ghost that remembers its boat.
-import { Stage, CAMS } from './view/stage.mjs?v=55436194';
-import { LIVERIES, LIVERY_KEYS } from './view/boats.mjs?v=55436194';
-import { OWNER, KING, JACK, crewFor } from './view/people.mjs?v=55436194';
-import { WORLDS } from './view/sky.mjs?v=55436194';
-import { getCourse, COURSE_DEFS, COURSE_KEYS, pointInto, wrapA, wrapS } from './sim/courses.mjs?v=55436194';
-import { Race, defaultSettings, DT, TUNES, TUNE_KEYS, BOOST, SIM_VERSION, encodeInputs, decodeInputs } from './sim/race-sim.mjs?v=55436194';
-import { Rescue, arenaCourse, rescueSettings, ARENA, RESCUE, S as SHARK } from './sim/rescue.mjs?v=55436194';
-import { Boss, dragonCourse, bossSettings, DRAGON, BOSS as FIGHT } from './sim/boss.mjs?v=55436194';
-import { Leviathan, leviCourse, leviSettings, LEVI, FIGHT as LFIGHT, PHASES } from './sim/leviathan.mjs?v=55436194';
-import { DeckFight, hawkCourse, hawkSettings, HAWK, DECK, HALVES } from './sim/deck.mjs?v=55436194';
-import { makeVoyage, bayCourse, voyageSettings, voyageChoices, VOYAGES, VOYAGES_READY as VOYAGE_KEYS } from './sim/voyages.mjs?v=55436194';
+import { Stage, CAMS } from './view/stage.mjs?v=ec4fc7a6';
+import { LIVERIES, LIVERY_KEYS } from './view/boats.mjs?v=ec4fc7a6';
+import { OWNER, KING, JACK, crewFor } from './view/people.mjs?v=ec4fc7a6';
+import { WORLDS } from './view/sky.mjs?v=ec4fc7a6';
+import { getCourse, COURSE_DEFS, COURSE_KEYS, pointInto, wrapA, wrapS } from './sim/courses.mjs?v=ec4fc7a6';
+import { Race, defaultSettings, DT, TUNES, TUNE_KEYS, BOOST, SIM_VERSION, encodeInputs, decodeInputs } from './sim/race-sim.mjs?v=ec4fc7a6';
+import { Rescue, arenaCourse, rescueSettings, ARENA, RESCUE, S as SHARK } from './sim/rescue.mjs?v=ec4fc7a6';
+import { Boss, dragonCourse, bossSettings, DRAGON, BOSS as FIGHT } from './sim/boss.mjs?v=ec4fc7a6';
+import { Leviathan, leviCourse, leviSettings, LEVI, FIGHT as LFIGHT, PHASES } from './sim/leviathan.mjs?v=ec4fc7a6';
+import { DeckFight, hawkCourse, hawkSettings, HAWK, DECK, HALVES } from './sim/deck.mjs?v=ec4fc7a6';
+import { makeVoyage, bayCourse, voyageSettings, voyageChoices, VOYAGES, VOYAGES_READY as VOYAGE_KEYS } from './sim/voyages.mjs?v=ec4fc7a6';
 const VOYAGES_READY_ALL = VOYAGE_KEYS;
-import { FLEET, FLEET_KEYS, rivalBoats } from './view/fleet.mjs?v=55436194';
-import { BOAT_STATS, boatTweak } from './sim/boat-stats.mjs?v=55436194';
-import { Governor, RefreshWatch, measureRefresh } from './sim/governor.mjs?v=55436194';
-import * as PR from './sim/progress.mjs?v=55436194';
-import { Controls } from './ui/controls.mjs?v=55436194';
-import { Sound } from './ui/sound.mjs?v=55436194';
-import * as PF from './ui/platform.mjs?v=55436194';
-import { BAY_SAVE_KEY, BAY_JOURNEYS, makeBaySave, bayProgress } from './ui/bay-flow.mjs?v=55436194';
-import { makeSailingLesson, advanceSailingLesson } from './sim/sailing-lesson.mjs?v=55436194';
+import { FLEET, FLEET_KEYS, rivalBoats } from './view/fleet.mjs?v=ec4fc7a6';
+import { BOAT_STATS, boatTweak } from './sim/boat-stats.mjs?v=ec4fc7a6';
+import { Governor, RefreshWatch, measureRefresh } from './sim/governor.mjs?v=ec4fc7a6';
+import * as PR from './sim/progress.mjs?v=ec4fc7a6';
+import { Controls } from './ui/controls.mjs?v=ec4fc7a6';
+import { Sound } from './ui/sound.mjs?v=ec4fc7a6';
+import * as PF from './ui/platform.mjs?v=ec4fc7a6';
+import { BAY_SAVE_KEY, BAY_JOURNEYS, makeBaySave, bayProgress } from './ui/bay-flow.mjs?v=ec4fc7a6';
+import { makeSailingLesson, advanceSailingLesson } from './sim/sailing-lesson.mjs?v=ec4fc7a6';
 
-export const VERSION = 'crest-run 0.13.0', BUILD = '2026-11-17 #55436194';
+export const VERSION = 'crest-run 0.13.1', BUILD = '2026-11-17 #ec4fc7a6';
 const $ = (id) => document.getElementById(id);
 const Q = new URLSearchParams(location.search);
 const BAY_GAME = document.body.dataset.game === 'bay';
@@ -714,26 +717,29 @@ const SIGNS = [
   'M50 18C56 27 59 31 59 35a9 9 0 1 1-18 0C41 31 44 27 50 18Z', 'M50 41V30M50 31C44 30 41 25 42 20C48 21 50 26 50 31ZM50 31C56 30 59 25 58 20C52 21 50 26 50 31ZM50 34C45 36 41 35 38 31M50 34C55 36 59 35 62 31', 'M32 40C35 24 51 17 60 25C55 23 51 26 53 31C58 26 65 31 68 40M35 33l2 1M39 27l2 2M62 22l1 2M66 26l1 2',
 ];
 const leafSvg = (i) => `<svg viewBox="0 0 100 60" aria-hidden="true"><path class="blade" d="M4 30C24 3 76 3 96 30C76 57 24 57 4 30Z" stroke-width="1.5"/><path class="rib" d="M8 30H92" fill="none" stroke-width="0.8"/><path class="sign" d="${SIGNS[i]}" fill="none" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
-// Veranker: the telling on the beach. Three questions, one for each ring; an answer is a view, not a mark: it earns its leaf and
-// shows what the run itself measured. Under them the voyage's nine leaves: Denken, Doen, Delen by Zelf, Samen, Systeem.
+// what each sign shows, for a reader who cannot see it (the names: an earlier session's hand-off of 2026-11-17)
+const SIGN_NAMES = ['a wave', 'a leaf', 'a star', 'a spiral', 'a mountain', 'the wind', 'a drop', 'a young plant', 'a breaking wave'];
+// Veranker: the telling on the beach. Three questions; an answer is a view, not a mark: it earns its leaf and shows what the run
+// itself measured. Under them the voyage's nine leaves. The method that gives the questions and the leaves their order is named
+// in sim/voyage.mjs only: its words never reach the screen (tests/method-unseen.test.mjs).
 function openBeach() { if (!G.beach) return; paintBeach(); show('beach'); }
 function paintBeach() {
   const Bc = G.beach, D = VOYAGES[Bc.key], have = (G.save.leaves || {})[Bc.key] || [];
   // the book: the 27 leaves, nine a voyage, one voyage at a time
   if (Bc.book) { const n = (k) => ((G.save.leaves || {})[k] || []).filter(Boolean).length, all = VOYAGES_READY_ALL.reduce((a, k) => a + n(k), 0);
     $('v-title').textContent = `The leaves: ${all} of 27`;
-    $('v-qs').innerHTML = '<div class="vq"><span>3 x 3 x 3</span><p></p><div class="opts">' + VOYAGES_READY_ALL.map((k) => `<button data-book="${k}" class="tab ${k === Bc.key ? 'on' : ''}">${VOYAGES[k].depth.toUpperCase()}: ${VOYAGES[k].name}, ${n(k)} of 9</button>`).join('') + '</div><div class="told"></div></div>'; }
+    $('v-qs').innerHTML = '<div class="vq"><span>VOYAGES</span><p></p><div class="opts">' + VOYAGES_READY_ALL.map((k) => `<button data-book="${k}" class="tab ${k === Bc.key ? 'on' : ''}">${VOYAGES[k].name}, ${n(k)} of 9</button>`).join('') + '</div><div class="told"></div></div>'; }
   else {
   const told = D.tell(Bc.sm); $('v-title').textContent = `On the beach: ${D.name}`;
   const i = Math.min(Bc.step, D.ask.length - 1), q = D.ask[i], done = Bc.ans[i] >= 0;   // one question at a time: the nine leaves stay in sight under it
-  $('v-qs').innerHTML = `<div class="vq"><span>${q.ring}<small>${i + 1} of ${D.ask.length}</small></span><p>${q.q}</p><div class="opts">` + q.a.map((a, j) => `<button data-q="${i}" data-a="${j}" class="${Bc.ans[i] === j ? 'on' : ''}">${a}</button>`).join('')
+  $('v-qs').innerHTML = `<div class="vq"><span>QUESTION<small>${i + 1} of ${D.ask.length}</small></span><p>${q.q}</p><div class="opts">` + q.a.map((a, j) => `<button data-q="${i}" data-a="${j}" class="${Bc.ans[i] === j ? 'on' : ''}">${a}</button>`).join('')
     + (done && i < D.ask.length - 1 ? '<button data-next="1" class="next">Next question</button>' : '') + `</div><div class="told">${done ? told[i] : ''}</div></div>`; }
-  const rows = [['DENKEN', 'think'], ['DOEN', 'do'], ['DELEN', 'share']], cols = [['ZELF', 'me'], ['SAMEN', 'us'], ['SYSTEEM', 'the bay']];
+  // the table has no headings: the method behind the leaves is not named on any screen (0.13.1); the order of the nine stays
   // the table: nine leaves, each with its sign; a leaf that was earned is pale and can be read, one not yet earned lies dark
   if (Bc.sel === undefined || Bc.selKey !== Bc.key) { Bc.selKey = Bc.key; Bc.sel = -1; }
   const said = Bc.sel >= 0 ? (have[Bc.sel] ? D.leaves[Bc.sel] : 'Not earned yet: ' + D.leaves[Bc.sel]) : `${have.filter(Boolean).length} of 9 leaves. Tap a leaf to read it.`;
-  $('v-leaves').innerHTML = '<div class="leaves"><span></span>' + cols.map(([c, e]) => `<span class="hd">${c}<small>${e}</small></span>`).join('')
-    + rows.map(([r, e], i) => `<span class="hd">${r}<small>${e}</small></span>` + [0, 1, 2].map((j) => `<button class="leaf ${have[3 * i + j] ? 'on' : ''} ${Bc.sel === 3 * i + j ? 'sel' : ''}" data-leaf="${3 * i + j}" aria-label="${r} ${cols[j][0]}: ${have[3 * i + j] ? D.leaves[3 * i + j] : 'not earned yet'}">${leafSvg(3 * i + j)}</button>`).join('')).join('')
+  $('v-leaves').innerHTML = '<div class="leaves">'
+    + Array.from({ length: 9 }, (_, n) => `<button class="leaf ${have[n] ? 'on' : ''} ${Bc.sel === n ? 'sel' : ''}" data-leaf="${n}" aria-label="Leaf ${n + 1} of 9, its sign is ${SIGN_NAMES[n]}: ${have[n] ? D.leaves[n] : 'not earned yet'}">${leafSvg(n)}</button>`).join('')
     + `<div id="v-leaftext">${said}</div></div>`;
 }
 function endVoyage() {
@@ -1174,7 +1180,7 @@ function paintMenu() {
     const card = (Lv, line, bestText) => { const best = s.best[`${Lv.key}:rescue`], medal = s.medals[`${Lv.key}:rescue`], w = WORLDS[Lv.world] || WORLDS.sunset;
       return `<button class="card ${sel.level === Lv.key ? 'on' : ''}" data-level="${Lv.key}"><span class="sw" style="background:linear-gradient(180deg, ${rgb(w.zenith)} 0%, ${rgb(w.horizon)} 78%, ${rgb(w.scatter)} 100%)"></span>`
         + `<span class="medal"><span class="medal-dot ${medal || 'none'}"></span></span><b>${Lv.name}</b><small>${line}</small><small>${best ? bestText(best) : 'Not played yet'}</small></button>`; };
-    if (voyTab) $('m-courses').innerHTML = VOYAGE_KEYS.map((k) => card(VOYAGES[k], `${VOYAGES[k].depth}: ${VOYAGES[k].trip}`, (b) => `Best: ${b.saved} of 3 harmonies, ${((s.leaves || {})[k] || []).filter(Boolean).length} of 9 leaves`)).join('');
+    if (voyTab) $('m-courses').innerHTML = VOYAGE_KEYS.map((k) => card(VOYAGES[k], VOYAGES[k].trip[0].toUpperCase() + VOYAGES[k].trip.slice(1), (b) => `Best: ${b.saved} of 3 harmonies, ${((s.leaves || {})[k] || []).filter(Boolean).length} of 9 leaves`)).join('');
     else $('m-courses').innerHTML = card(ARENA, 'Nine llamas and three of the crew leave the ship', (b) => `Best: ${b.saved} of ${b.total} safe`)
       + card(DRAGON, 'A boss on a dragon the size of an island', (b) => `Best: ${b.saved} of ${b.total} crystals`)
       + card(LEVI, 'A sea guardian in three phases', (b) => `Best: ${b.saved} % of its health`)

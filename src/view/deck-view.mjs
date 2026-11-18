@@ -9,10 +9,10 @@
 // lines, a ring round each rocket); the great moment is the leap (T25). NOT_ASSESSED on a phone or in a headset.
 // Written 2026-11-17 by the yacht project session.
 import * as THREE from 'three';
-import * as W from '../sim/waves.mjs?v=55436194';
-import { HAWK, DECK, aimDir } from '../sim/deck.mjs?v=55436194';
+import * as W from '../sim/waves.mjs?v=ec4fc7a6';
+import { HAWK, DECK, aimDir } from '../sim/deck.mjs?v=ec4fc7a6';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
-import { Parts, at, bar } from './jukung.mjs?v=55436194';
+import { Parts, at, bar } from './jukung.mjs?v=ec4fc7a6';
 
 const C = { hull: 0x3d4a3f, hullD: 0x232a25, glass: 0x9fd6ea, metal: 0x2a2e33, steel: 0x646c74, red: 0xb3262b, grey: 0x60717e, greyD: 0x43515d, belly: 0xe8edf0, gum: 0x7a2630, tooth: 0xf5f2e8, black: 0x0c0e10 };
 // the three models: the file of each, and how long it is made along its own z (the nose, the muzzle), metres

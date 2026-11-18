@@ -6,9 +6,9 @@
 // Written 2026-11-15 by the yacht project session. NOT_ASSESSED on a phone.
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
-import * as W from '../sim/waves.mjs?v=55436194';
-import { DRAGON, BOSS } from '../sim/boss.mjs?v=55436194';
-import { crewClip, tick } from './people.mjs?v=55436194';
+import * as W from '../sim/waves.mjs?v=ec4fc7a6';
+import { DRAGON, BOSS } from '../sim/boss.mjs?v=ec4fc7a6';
+import { crewClip, tick } from './people.mjs?v=ec4fc7a6';
 
 const M4 = new THREE.Matrix4(), Q = new THREE.Quaternion(), V = new THREE.Vector3(), SC = new THREE.Vector3(), E = new THREE.Euler(), C = new THREE.Color();
 const clamp = (v, lo, hi) => (v < lo ? lo : v > hi ? hi : v);

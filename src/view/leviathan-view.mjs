@@ -6,8 +6,8 @@
 // the head while it casts the Tide Wall and a wave that runs out from it when the cast is not broken. NOT_ASSESSED on a phone.
 // Written 2026-11-15 by the yacht project session. A model from the owner's own sheet can replace the body later.
 import * as THREE from 'three';
-import * as W from '../sim/waves.mjs?v=55436194';
-import { LEVI, FIGHT } from '../sim/leviathan.mjs?v=55436194';
+import * as W from '../sim/waves.mjs?v=ec4fc7a6';
+import { LEVI, FIGHT } from '../sim/leviathan.mjs?v=ec4fc7a6';
 
 const M4 = new THREE.Matrix4(), Q = new THREE.Quaternion(), V = new THREE.Vector3(), SC = new THREE.Vector3(), E = new THREE.Euler(0, 0, 0, 'YXZ'), C = new THREE.Color(), P = {};
 const clamp = (v, lo, hi) => (v < lo ? lo : v > hi ? hi : v);
