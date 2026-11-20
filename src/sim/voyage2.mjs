@@ -7,9 +7,9 @@
 // Nobody is lost at sea in this game: a boat that is not home when time runs out is fetched by the village.
 // Pure, fixed step, seeded. Every number is tuned with the stand-in driver below, never by a person.
 // Written 2026-11-16 by the yacht project session.
-import { DT } from './race-sim.mjs?v=b691c4e1';
-import { wrapA } from './courses.mjs?v=b691c4e1';
-import { BAY, RULES, VOYAGES, Voyage, voyageMedal } from './voyage.mjs?v=b691c4e1';
+import { DT } from './race-sim.mjs?v=91fc8c31';
+import { wrapA } from './courses.mjs?v=91fc8c31';
+import { BAY, RULES, VOYAGES, Voyage, voyageMedal } from './voyage.mjs?v=91fc8c31';
 
 const clamp = (v, lo, hi) => (v < lo ? lo : v > hi ? hi : v);
 const DEG = Math.PI / 180;

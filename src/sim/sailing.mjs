@@ -4,7 +4,7 @@
 // mass, drag, sail area and restoring coefficients need calibration with Jack.
 // Metres, seconds, radians. h follows race-sim: forward=(-sin(h),cos(h)),
 // starboard=(-cos(h),-sin(h)). Wind is air velocity TOWARDS world x/z.
-import { JUKUNG_SPEC as J } from './jukung-spec.mjs?v=b691c4e1';
+import { JUKUNG_SPEC as J } from './jukung-spec.mjs?v=91fc8c31';
 
 const clamp = (x, lo, hi) => Math.max(lo, Math.min(hi, x));
 const finite = (x, fallback = 0) => Number.isFinite(x) ? x : fallback;
