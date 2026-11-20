@@ -3,26 +3,26 @@
 // shows it, interpolated between the last two physics steps so the picture is smooth at any frame rate.
 // Written 2026-11-13 by the yacht project session.
 import * as THREE from 'three';
-import * as W from '../sim/waves.mjs?v=b691c4e1';
-import { pointInto, wrapA } from '../sim/courses.mjs?v=b691c4e1';
-import { Sky, WORLDS, makeNoiseTexture } from './sky.mjs?v=b691c4e1';
-import { Sea } from './sea.mjs?v=b691c4e1';
-import { Post } from './post.mjs?v=b691c4e1';
-import { Wake, Spray } from './fx.mjs?v=b691c4e1';
-import { loadYacht, BoatVisual } from './boats.mjs?v=b691c4e1';
-import { Scenery } from './scenery.mjs?v=b691c4e1';
-import { RescueView } from './rescue-view.mjs?v=b691c4e1';
-import { People, crewClip, tick, JACK, CAST_H, SIT_HIP } from './people.mjs?v=b691c4e1';
-import { BossView } from './boss-view.mjs?v=b691c4e1';
-import { LeviathanView } from './leviathan-view.mjs?v=b691c4e1';
-import { DeckView } from './deck-view.mjs?v=b691c4e1';
-import { FLEET } from './fleet.mjs?v=b691c4e1';
-import { Dash } from './dash.mjs?v=b691c4e1';
-import { makeJukung, tickJukung } from './jukung.mjs?v=b691c4e1';
-import { loadMonkeykingBoat, bindMonkeykingBoat, tickMonkeykingBoat } from './jukung-model.mjs?v=b691c4e1';
-import { makeRacingJukung, tickRacingJukung } from './jukung-racing.mjs?v=b691c4e1';
-import { JUKUNG_SPEC } from '../sim/jukung-spec.mjs?v=b691c4e1';
-import { BayView } from './bay-view.mjs?v=b691c4e1';
+import * as W from '../sim/waves.mjs?v=91fc8c31';
+import { pointInto, wrapA } from '../sim/courses.mjs?v=91fc8c31';
+import { Sky, WORLDS, makeNoiseTexture } from './sky.mjs?v=91fc8c31';
+import { Sea } from './sea.mjs?v=91fc8c31';
+import { Post } from './post.mjs?v=91fc8c31';
+import { Wake, Spray } from './fx.mjs?v=91fc8c31';
+import { loadYacht, BoatVisual } from './boats.mjs?v=91fc8c31';
+import { Scenery } from './scenery.mjs?v=91fc8c31';
+import { RescueView } from './rescue-view.mjs?v=91fc8c31';
+import { People, crewClip, tick, JACK, CAST_H, SIT_HIP } from './people.mjs?v=91fc8c31';
+import { BossView } from './boss-view.mjs?v=91fc8c31';
+import { LeviathanView } from './leviathan-view.mjs?v=91fc8c31';
+import { DeckView } from './deck-view.mjs?v=91fc8c31';
+import { FLEET } from './fleet.mjs?v=91fc8c31';
+import { Dash } from './dash.mjs?v=91fc8c31';
+import { makeJukung, tickJukung } from './jukung.mjs?v=91fc8c31';
+import { loadMonkeykingBoat, bindMonkeykingBoat, tickMonkeykingBoat } from './jukung-model.mjs?v=91fc8c31';
+import { makeRacingJukung, tickRacingJukung } from './jukung-racing.mjs?v=91fc8c31';
+import { JUKUNG_SPEC } from '../sim/jukung-spec.mjs?v=91fc8c31';
+import { BayView } from './bay-view.mjs?v=91fc8c31';
 
 const clamp = (v, lo, hi) => (v < lo ? lo : v > hi ? hi : v);
 const smooth = (e0, e1, x) => { const t = clamp((x - e0) / (e1 - e0), 0, 1); return t * t * (3 - 2 * t); };

@@ -1,4 +1,4 @@
-// jukung-model.mjs: the player's boat as Kiki's Monkey King jukung (v1.4.1), not the boat drawn in code.
+// jukung-model.mjs: the player's boat as Kiki's Monkey King jukung (v1.4.2), not the boat drawn in code.
 // glTF is Y-up, metres, pivot on the waterline, bow toward +Z. COLOR_0 is a cloth pin mask: it is stripped so the
 // sail keeps its baked albedo. The sail and ribbon stay in their bind pose (this build has no cloth). The lucky bird
 // sits on SOCK_MAST_TIP and loops its idle clip. ?boat=mk loads the MonkeyKing sail; anything else is the sun sail.
