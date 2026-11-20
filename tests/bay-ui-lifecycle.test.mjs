@@ -11,6 +11,7 @@ import * as rescue from '../src/sim/rescue.mjs';
 import * as boss from '../src/sim/boss.mjs';
 import * as levi from '../src/sim/leviathan.mjs';
 import * as deck from '../src/sim/deck.mjs';
+import { deckHudSnapshot } from '../src/ui/deck-hud.mjs';
 import * as voyage from '../src/sim/voyages.mjs';
 import * as stats from '../src/sim/boat-stats.mjs';
 import * as governor from '../src/sim/governor.mjs';
@@ -106,7 +107,7 @@ async function createGame({ edition = 'bay', query = '', storage = new Map() } =
     Rescue: rescue.Rescue, arenaCourse: rescue.arenaCourse, rescueSettings: rescue.rescueSettings,
     ARENA: rescue.ARENA, RESCUE: rescue.RESCUE, SHARK: rescue.S,
     Boss: boss.Boss, dragonCourse: boss.dragonCourse, bossSettings: boss.bossSettings, DRAGON: boss.DRAGON, FIGHT: boss.BOSS,
-    DeckFight: deck.DeckFight, hawkCourse: deck.hawkCourse, hawkSettings: deck.hawkSettings, HAWK: deck.HAWK, DECK: deck.DECK, HALVES: deck.HALVES,
+    DeckFight: deck.DeckFight, hawkCourse: deck.hawkCourse, hawkSettings: deck.hawkSettings, HAWK: deck.HAWK, DECK: deck.DECK, HALVES: deck.HALVES, COASTAL_NAME: deck.COASTAL_NAME, deckHudSnapshot,
     Leviathan: levi.Leviathan, leviCourse: levi.leviCourse, leviSettings: levi.leviSettings, LEVI: levi.LEVI, LFIGHT: levi.FIGHT, PHASES: levi.PHASES,
     Stage, Sound, TiltInput, PR, PF, CAMS: {}, OWNER: 'f01', KING: 'king', JACK: 'jack', crewFor: () => [],
     FLEET: fleet, FLEET_KEYS: ['yacht', 'jukung'], rivalBoats: () => ['yacht', 'yacht', 'yacht'],
@@ -313,4 +314,63 @@ test('the original entry still boots yachts, opens its menu and runs arcade race
   await sailing.emit('h-pause'); await sailing.emit('b-quit'); assert.equal(sailing.G.screen, 'menu');
   const filmed = await createGame({ edition: 'crest', query: '?film=1&mode=trial' });
   assert.equal(filmed.G.run.mode, 'trial');
+});
+
+test('restarting Coastal Run stays in deck mode and the HUD snapshot has no race fields', async () => {
+  const h = await createGame({ edition: 'crest' });
+  await h.start();
+  h.G.sel.mode = 'rescue'; h.G.sel.level = deck.HAWK.key;
+  await h.G.startRace();
+  assert.equal(h.G.sel.mode, 'deck');
+  assert.equal(h.G.sel.level, deck.HAWK.key);
+  assert.equal(h.G.run.mode, 'deck');
+  assert.equal(h.G.rescue.kind, 'deck');
+  const first = h.G.rescue;
+  h.simulate(0.2);
+  const text = (id) => h.get(id).textContent;
+  const snap = deckHudSnapshot(h.G.rescue);
+  assert.equal(snap.mode, 'deck');
+  assert.equal(snap.title, 'Coastal Run: Iron Hawk');
+  assert.match(snap.hull, /^HULL [\u25CF\u25CB]+$/);
+  assert.match(snap.ammo, /^AMMO \d+$/);
+  assert.match(snap.flares, /^FLARES \d+$/);
+  assert.match(snap.armour, /^HAWK ARMOUR [\u25AE\u25AF]+$/);
+  assert.equal(snap.goal.length > 0, true);
+  for (const key of ['taken', 'place', 'gap', 'lap', 'boost', 'kmh', 'speed', 'chain', 'position']) assert.equal(Object.hasOwn(snap, key), false);
+  assert.equal(text('h-deck-title'), snap.title);
+  assert.equal(text('h-deck-hull'), snap.hull);
+  assert.equal(text('h-deck-ammo'), snap.ammo);
+  assert.equal(text('h-deck-flares'), snap.flares);
+  assert.equal(text('h-deck-armour-label'), snap.armour);
+  assert.equal(text('h-deck-goal'), snap.goal);
+  for (const id of ['h-place', 'h-lap', 'h-gap', 'h-chain']) assert.doesNotMatch(text(id), /TAKEN|\bLAP\b|behind|ahead|km\/h|BOOST/);
+  // The old restart put the selection back on rescue and could leave the hawk level.
+  h.G.sel.mode = 'rescue'; h.G.sel.level = rescue.ARENA.key;
+  await h.emit('h-pause');
+  await h.emit('b-restart');
+  assert.equal(h.G.sel.mode, 'deck');
+  assert.equal(h.G.sel.level, deck.HAWK.key);
+  assert.equal(h.G.run.mode, 'deck');
+  assert.equal(h.G.rescue.kind, 'deck');
+  assert.notEqual(h.G.rescue, first);
+  h.G.endRace();
+  assert.equal(h.G.screen, 'results');
+  assert.match(h.get('r-title').textContent, /Coastal Run: Iron Hawk/);
+  assert.equal(h.G.save.last.mode, 'deck');
+  await h.emit('b-retry');
+  assert.equal(h.G.run.mode, 'deck');
+  assert.equal(h.G.sel.mode, 'deck');
+  assert.equal(h.G.rescue.kind, 'deck');
+});
+
+test('film addresses for the hawk level start Coastal Run in deck mode', async () => {
+  const byMode = await createGame({ edition: 'crest', query: '?film=1&mode=deck' });
+  assert.equal(byMode.G.run.mode, 'deck');
+  assert.equal(byMode.G.sel.mode, 'deck');
+  assert.equal(byMode.G.rescue.kind, 'deck');
+  const byRescueLevel = await createGame({ edition: 'crest', query: '?film=1&mode=rescue&level=hawk' });
+  assert.equal(byRescueLevel.G.run.mode, 'deck');
+  assert.equal(byRescueLevel.G.sel.mode, 'deck');
+  assert.equal(byRescueLevel.G.sel.level, 'hawk');
+  assert.equal(byRescueLevel.G.rescue.kind, 'deck');
 });

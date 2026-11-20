@@ -23,7 +23,9 @@ const DEG = Math.PI / 180;
 const clamp = (v, lo, hi) => (v < lo ? lo : v > hi ? hi : v);
 function mulberry(seed) { let s = seed >>> 0; return () => { s = (s + 0x6d2b79f5) >>> 0; let t = s; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
 
-export const HAWK = { key: 'hawk', name: 'Iron Hawk', world: 'agung', world2: 'squall', R: 250, halfWidth: 120, sea: { count: 5, seed: 83, amp: 0.4 }, startA: 250 * DEG, pace: 0.5,
+// One player-facing name for this mode. The fight key stays 'hawk' and the sim kind stays 'deck'.
+export const COASTAL_NAME = 'Coastal Run: Iron Hawk';
+export const HAWK = { key: 'hawk', name: 'Iron Hawk', title: COASTAL_NAME, world: 'agung', world2: 'squall', R: 250, halfWidth: 120, sea: { count: 5, seed: 83, amp: 0.4 }, startA: 250 * DEG, pace: 0.5,
   gun: { ahead: 2.4, up: 3.0 },                                  // where the gunner's eyes and gun are: metres ahead of the boat's middle and over the water
   aim: { down: -0.3, up: 1.4 } };                                // the gun turns all the way round (the gunner turns with it); how far down and up it points
 export const HALVES = ['The Hunt', 'The Deep Answers'];

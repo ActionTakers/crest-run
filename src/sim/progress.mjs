@@ -78,7 +78,8 @@ export function applyResult(save, result, courseKeys, medalTimes = null) {
 export function applyRescue(save, result) {
   const s = JSON.parse(JSON.stringify(save)), news = [];
   s.stats.rescues = (s.stats.rescues || 0) + 1;
-  s.last = { ...s.last, tune: result.tune, livery: result.livery || s.last.livery, mode: 'rescue' };
+  // Coastal Run: Iron Hawk books its best under the same :rescue key, and remembers mode deck so a later visit restarts there.
+  s.last = { ...s.last, tune: result.tune, livery: result.livery || s.last.livery, mode: result.mode === 'deck' ? 'deck' : 'rescue' };
   if (!result.finished) return { save: s, news };
   // a boss fight (result.boss) counts its win, not its crystals as llamas
   if (result.boss) { if (result.won) s.stats.bosses = (s.stats.bosses || 0) + 1; } else if (result.voyage) s.stats.guests = (s.stats.guests || 0) + (result.home || 0); else s.stats.llamas = (s.stats.llamas || 0) + result.saved;
