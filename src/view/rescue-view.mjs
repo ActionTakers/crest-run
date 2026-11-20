@@ -8,9 +8,9 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { clone as cloneRig } from 'three/addons/utils/SkeletonUtils.js';
-import * as W from '../sim/waves.mjs?v=5e9464f8';
-import { ARENA, SHIP, RESCUE, A, S } from '../sim/rescue.mjs?v=5e9464f8';
-import { crewClip, lightClip, tick } from './people.mjs?v=5e9464f8';
+import * as W from '../sim/waves.mjs?v=b691c4e1';
+import { ARENA, SHIP, RESCUE, A, S } from '../sim/rescue.mjs?v=b691c4e1';
+import { crewClip, lightClip, tick } from './people.mjs?v=b691c4e1';
 
 const M4 = new THREE.Matrix4(), Q = new THREE.Quaternion(), V = new THREE.Vector3(), SC = new THREE.Vector3(), E = new THREE.Euler(), C = new THREE.Color();
 const clamp = (v, lo, hi) => (v < lo ? lo : v > hi ? hi : v);
