@@ -1,4 +1,4 @@
-crest-run 0.15.1 (a working title), build 2026-11-20 #91fc8c31.
+crest-run 0.16.0 (a working title), build 2026-11-20 #b016c49c.
 
 three.js 0.186.1: MIT licence, see vendor/three-0.186.1/LICENSE.
 Scenery models (assets/models/kit.glb): from the Watercraft Kit, Pirate Kit and Nature Kit by Kenney (www.kenney.nl), Creative Commons Zero (CC0 1.0).

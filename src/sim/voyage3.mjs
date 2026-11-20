@@ -7,9 +7,9 @@
 // The gauge has two sides and nothing is beaten: balance is kept or lost (research A5-17). A broach hurts nobody: it costs
 // way, time and the third harmony. Pure, fixed step, seeded. Every number is tuned with the stand-in driver, never by a person.
 // Written 2026-11-16 by the yacht project session.
-import { DT } from './race-sim.mjs?v=91fc8c31';
-import { wrapA } from './courses.mjs?v=91fc8c31';
-import { BAY, RULES, VOYAGES, Voyage, P, voyageMedal } from './voyage.mjs?v=91fc8c31';
+import { DT } from './race-sim.mjs?v=b016c49c';
+import { wrapA } from './courses.mjs?v=b016c49c';
+import { BAY, RULES, VOYAGES, Voyage, P, voyageMedal } from './voyage.mjs?v=b016c49c';
 
 const clamp = (v, lo, hi) => (v < lo ? lo : v > hi ? hi : v);
 export const NIGHT = { boat: { x: 240, z: 150 },                // where the overdue boat lies

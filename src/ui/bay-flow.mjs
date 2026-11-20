@@ -1,6 +1,6 @@
 // The bay has its own entry and journal. Reuse voyage progress already earned in
 // Crest Run on the first visit, without importing its races, ghosts or unlocks.
-import { freshSave, migrate, SAVE_VERSION } from '../sim/progress.mjs?v=91fc8c31';
+import { freshSave, migrate, SAVE_VERSION } from '../sim/progress.mjs?v=b016c49c';
 
 export const BAY_SAVE_KEY = 'monkeyking-jack-bay-save';
 export const BAY_JOURNEYS = Object.freeze(['mk1', 'mk2', 'mk3']);

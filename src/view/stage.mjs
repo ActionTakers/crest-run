@@ -3,26 +3,26 @@
 // shows it, interpolated between the last two physics steps so the picture is smooth at any frame rate.
 // Written 2026-11-13 by the yacht project session.
 import * as THREE from 'three';
-import * as W from '../sim/waves.mjs?v=91fc8c31';
-import { pointInto, wrapA } from '../sim/courses.mjs?v=91fc8c31';
-import { Sky, WORLDS, makeNoiseTexture } from './sky.mjs?v=91fc8c31';
-import { Sea } from './sea.mjs?v=91fc8c31';
-import { Post } from './post.mjs?v=91fc8c31';
-import { Wake, Spray } from './fx.mjs?v=91fc8c31';
-import { loadYacht, BoatVisual } from './boats.mjs?v=91fc8c31';
-import { Scenery } from './scenery.mjs?v=91fc8c31';
-import { RescueView } from './rescue-view.mjs?v=91fc8c31';
-import { People, crewClip, tick, JACK, CAST_H, SIT_HIP } from './people.mjs?v=91fc8c31';
-import { BossView } from './boss-view.mjs?v=91fc8c31';
-import { LeviathanView } from './leviathan-view.mjs?v=91fc8c31';
-import { DeckView } from './deck-view.mjs?v=91fc8c31';
-import { FLEET } from './fleet.mjs?v=91fc8c31';
-import { Dash } from './dash.mjs?v=91fc8c31';
-import { makeJukung, tickJukung } from './jukung.mjs?v=91fc8c31';
-import { loadMonkeykingBoat, bindMonkeykingBoat, tickMonkeykingBoat } from './jukung-model.mjs?v=91fc8c31';
-import { makeRacingJukung, tickRacingJukung } from './jukung-racing.mjs?v=91fc8c31';
-import { JUKUNG_SPEC } from '../sim/jukung-spec.mjs?v=91fc8c31';
-import { BayView } from './bay-view.mjs?v=91fc8c31';
+import * as W from '../sim/waves.mjs?v=b016c49c';
+import { pointInto, wrapA } from '../sim/courses.mjs?v=b016c49c';
+import { Sky, WORLDS, makeNoiseTexture } from './sky.mjs?v=b016c49c';
+import { Sea } from './sea.mjs?v=b016c49c';
+import { Post } from './post.mjs?v=b016c49c';
+import { Wake, Spray } from './fx.mjs?v=b016c49c';
+import { loadYacht, BoatVisual } from './boats.mjs?v=b016c49c';
+import { Scenery } from './scenery.mjs?v=b016c49c';
+import { RescueView } from './rescue-view.mjs?v=b016c49c';
+import { People, crewClip, tick, JACK, CAST_H, SIT_HIP } from './people.mjs?v=b016c49c';
+import { BossView } from './boss-view.mjs?v=b016c49c';
+import { LeviathanView } from './leviathan-view.mjs?v=b016c49c';
+import { DeckView } from './deck-view.mjs?v=b016c49c';
+import { FLEET } from './fleet.mjs?v=b016c49c';
+import { Dash } from './dash.mjs?v=b016c49c';
+import { makeJukung, tickJukung } from './jukung.mjs?v=b016c49c';
+import { loadMonkeykingBoat, bindMonkeykingBoat, tickMonkeykingBoat } from './jukung-model.mjs?v=b016c49c';
+import { makeRacingJukung, tickRacingJukung } from './jukung-racing.mjs?v=b016c49c';
+import { JUKUNG_SPEC } from '../sim/jukung-spec.mjs?v=b016c49c';
+import { BayView } from './bay-view.mjs?v=b016c49c';
 
 const clamp = (v, lo, hi) => (v < lo ? lo : v > hi ? hi : v);
 const smooth = (e0, e1, x) => { const t = clamp((x - e0) / (e1 - e0), 0, 1); return t * t * (3 - 2 * t); };
@@ -233,6 +233,21 @@ export class Stage {
   // a skipper at the helm of each yacht: ids[i] = the code of boat i's figure, or null for an empty helm. A figure appears when
   // its model has arrived; a boat that fades (a rival between the camera and the player) hides its skipper
   // ---------- the fleet (view/fleet.mjs): which boat each race boat is ----------
+  // Swap the modelled jukung between the sun sail and the MonkeyKing sail. The hull and the handling stay the same.
+  setJukungVariant(variant) {
+    const next = variant === 'mk' ? 'mk' : 'sun';
+    if (this.jukungVariant === next && this.fleet && this.fleet.jukung) return Promise.resolve(this.fleet.jukung);
+    this.jukungVariant = next;
+    const wasPlayer = !!(this.yacht && this.yacht.key === 'jukung');
+    if (this.fleet) delete this.fleet.jukung;
+    if (this.fleetLoads) this.fleetLoads.delete('jukung');
+    return this.loadBoat('jukung').then((model) => {
+      if (!model) return null;
+      if (wasPlayer) this.yacht = model;
+      this.boats.forEach((B) => { if ((B.want || B.key) === 'jukung') { B.want = 'jukung'; B.key = ''; } });
+      return this.setBoats(this.boats.map((B) => B.want || B.key || 'yacht')).then(() => model);
+    });
+  }
   // the model of one boat; the promise gives null when the file does not arrive (that boat stays a yacht)
   loadBoat(key) {
     if (this.fleet[key]) return Promise.resolve(this.fleet[key]);
