@@ -57,7 +57,7 @@ import { Rescue, arenaCourse, rescueSettings, ARENA, RESCUE, S as SHARK } from '
 import { Boss, dragonCourse, bossSettings, DRAGON, BOSS as FIGHT } from './sim/boss.mjs?v=b016c49c';
 import { Leviathan, leviCourse, leviSettings, LEVI, FIGHT as LFIGHT, PHASES } from './sim/leviathan.mjs?v=b016c49c';
 import { DeckFight, hawkCourse, hawkSettings, HAWK, DECK, HALVES, COASTAL_NAME } from './sim/deck.mjs?v=b016c49c';
-import { deckHudSnapshot } from './ui/deck-hud.mjs?v=b016c49c';
+import { deckHudSnapshot, deckRange, passCountdown } from './ui/deck-hud.mjs?v=b016c49c';
 import { makeVoyage, bayCourse, voyageSettings, voyageChoices, VOYAGES, VOYAGES_READY as VOYAGE_KEYS } from './sim/voyages.mjs?v=b016c49c';
 const VOYAGES_READY_ALL = VOYAGE_KEYS;
 import { FLEET, FLEET_KEYS, rivalBoats } from './view/fleet.mjs?v=b016c49c';
@@ -707,11 +707,41 @@ function paintDeck(race, run, dt, me) {
     : stun ? (F.half === 2 && F.flares > 0 ? 'STAGGERED AND LOW: FIRE A FLARE' : 'staggered: more harm') : F.st === 'crip' ? (F.flares > 0 ? 'CRIPPLED: FIRE A FLARE' : 'crippled: the sea is coming') : F.rockets.some((q) => q.on) ? 'rockets: shoot them down' : 'out of reach: keep the magazine');
   if (F.half !== run.half) { run.half = F.half; sound.bpm = Math.round(run.bpm0 * (1 + 0.08 * (F.half - 1))); }
   if (!run.named && race.racing) run.named = true;
-  const ang = wrapA(Math.atan2(-(F.x - me.x), F.z - me.z) - me.h - DK.ay), far = Math.abs(ang) > 0.5 && race.racing && !F.over;
-  if (far !== H.arrowOn) { H.arrowOn = far; E.arrow.style.opacity = far ? '1' : '0'; }
-  if (far) { const a = Math.round(ang * 180 / Math.PI / 3) * 3; if (a !== H.arrow) { H.arrow = a; E.arrow.style.transform = `rotate(${a}deg)`; } }
+  const ang = wrapA(Math.atan2(-(F.x - me.x), F.z - me.z) - me.h - DK.ay), off = Math.abs(ang) > 0.5 && race.racing && !F.over;
+  if (off !== H.arrowOn) { H.arrowOn = off; E.arrow.style.opacity = off ? '1' : '0'; }
+  if (off) { const a = Math.round(ang * 180 / Math.PI / 3) * 3; if (a !== H.arrow) { H.arrow = a; E.arrow.style.transform = `rotate(${a}deg)`; } }
   const warn = F.over || !race.racing ? '' : F.mag === 0 || F.reload > 0 ? '' : F.st === 'crip' && F.flares > 0 ? 'Its armour holds: the FLARE button' : '';
   if (warn !== H.warn) { H.warn = warn; E.warn.textContent = warn; E.warn.style.display = warn ? 'block' : 'none'; }
+}
+// range, the pass countdown and off-screen rockets. Drawn after the camera is placed, including while the fight is paused.
+function paintDeckReadout() {
+  const F = G.rescue;
+  if (!F || F.kind !== 'deck') return;
+  const range = deckRange(F), far = !!range.far;
+  E.cross.classList.toggle('far', far);
+  E.cross.classList.toggle('near', !far && !F.over);
+  if (range.label !== H.range) { H.range = range.label; $('deck-range').textContent = range.label; }
+  const cd = passCountdown(F), mark = cd.label;
+  if (mark !== H.countN) {
+    H.countN = mark; const el = $('deck-count'); el.textContent = mark; el.classList.toggle('on', !!mark);
+    if (mark && !G.paused && G.race && G.race.racing) sound.sfx('count');
+  }
+  const root = $('deck-threats');
+  if (!root.childElementCount) {
+    for (let i = 0; i < 6; i++) {
+      const d = document.createElement('div'); d.className = 'deck-threat'; d.hidden = true;
+      d.innerHTML = '<svg viewBox="0 0 36 36" aria-hidden="true"><circle class="track" cx="18" cy="18" r="14"/><circle class="remain" cx="18" cy="18" r="14" pathLength="100"/><path class="arrow" d="M18 7l6.2 9.2h-3.7v9.2h-5v-9.2H12z"/></svg>';
+      root.appendChild(d);
+    }
+  }
+  const marks = stage.deckView && stage.deckView.built ? stage.deckView.threatMarkers(stage.camera) : [];
+  for (let i = 0; i < root.children.length; i++) {
+    const el = root.children[i], m = marks[i];
+    if (!m) { el.hidden = true; continue; }
+    el.hidden = false; el.style.left = m.left.toFixed(1) + '%'; el.style.top = m.top.toFixed(1) + '%'; el.style.transform = `rotate(${m.angle.toFixed(1)}deg)`;
+    const ring = el.querySelector('.remain'), pct = Math.round(m.remain * 100);
+    if (ring._pct !== pct) { ring._pct = pct; ring.setAttribute('stroke-dasharray', pct + ' 100'); }
+  }
 }
 // ---------- the rescue voyages in the bay (sim/voyage.mjs; PLAN-MONKEYKING.md). The same frame again: G.rescue holds the voyage,
 // its kind is 'voyage'. The boat is the jukung, whatever boat the races use; nothing is fought. The display shows who is home
@@ -914,7 +944,7 @@ function hudMsg(text, cls = '', pri = 1, long = false) {
   const m = E.msg; m.className = ''; void m.offsetWidth; m.textContent = text; m.className = `show ${cls}${long ? ' long' : ''}`;
   clearTimeout(msgT); msgT = setTimeout(() => { m.className = ''; }, long ? 2650 : 1150);
 }
-const H = { time: null, place: null, lap: null, gap: null, kmh: null, chain: null, warn: null, fill: null, bs: null, knob: null, me: null, arrow: null, arrowOn: null };
+const H = { time: null, place: null, lap: null, gap: null, kmh: null, chain: null, warn: null, fill: null, bs: null, knob: null, me: null, arrow: null, arrowOn: null, range: null, countN: null };
 function setText(id, key, v) { if (H[key] !== v) { H[key] = v; $(id).textContent = v; } }
 // the time gap between two boats: how much later a passed the last 10 m mark that both have passed (null before the first one)
 function gapS(aMarks, aN, bMarks, bN) { const k = Math.min(aN, bN) - 1; return k < 0 ? null : aMarks[k] - bMarks[k]; }
@@ -1056,7 +1086,7 @@ function onRescueEvent(e) {
     case 'vHome': sound.sfx('finish'); hudMsg(`HOME: ${e.home} OF ${e.total}`, 'good', 5); break;
     case 'vEnd': sound.sfx(e.stars >= 2 ? 'finish' : 'miss'); hudMsg(e.home === e.total ? 'EVERYONE IS HOME' : 'THE VOYAGE IS OVER', e.stars >= 2 ? 'good' : 'bad', 7, true); G.resultsAt = performance.now() + (G.film ? 1e9 : 2600); break;
     // ---- the level on the deck (sim/deck.mjs): what the gun, the helicopter and the megalodon say ----
-    case 'dShot': sound.sfx('shot'); if (e.hit) pulse(E.cross, 'hit'); break;
+    case 'dShot': sound.sfx('shot'); if (e.hit) pulse(E.cross, 'hit'); if (e.hit === 'pod') sound.sfx('chip', 3); else if (e.hit === 'tail') sound.sfx('chip', 1); else if (e.hit === 'body') sound.sfx('hit'); break;
     case 'dReload': sound.sfx('empty'); break;
     case 'dLoaded': sound.sfx('click'); break;
     case 'dRocket': sound.sfx('launch'); G.run.toldRocket = true; break;
@@ -1509,6 +1539,7 @@ function frame(ts) {
     // a paused race is a still picture: nothing moves, and it is drawn only now and then (T-12)
     const still = G.paused;
     stage.update(G.acc / DT, still ? 0 : dt * (G.mode === 'race' ? G.timeScale : 1), G.race.t - (1 - G.acc / DT) * DT);
+    if (G.rescue && G.rescue.kind === 'deck') paintDeckReadout();
     // behind a menu or a result that nobody has touched for a while the sea is drawn every second frame: half the work (finding 4)
     const every = still ? 6 : G.mode !== 'race' && !G.film && performance.now() - G.inputAt > IDLE_MS ? 2 : 1;
     if (XR.on || G.dirty || G.frames % every === 0) { stage.render(); G.dirty = false; G.draws++; }    // a headset needs every frame
