@@ -297,7 +297,11 @@ test('bay deep links allow its voyages and practice while arcade film overrides 
 test('the original entry still boots yachts, opens its menu and runs arcade race, rescue and sailing routes', async () => {
   const h = await createGame({ edition: 'crest' });
   assert.equal(h.G.stage.loadArgs.options.bay, false); assert.equal(h.G.game, 'crest');
-  assert.equal(h.G.race.boats.length, 4); assert.deepEqual(h.G.stage.boats.map(b => b.key), ['yacht', 'yacht', 'yacht', 'yacht']);
+  assert.equal(h.G.race.boats.length, 4);
+  // 0.16.0: the boat you sail defaults to the jukung. The opening demo keeps three yacht rivals
+  // and puts that jukung in the player's slot, so the picture matches the play flow.
+  assert.equal(h.G.sel.boat, 'jukung');
+  assert.deepEqual(h.G.stage.boats.map(b => b.key), ['yacht', 'yacht', 'yacht', 'jukung']);
   await h.start(); assert.equal(h.G.screen, 'menu');
   await h.emit('b-go'); assert.equal(h.G.run.mode, 'race'); assert.equal(h.G.race.boats.length, 4);
   await h.emit('h-pause'); await h.emit('b-quit'); assert.equal(h.G.screen, 'menu');

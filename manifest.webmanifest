@@ -1,14 +1,14 @@
 {
   "name": "Crest Run",
   "short_name": "Crest Run",
-  "description": "Tilt your phone to race a yacht over ramps on a golden sea.",
+  "description": "Crest Run is the bay where the boats meet. Race, sail with Jack, and bring everyone home.",
+  "background_color": "#101816",
+  "theme_color": "#101816",
   "start_url": "./index.html",
   "scope": "./",
   "display": "fullscreen",
   "display_override": ["fullscreen", "standalone"],
   "orientation": "landscape",
-  "background_color": "#06121f",
-  "theme_color": "#06121f",
   "icons": [
     { "src": "./assets/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
     { "src": "./assets/icon-180.png", "sizes": "180x180", "type": "image/png" },

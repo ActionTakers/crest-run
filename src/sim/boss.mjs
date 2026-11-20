@@ -7,8 +7,8 @@
 // anderen magen we bosslevels"; <local>). A first playable: every number is tuned on this PC with the
 // stand-in driver below, never by a person on a phone. Tests: tests/boss.test.mjs.
 // World and headings as in race-sim.mjs. The dragon lies along the x axis with its middle at the origin.
-import { DT, BOOST, Race } from './race-sim.mjs?v=91fc8c31';
-import { buildCourse, wrapA } from './courses.mjs?v=91fc8c31';
+import { DT, BOOST, Race } from './race-sim.mjs?v=b016c49c';
+import { buildCourse, wrapA } from './courses.mjs?v=b016c49c';
 
 const DEG = Math.PI / 180;
 const clamp = (v, lo, hi) => (v < lo ? lo : v > hi ? hi : v);

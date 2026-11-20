@@ -7,12 +7,14 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Crest Run">
-<meta name="theme-color" content="#06121f">
+<meta name="theme-color" content="#101816">
+<meta name="description" content="Crest Run is the bay where the boats meet. Race, sail with Jack, and bring everyone home.">
+<link rel="preload" as="image" href="./assets/film/bay-poster.webp" fetchpriority="high">
 <link rel="manifest" href="./manifest.webmanifest">
 <link rel="icon" href="./assets/icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="./assets/icon-180.png">
 <title>Crest Run</title>
-<link rel="stylesheet" href="./css/game.css?v=91fc8c31">
+<link rel="stylesheet" href="./css/game.css?v=b016c49c">
 <script type="importmap">{ "imports": { "three": "./vendor/three-0.186.1/build/three.module.js", "three/addons/": "./vendor/three-0.186.1/examples/jsm/" } }</script>
 </head>
 <body>
@@ -89,7 +91,7 @@
   </section>
 </div>
 
-<div id="screens">
+<div id="screens" aria-hidden="true">
   <section id="s-boot" class="screen show">
     <div class="logo"><span>CREST</span> <span>RUN</span></div>
     <div class="bar"><i id="boot-bar"></i></div>
@@ -99,7 +101,7 @@
 
   <section id="s-title" class="screen">
     <div class="logo big"><span>CREST</span> <span>RUN</span></div>
-    <p class="tag">Tilt to steer. Hit the ramps. Land it straight.</p>
+    <p class="tag">The bay where the boats meet.</p>
     <button id="b-start" class="cta">START</button>
     <p id="title-note" class="dim small"></p>
     <div class="corner"><button id="b-title-settings" class="ghost">Settings</button></div>
@@ -114,7 +116,7 @@
           <img class="bay-mark" src="./assets/textures/sail-emblem.webp" width="52" height="52" alt="" decoding="async">
           <div><span>MONKEYKING &amp; JACK</span><small>LIPAH BAY</small></div>
         </div>
-        <button id="bay-settings" class="ghost" type="button">Settings</button>
+        <div class="hero-actions"><button id="b-bay-races" class="ghost" type="button">Races</button><button id="bay-settings" class="ghost" type="button">Settings</button></div>
       </header>
       <div class="bay-layout">
         <div class="bay-intro">
@@ -154,13 +156,14 @@
       <div class="menu-head">
         <div class="logo small"><span>CREST</span> <span>RUN</span></div>
         <div class="tabs" id="m-modes"><button data-mode="race" class="on">Race</button><button data-mode="trial">Time trial</button><button data-mode="rescue">Rescue</button><button data-mode="voyage">Voyage</button><button id="b-sailing" data-mode="sailing">Sailing trial</button></div>
+        <button id="b-menu-bay" class="ghost" type="button">The bay</button>
         <button id="b-menu-settings" class="ghost">Settings</button>
       </div>
       <div id="m-courses" class="cards"></div>
       <div class="menu-foot">
         <div class="pick" id="p-tune"><small>Tune</small><div id="m-tunes" class="chips one-line"></div></div>
         <div class="pick" id="m-diff-wrap"><small id="m-diff-label">Rivals</small><div id="m-diff" class="chips one-line"><button data-diff="easy">Easy</button><button data-diff="normal">Normal</button><button data-diff="hard">Hard</button></div></div>
-        <div class="pick" id="p-colour"><small>Boat</small><div id="m-liveries" class="dots"></div></div>
+        <div class="pick boat-pick" id="p-colour"><small>Boat</small><div id="m-boats" class="boat-cards"></div><div id="m-liveries" class="dots"></div></div>
         <p id="m-hint"></p>
         <button id="b-go" class="cta">RACE</button>
       </div>
@@ -262,6 +265,66 @@
       <p class="dim small">Nothing happens? Switch off Portrait Orientation Lock in Control Centre.</p></div>
   </section>
 </div>
+<div id="site">
+  <a class="skip" href="#b-play">Skip to Play</a>
+  <header class="hero">
+    <div id="hero-media" class="hero-media">
+      <img src="./assets/film/bay-poster.webp" alt="" width="960" height="540" fetchpriority="high" decoding="async">
+      <video id="hero-film" muted loop playsinline poster="./assets/film/bay-poster.webp" preload="none" disablepictureinpicture disableremoteplayback>
+        <source src="./assets/film/bay-loop.webm" type="video/webm">
+        <source src="./assets/film/bay-loop.mp4" type="video/mp4">
+      </video>
+    </div>
+    <div class="hero-shade"></div>
+    <div class="hero-copy">
+      <p class="eyebrow">Lipah Bay</p>
+      <h1>Crest Run</h1>
+      <p class="lede">Boats from every GoodvibeZ shore meet in one bay. Race the gates, sail with Jack, and bring everyone home.</p>
+      <div class="hero-actions"><button id="b-play" class="cta" type="button">Play</button></div>
+      <p class="hero-note">Play opens the bay in the sun jukung. Pick MonkeyKing for that sail. The yacht waits in the races.</p>
+    </div>
+  </header>
+  <section class="band story" aria-labelledby="story-heading">
+    <div class="band-inner">
+      <h2 id="story-heading">One series, one shore</h2>
+      <p>Crest Run is the connecting series. Race, time trial, MonkeyKing’s voyages, Jack’s sailing and the Coastal Run share this water. The Emperor, Alpacalips and Friendly Fighters belong to the same story. The shore is temple stone, palm and lagoon. White, orange and cyan belong to the boats.</p>
+      <ul class="series">
+        <li><b>Emperor shooter</b><span>Coming soon</span></li>
+        <li><b>Alpacalips</b><span>Part of the series</span></li>
+        <li><b>Friendly Fighters</b><span>Part of the series</span></li>
+        <li><b>Canal Crush</b><span>Coming soon</span></li>
+        <li><b>K3-racer</b><span>Coming soon</span></li>
+      </ul>
+    </div>
+  </section>
+  <section class="band modes" aria-labelledby="modes-heading">
+    <div class="band-inner">
+      <h2 id="modes-heading">What you can play</h2>
+      <div id="site-modes" class="mode-grid">
+        <button type="button" class="mode-card" data-play="bay"><b>The bay</b><small>MonkeyKing and Jack. Three voyages from the beach.</small></button>
+        <button type="button" class="mode-card" data-play="sailing"><b>Jack’s sailing</b><small>Wind, sheet and the balance of the floats.</small></button>
+        <button type="button" class="mode-card" data-play="race"><b>Race</b><small>Gates, ramps and three rivals.</small></button>
+        <button type="button" class="mode-card" data-play="trial"><b>Time trial</b><small>You, the clock and your ghost.</small></button>
+        <button type="button" class="mode-card" data-play="hawk"><b>Coastal Run</b><small>Iron Hawk, fought from the deck.</small></button>
+        <button type="button" class="mode-card" data-play="llama"><b>Llama Island</b><small>Bring the crew and the llamas ashore.</small></button>
+        <button type="button" class="mode-card" data-play="dragon"><b>The World Dragon</b><small>A boss the size of an island.</small></button>
+        <button type="button" class="mode-card" data-play="levi"><b>The Leviathan</b><small>A sea guardian in three phases.</small></button>
+      </div>
+    </div>
+  </section>
+  <section class="band boats" aria-labelledby="boats-heading">
+    <div class="band-inner">
+      <h2 id="boats-heading">Your boat</h2>
+      <p>The bay is sailed in a jukung. The yacht is there when you race.</p>
+      <div id="site-boats" class="boat-cards">
+        <button type="button" class="boat-card on" data-craft="sun" aria-pressed="true"><b>Sun jukung</b><small>White sail, orange and cyan. The boat Play uses.</small></button>
+        <button type="button" class="boat-card" data-craft="mk" aria-pressed="false"><b>MonkeyKing jukung</b><small>The same hull, with the king’s sail.</small></button>
+        <button type="button" class="boat-card" data-craft="yacht" aria-pressed="false"><b>Yacht</b><small>For the races. Play still opens the bay in a jukung.</small></button>
+      </div>
+    </div>
+  </section>
+  <p id="site-build" class="colophon"></p>
+</div>
 <div id="toast"></div>
 <!-- a file of the game that does not arrive (a weak connection) must not leave "Loading the sea..." up for ever -->
 <script>
@@ -273,6 +336,6 @@ window.addEventListener('error', function (e) {
   if (b) { b.classList.remove('hidden'); b.onclick = function () { location.reload(); }; }
 }, true);
 </script>
-<script type="module" src="./src/main.mjs?v=91fc8c31"></script>
+<script type="module" src="./src/main.mjs?v=b016c49c"></script>
 </body>
 </html>

@@ -16,6 +16,9 @@
 // 0.9.0 (the same day, after the owner's six pictures of 14:14: the project's research/A7-target-pictures): the jukung's look
 // follows the pictures (view/jukung.mjs), the telling on the beach has a table of planks with nine palm leaves and their signs,
 // the slopes are forested, a village is lit at night, rain falls under the squall, the overdue boat has a canopy.
+// 0.16.0 (2026-11-20, on the owner's words of 21:32: go on, live, in the game): the page opens on a scrolling
+// shore, the bay film looping behind the first screen. Play steps into the bay in the jukung without a reload.
+// Sun jukung, MonkeyKing jukung and the yacht are three cards. The sea, the gates and the voyages are unchanged.
 // 0.15.1 (2026-11-20): the Monkey King jukung is v1.4.2. A flat wooden perch sits on the mast tip, and SOCK_MAST_TIP
 // is the centre of that disc, so the lucky bird stands on it. The bird file is unchanged.
 // 0.15.0 (2026-11-20, on the owner's words of 20:47: "Put them live"): the player's jukung is Kiki's Monkey King
@@ -44,29 +47,29 @@
 // on the beach with nine lesson leaves a voyage; a Voyage tab in the menu; a film camera that travels with the boat.
 // 0.7.0 (the same day): each boat handles its own way (sim/boat-stats.mjs), a display inside the cockpit for the view from the
 // helm (view/dash.mjs), a fifth boat (the red catamaran without its lettering), and a ghost that remembers its boat.
-import { Stage, CAMS } from './view/stage.mjs?v=91fc8c31';
-import { LIVERIES, LIVERY_KEYS } from './view/boats.mjs?v=91fc8c31';
-import { OWNER, KING, JACK, crewFor } from './view/people.mjs?v=91fc8c31';
-import { WORLDS } from './view/sky.mjs?v=91fc8c31';
-import { getCourse, COURSE_DEFS, COURSE_KEYS, pointInto, wrapA, wrapS } from './sim/courses.mjs?v=91fc8c31';
-import { Race, defaultSettings, DT, TUNES, TUNE_KEYS, BOOST, SIM_VERSION, encodeInputs, decodeInputs } from './sim/race-sim.mjs?v=91fc8c31';
-import { Rescue, arenaCourse, rescueSettings, ARENA, RESCUE, S as SHARK } from './sim/rescue.mjs?v=91fc8c31';
-import { Boss, dragonCourse, bossSettings, DRAGON, BOSS as FIGHT } from './sim/boss.mjs?v=91fc8c31';
-import { Leviathan, leviCourse, leviSettings, LEVI, FIGHT as LFIGHT, PHASES } from './sim/leviathan.mjs?v=91fc8c31';
-import { DeckFight, hawkCourse, hawkSettings, HAWK, DECK, HALVES } from './sim/deck.mjs?v=91fc8c31';
-import { makeVoyage, bayCourse, voyageSettings, voyageChoices, VOYAGES, VOYAGES_READY as VOYAGE_KEYS } from './sim/voyages.mjs?v=91fc8c31';
+import { Stage, CAMS } from './view/stage.mjs?v=b016c49c';
+import { LIVERIES, LIVERY_KEYS } from './view/boats.mjs?v=b016c49c';
+import { OWNER, KING, JACK, crewFor } from './view/people.mjs?v=b016c49c';
+import { WORLDS } from './view/sky.mjs?v=b016c49c';
+import { getCourse, COURSE_DEFS, COURSE_KEYS, pointInto, wrapA, wrapS } from './sim/courses.mjs?v=b016c49c';
+import { Race, defaultSettings, DT, TUNES, TUNE_KEYS, BOOST, SIM_VERSION, encodeInputs, decodeInputs } from './sim/race-sim.mjs?v=b016c49c';
+import { Rescue, arenaCourse, rescueSettings, ARENA, RESCUE, S as SHARK } from './sim/rescue.mjs?v=b016c49c';
+import { Boss, dragonCourse, bossSettings, DRAGON, BOSS as FIGHT } from './sim/boss.mjs?v=b016c49c';
+import { Leviathan, leviCourse, leviSettings, LEVI, FIGHT as LFIGHT, PHASES } from './sim/leviathan.mjs?v=b016c49c';
+import { DeckFight, hawkCourse, hawkSettings, HAWK, DECK, HALVES } from './sim/deck.mjs?v=b016c49c';
+import { makeVoyage, bayCourse, voyageSettings, voyageChoices, VOYAGES, VOYAGES_READY as VOYAGE_KEYS } from './sim/voyages.mjs?v=b016c49c';
 const VOYAGES_READY_ALL = VOYAGE_KEYS;
-import { FLEET, FLEET_KEYS, rivalBoats } from './view/fleet.mjs?v=91fc8c31';
-import { BOAT_STATS, boatTweak } from './sim/boat-stats.mjs?v=91fc8c31';
-import { Governor, RefreshWatch, measureRefresh } from './sim/governor.mjs?v=91fc8c31';
-import * as PR from './sim/progress.mjs?v=91fc8c31';
-import { Controls } from './ui/controls.mjs?v=91fc8c31';
-import { Sound } from './ui/sound.mjs?v=91fc8c31';
-import * as PF from './ui/platform.mjs?v=91fc8c31';
-import { BAY_SAVE_KEY, BAY_JOURNEYS, makeBaySave, bayProgress } from './ui/bay-flow.mjs?v=91fc8c31';
-import { makeSailingLesson, advanceSailingLesson } from './sim/sailing-lesson.mjs?v=91fc8c31';
+import { FLEET, FLEET_KEYS, rivalBoats } from './view/fleet.mjs?v=b016c49c';
+import { BOAT_STATS, boatTweak } from './sim/boat-stats.mjs?v=b016c49c';
+import { Governor, RefreshWatch, measureRefresh } from './sim/governor.mjs?v=b016c49c';
+import * as PR from './sim/progress.mjs?v=b016c49c';
+import { Controls } from './ui/controls.mjs?v=b016c49c';
+import { Sound } from './ui/sound.mjs?v=b016c49c';
+import * as PF from './ui/platform.mjs?v=b016c49c';
+import { BAY_SAVE_KEY, BAY_JOURNEYS, makeBaySave, bayProgress } from './ui/bay-flow.mjs?v=b016c49c';
+import { makeSailingLesson, advanceSailingLesson } from './sim/sailing-lesson.mjs?v=b016c49c';
 
-export const VERSION = 'crest-run 0.15.1', BUILD = '2026-11-20 #91fc8c31';
+export const VERSION = 'crest-run 0.16.0', BUILD = '2026-11-20 #b016c49c';
 const $ = (id) => document.getElementById(id);
 const Q = new URLSearchParams(location.search);
 const BAY_GAME = document.body.dataset.game === 'bay';
@@ -84,6 +87,9 @@ const canvas = $('c');
 // and offers a reload instead of "Loading the sea..." for ever (finding 7)
 function bootFail(e, text) {
   window.__error = String((e && e.stack) || e);
+  const site = document.getElementById('site'); if (site) site.hidden = true;
+  document.body.classList.add('in-game');
+  const screens = document.getElementById('screens'); if (screens && typeof screens.removeAttribute === 'function') screens.removeAttribute('aria-hidden');
   for (const s of document.querySelectorAll('#screens .screen')) s.classList.toggle('show', s.id === 's-boot');
   $('boot-msg').textContent = text; const b = $('b-reload'); b.classList.remove('hidden'); b.onclick = () => location.reload();
 }
@@ -95,10 +101,13 @@ const G = window.__game = { version: VERSION, build: BUILD, game: BAY_GAME ? 'ba
   probe: { n: 0, deltas: [] }, probes: 0, lastRuns: [], storage: true, calT: 0, calTry: 0, calDone: 0, resultsAt: null, hudOn: Q.get('hud') !== '0', resumeLeft: 0, resumeShown: '', afterCal: null, dirty: true, filmT: 0, inputAt: performance.now(), draws: 0 };
 const settings = () => G.save.settings;
 G.sel = { mode: ['trial', 'rescue'].includes(G.save.last.mode) ? G.save.last.mode : 'race', course: COURSE_KEYS.includes(G.save.last.course) ? G.save.last.course : COURSE_KEYS[0],
-  tune: G.save.unlocked.tunes.includes(G.save.last.tune) ? G.save.last.tune : 'cruise', livery: G.save.unlocked.liveries.includes(G.save.last.livery) ? G.save.last.livery : 'pearl', difficulty: settings().difficulty, level: ARENA.key, boat: FLEET_KEYS.includes(settings().boat) ? settings().boat : 'yacht' };
+  tune: G.save.unlocked.tunes.includes(G.save.last.tune) ? G.save.last.tune : 'cruise', livery: G.save.unlocked.liveries.includes(G.save.last.livery) ? G.save.last.livery : 'pearl', difficulty: settings().difficulty, level: ARENA.key, boat: FLEET_KEYS.includes(settings().boat) ? settings().boat : 'jukung' };
 const boatParam = (Q.get('boat') || '').toLowerCase();
+G.craft = 'sun';
 if (boatParam === 'mk' || boatParam === 'c' || boatParam === 'sun' || boatParam === 'a' || boatParam === 'jukung') G.sel.boat = 'jukung';
 else if (boatParam === 'yacht') G.sel.boat = 'yacht';
+if (boatParam === 'mk' || boatParam === 'c') G.craft = 'mk';
+else if (boatParam === 'yacht') G.craft = 'yacht';
 else if (FLEET[boatParam] && !FLEET[boatParam].practiceOnly) G.sel.boat = boatParam;
 if (Q.get('sailing') === '1') G.sel.mode = 'sailing';
 if (BAY_GAME) {
@@ -169,8 +178,12 @@ const BAY_CARDS = {
   mk2: { scene: 'squall', time: 'BEFORE THE SQUALL', story: 'Take Jack on a tow line and lead the other boats home.' },
   mk3: { scene: 'night', time: 'AFTER SUNSET', story: 'Find the overdue boat. Nine people wait; your boat has six guest seats.' },
 };
+function harbourOn() { return BAY_GAME || !!G.harbour; }
+function ensureBayJournal() {
+  if (!G.save.bay || typeof G.save.bay !== 'object') G.save.bay = { sailingComplete: false, lastVoyage: 'mk1' };
+}
 function paintBay() {
-  if (!BAY_GAME) return;
+  if (!harbourOn()) return;
   const progress = bayProgress(G.save), next = VOYAGES[progress.recommended];
   G.baySuggested = progress.sailingComplete ? progress.recommended : ':practice';
   $('bay-continue').textContent = !progress.sailingComplete ? 'LEARN TO SAIL WITH JACK' : `${progress.journeys.find((one) => one.key === next.key).visited ? 'RETURN TO' : 'BEGIN'} ${next.name.toUpperCase()}`;
@@ -202,16 +215,17 @@ function startBayDemo() {
   return ready;
 }
 function returnToBay() {
-  if (!BAY_GAME) return;
+  if (!harbourOn()) return;
   sound.music('menu'); startBayDemo(); paintBay(); show('bay'); PF.releaseWake();
 }
 function chooseBayVoyage(key) {
-  if (!BAY_GAME || !BAY_JOURNEYS.includes(key)) return;
+  if (!harbourOn() || !BAY_JOURNEYS.includes(key)) return;
+  ensureBayJournal();
   G.sel.mode = 'rescue'; G.sel.level = key; G.sel.boat = 'jukung'; G.sel.tune = 'cruise'; G.sel.livery = 'pearl';
   G.save.bay.lastVoyage = key; saveNow(); openKies();
 }
 function chooseBayPractice(guided = !G.save.bay?.sailingComplete) {
-  if (!BAY_GAME) return;
+  if (!harbourOn()) return;
   G.practiceGuided = guided; G.sel.mode = 'sailing'; startRace();
 }
 function paintSailingLesson() {
@@ -284,7 +298,7 @@ async function startSailingTrial() {
   G.race = race; G.rescue = null; G.ghost = null; G.mode = 'race'; G.acc = 0; G.timeScale = 1;
   G.slowLeft = 0; G.slowArmed = false; G.paused = false; G.pausedBy = null; G.resultsAt = null; G.resumeLeft = 0;
   G.sailInput = { sheet: 0.5, autoTrim: true, rigBalance: 0, crewBalance: 0 };
-  G.sailLesson = BAY_GAME && G.practiceGuided !== false ? makeSailingLesson() : null;
+  G.sailLesson = harbourOn() && G.practiceGuided !== false ? makeSailingLesson() : null;
   G.run = { mode: 'sailing', course: c.key, tune: 'cruise', livery: 'pearl', difficulty: 'practice', at: new Date().toISOString(),
     frames: 0, late: 0, worst: 0, sumMs: 0, mot0: controls.tilt.counts.mot, th0: performance.now(), steerMode: controls.mode,
     recentres0: controls.recentres, lastHud: 0, countShown: '', wake0: PF.wake.releases, trackW: 1, dots: [], coach: false };
@@ -1110,6 +1124,7 @@ document.addEventListener('visibilitychange', () => {
 window.addEventListener('blur', () => { if (document.visibilityState !== 'hidden') pause('away'); });
 window.addEventListener('pagehide', () => pause('hidden'));
 function checkRotation() {
+  if ($('site') && !document.body.classList.contains('in-game')) return;
   const portrait = PF.env.touch && !PF.landscape();
   if (portrait && G.screen !== 'rotate') { G.before = G.screen; if (G.mode === 'race' && (!G.paused || G.resumeLeft > 0) && G.race && !G.race.over) pause('rotate'); else show('rotate'); }
   else if (!portrait && G.screen === 'rotate') {
@@ -1125,17 +1140,100 @@ let sizeT = 0;
 window.addEventListener('resize', () => { checkRotation(); clearTimeout(sizeT); sizeT = setTimeout(size, 120); });
 window.addEventListener('orientationchange', () => setTimeout(size, 250));
 
-// ---------- start, straight-ahead check ----------
+// ---------- the shore in front of the game, then the straight-ahead check ----------
+function dismissSite() {
+  const site = $('site');
+  if (!site) return;
+  document.body.classList.add('in-game');
+  const screens = $('screens'); if (screens && typeof screens.removeAttribute === 'function') screens.removeAttribute('aria-hidden');
+  if (typeof window.scrollTo === 'function') window.scrollTo(0, 0);
+  const video = $('hero-film');
+  if (video && typeof video.pause === 'function') { try { video.pause(); } catch (e) { /* already quiet */ } }
+  const hide = () => { site.hidden = true; };
+  if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) hide();
+  else setTimeout(hide, 460);
+}
+function markCraft(craft) {
+  const box = $('site-boats');
+  if (!box || typeof box.querySelectorAll !== 'function') return;
+  for (const btn of box.querySelectorAll('button[data-craft]')) {
+    const on = btn.dataset.craft === craft;
+    btn.classList.toggle('on', on);
+    if (typeof btn.setAttribute === 'function') btn.setAttribute('aria-pressed', on ? 'true' : 'false');
+  }
+}
+function useCraft(craft) {
+  if (craft === 'yacht') { G.sel.boat = 'yacht'; settings().boat = 'yacht'; return; }
+  G.sel.boat = 'jukung'; settings().boat = 'jukung';
+  const variant = craft === 'mk' ? 'mk' : 'sun';
+  if (window.__ready && typeof stage.setJukungVariant === 'function') stage.setJukungVariant(variant);
+  else stage.jukungVariant = variant;
+}
+function playFromSite(intent) {
+  const run = () => {
+    const arcade = intent === 'race' || intent === 'trial' || intent === 'llama' || intent === 'hawk' || intent === 'dragon' || intent === 'levi';
+    if (arcade && BAY_GAME) { toast('Race, time trial and the other shores open from the Crest Run page.'); return; }
+    if (intent === 'race' || intent === 'trial') {
+      G.harbour = false; G.sel.mode = intent === 'trial' ? 'trial' : 'race'; G.siteIntent = null;
+      useCraft(G.craft === 'yacht' ? 'yacht' : (G.craft === 'mk' ? 'mk' : 'sun'));
+    } else if (intent === 'sailing') { G.harbour = false; G.sel.mode = 'sailing'; G.siteIntent = 'sailing'; }
+    else if (intent === 'llama' || intent === 'hawk' || intent === 'dragon' || intent === 'levi') {
+      G.harbour = false; G.sel.mode = 'rescue'; G.siteIntent = 'go';
+      G.sel.level = intent === 'llama' ? ARENA.key : intent === 'hawk' ? HAWK.key : intent === 'dragon' ? DRAGON.key : LEVI.key;
+      useCraft(G.craft === 'yacht' ? 'yacht' : (G.craft === 'mk' ? 'mk' : 'sun'));
+    } else {
+      useCraft(G.craft === 'mk' ? 'mk' : 'sun');
+      if (!BAY_GAME) { G.harbour = true; G.siteIntent = 'harbour'; }
+      else G.siteIntent = null;
+    }
+    onStart();
+  };
+  if (window.__ready) run();
+  else G.afterReady = run;
+}
+function armHero() {
+  const video = $('hero-film');
+  const reduce = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+  if (video && !reduce && !G.film && typeof video.play === 'function') {
+    const start = () => {
+      if (document.body.classList.contains('in-game')) return;
+      const playing = video.play();
+      if (playing && typeof playing.then === 'function') playing.then(() => video.classList.add('is-playing')).catch(() => {});
+    };
+    if (typeof requestIdleCallback === 'function') requestIdleCallback(start, { timeout: 1500 });
+    else setTimeout(start, 400);
+  }
+  const media = $('hero-media');
+  if (media && !reduce && !G.film) {
+    window.addEventListener('scroll', () => {
+      if (document.body.classList.contains('in-game')) return;
+      const y = window.scrollY || 0;
+      media.style.transform = 'translate3d(0,' + Math.round(y * 0.28) + 'px,0)';
+    }, { passive: true });
+  }
+  const build = $('site-build'); if (build) build.textContent = VERSION + ', built ' + BUILD;
+  markCraft(G.craft || 'sun');
+}
 // START, all inside the tap: motion access and sound. The straight-ahead screen comes up at once and waits there for the answer
 // to the phone's motion question, however long the player takes over it (finding 1).
 function onStart() {
   if (G.starting) return null; G.starting = true;
+  dismissSite();
   PF.initHaptic(); PF.haptic();
   const audio = sound.start();
   const p = controls.start();
   sound.music('menu'); if (audio) setTimeout(() => sound.sfx('check'), 250);
-  G.started = true; G.afterCal = Q.get('sailing') === '1' ? 'sailing' : BAY_GAME ? (BAY_JOURNEYS.includes(Q.get('voyage')) ? 'bay-voyage' : 'bay') : null;
+  const intent = G.siteIntent || null; G.siteIntent = null;
+  if (intent === 'harbour') {
+    G.harbour = true; ensureBayJournal();
+    G.practiceGuided = !G.save.bay.sailingComplete;
+    G.sel.boat = 'jukung'; G.sel.mode = 'rescue';
+    if (!BAY_JOURNEYS.includes(G.sel.level)) G.sel.level = bayProgress(G.save).recommended;
+  }
+  G.started = true;
+  G.afterCal = intent || (Q.get('sailing') === '1' ? 'sailing' : BAY_GAME ? (BAY_JOURNEYS.includes(Q.get('voyage')) ? 'bay-voyage' : 'bay') : null);
   beginCal();
+  const cal = $('b-cal-touch'); if (cal && typeof cal.focus === 'function') cal.focus();
   return p;
 }
 // The check takes at least 1.5 s while a ring fills (time to bring the phone into the steering pose), needs the phone still for
@@ -1153,11 +1251,13 @@ function finishCal(mode, note) {
   const back = G.afterCal; G.afterCal = null;
   if (back === 'pause' && G.mode === 'race' && G.paused) { paintControlsHint(); show('pause'); }
   else if (back === 'sailing') { G.sel.mode = 'sailing'; startRace(); }
+  else if (back === 'harbour') { ensureBayJournal(); returnToBay(); }
+  else if (back === 'go') { startRace(); }
   else if (BAY_GAME && back === 'bay-voyage') chooseBayVoyage(G.sel.level);
   else if (BAY_GAME) returnToBay();
   else { paintMenu(); show('menu'); }
   if (note && G.sel.mode === 'sailing') note = PF.env.touch ? 'Steer with your left thumb or tilt. Move the sheet to trim the sail.' : 'A/D or arrows steer. Q eases, E sheets in, T toggles trim assist.';
-  else if (note && BAY_GAME) note = PF.env.touch ? 'Steer with your left thumb or tilt. Choose a voyage when you are ready.' : 'A/D or arrows steer. S slows the boat on a voyage.';
+  else if (note && harbourOn()) note = PF.env.touch ? 'Steer with your left thumb or tilt. Choose a voyage when you are ready.' : 'A/D or arrows steer. S slows the boat on a voyage.';
   if (note) toast(note, 4200);
 }
 function stepCal(th) {
@@ -1216,9 +1316,11 @@ function paintMenu() {
       + `<span class="medal"><span class="medal-dot ${medal || 'none'}"></span></span><b>${d.name}</b><small>${open ? `${w.label}, ${d.laps} laps` : `Finish in the top 3 on ${COURSE_DEFS[COURSE_KEYS[i - 1]].name}`}</small><small>${open ? (best ? 'Best ' + PR.fmtTime(best.time) : 'No time yet') : lock + 'Locked'}</small></button>`;
   }).join('');
   $('m-tunes').innerHTML = TUNE_KEYS.map((k) => { const open = s.unlocked.tunes.includes(k); return `<button data-tune="${k}" class="${k === sel.tune ? 'on' : ''} ${open ? '' : 'locked'}">${open ? '' : lock}${TUNES[k].label}</button>`; }).join('');
-  $('m-liveries').innerHTML = LIVERY_KEYS.map((k) => { const L = LIVERIES[k], col = L.amount ? `rgb(${L.color.map((v) => Math.round(255 * Math.sqrt(v))).join(',')})` : '#f6f6f2', open = s.unlocked.liveries.includes(k);
-    return `<button data-livery="${k}" aria-label="${L.label}" class="${k === sel.livery && sel.boat === 'yacht' ? 'on' : ''} ${open ? '' : 'locked'}"><i style="background:${col}"></i>${open ? '' : '<span class="lock"></span>'}</button>`; }).join('')
-    + `<button data-boat="next" aria-label="Boat: ${FLEET[sel.boat].label}. Tap for the next boat" class="boat ${sel.boat !== 'yacht' ? 'on' : ''}">${FLEET[sel.boat].label}</button>`;   // the yacht's six colours, then one button that steps through the boats (three chips did not fit a phone: smoke part f)
+  const craft = sel.boat === 'yacht' ? 'yacht' : (stage.jukungVariant === 'mk' ? 'mk' : 'sun');
+  $('m-boats').innerHTML = [['sun', 'Sun jukung'], ['mk', 'MonkeyKing jukung'], ['yacht', 'Yacht']].map(([id, name]) => `<button type="button" data-craft="${id}" class="boat-card${craft === id ? ' on' : ''}" aria-pressed="${craft === id ? 'true' : 'false'}"><b>${name}</b></button>`).join('');
+  $('m-liveries').classList.toggle('hidden', craft !== 'yacht');
+  $('m-liveries').innerHTML = craft !== 'yacht' ? '' : LIVERY_KEYS.map((k) => { const L = LIVERIES[k], col = L.amount ? `rgb(${L.color.map((v) => Math.round(255 * Math.sqrt(v))).join(',')})` : '#f6f6f2', open = s.unlocked.liveries.includes(k);
+    return `<button data-livery="${k}" aria-label="${L.label}" class="${k === sel.livery && sel.boat === 'yacht' ? 'on' : ''} ${open ? '' : 'locked'}"><i style="background:${col}"></i>${open ? '' : '<span class="lock"></span>'}</button>`; }).join('');
   $('m-diff').querySelectorAll('button').forEach((b) => b.classList.toggle('on', b.dataset.diff === sel.difficulty));
   $('m-diff-wrap').classList.toggle('hidden', sel.mode === 'trial'); $('m-diff-label').textContent = rescue ? (sel.level === DRAGON.key ? 'Fire' : sel.level === LEVI.key || sel.level === HAWK.key ? 'Fury' : VOYAGES[sel.level] ? 'Current' : 'Sharks') : 'Rivals';
   $('b-go').textContent = sel.mode === 'race' ? 'RACE' : rescue ? (sel.level === DRAGON.key || sel.level === LEVI.key || sel.level === HAWK.key ? 'FIGHT' : VOYAGES[sel.level] ? 'SAIL' : 'RESCUE') : 'GO';
@@ -1239,7 +1341,8 @@ function menuClick(e) {
   else if (b.dataset.level) sel.level = b.dataset.level;
   else if (b.dataset.course) { if (!PR.courseOpen(s, COURSE_KEYS, b.dataset.course)) return toast(`Finish in the top 3 on ${COURSE_DEFS[COURSE_KEYS[COURSE_KEYS.indexOf(b.dataset.course) - 1]].name} to open this course.`); sel.course = b.dataset.course; if (G.demoCourse !== sel.course) startDemo(sel.course); }
   else if (b.dataset.tune) { if (!s.unlocked.tunes.includes(b.dataset.tune)) return toast(`${TUNES[b.dataset.tune].label} tune: ${PR.UNLOCKS.tunes[b.dataset.tune]}.`); sel.tune = b.dataset.tune; }
-  else if (b.dataset.livery) { if (!s.unlocked.liveries.includes(b.dataset.livery)) return toast(`${LIVERIES[b.dataset.livery].label}: ${PR.UNLOCKS.liveries[b.dataset.livery]}.`); sel.livery = b.dataset.livery; sel.boat = 'yacht'; settings().boat = 'yacht'; saveNow(); stage.setBoats(['yacht', 'yacht', 'yacht', 'yacht']); stage.boats[3] && stage.boats[3].vis.setLivery(sel.livery); }
+  else if (b.dataset.craft) { G.craft = b.dataset.craft; useCraft(b.dataset.craft); saveNow(); if (!BAY_GAME && G.mode === 'demo') stage.setBoats(['yacht', 'yacht', 'yacht', sel.boat]); }
+  else if (b.dataset.livery) { if (!s.unlocked.liveries.includes(b.dataset.livery)) return toast(`${LIVERIES[b.dataset.livery].label}: ${PR.UNLOCKS.liveries[b.dataset.livery]}.`); sel.livery = b.dataset.livery; sel.boat = 'yacht'; G.craft = 'yacht'; settings().boat = 'yacht'; saveNow(); stage.setBoats(['yacht', 'yacht', 'yacht', 'yacht']); stage.boats[3] && stage.boats[3].vis.setLivery(sel.livery); }
   else if (b.dataset.boat) { sel.boat = FLEET_KEYS[(FLEET_KEYS.indexOf(sel.boat) + 1) % FLEET_KEYS.length]; settings().boat = sel.boat; saveNow(); stage.setBoats(['yacht', 'yacht', 'yacht', sel.boat]); toast(`${FLEET[sel.boat].label}: ${BOAT_STATS[sel.boat].note}.`, 3200); }
   else if (b.dataset.diff) { sel.difficulty = b.dataset.diff; settings().difficulty = sel.difficulty; saveNow(); }
   paintMenu();
@@ -1346,9 +1449,26 @@ function endProbe(P) {
   stage.setScale(gov.scale);
 }
 function reprobe() { if (G.film || !G.refresh) return; G.refresh = null; G.probe = { n: 0, deltas: [], again: true }; stage.setScale(0.5); }
+let padWas = false;
+function pollPad() {
+  if (typeof navigator.getGamepads !== 'function') return;
+  let pads; try { pads = navigator.getGamepads(); } catch (e) { return; }
+  if (!pads) return;
+  let down = false;
+  for (const p of pads) if (p && p.buttons && p.buttons[0] && p.buttons[0].pressed) down = true;
+  if (down && !padWas) {
+    const active = document.activeElement;
+    if (active && active !== document.body && typeof active.click === 'function') active.click();
+    else if (!document.body.classList.contains('in-game')) { const b = $('b-play'); if (b && typeof b.click === 'function') b.click(); }
+  }
+  padWas = down;
+}
 function frame(ts) {
   if (!G.film && !XR.on) requestAnimationFrame(frame);          // in the headset the renderer calls this, on the headset's clock
   if (XR.on) xrAgain();
+  pollPad();
+  // The shore is the page until Play. The film in the hero is the motion; the sea waits.
+  if (!G.film && !XR.on && $('site') && !document.body.classList.contains('in-game')) return;
   const d = last === null ? 16.7 : ts - last, dt = Math.min(0.1, d / 1000); last = ts; G.frames++;
   if (!G.refresh) { const P = G.probe; if (P.n++ > 4 && d > 0) P.deltas.push(d); if (P.deltas.length >= 36) endProbe(P); }
   else if (!G.paused) {
@@ -1378,17 +1498,24 @@ function frame(ts) {
 // ---------- wiring ----------
 function wire() {
   tap('b-start', onStart);
-  tap('bay-continue', () => { if (!BAY_GAME) return; if (G.baySuggested === ':practice') chooseBayPractice(true); else chooseBayVoyage(G.baySuggested); });
+  tap('b-play', () => playFromSite(null));
+  const siteModes = $('site-modes');
+  if (siteModes) siteModes.addEventListener('click', (e) => { const b = e.target.closest && e.target.closest('button[data-play]'); if (!b) return; sound.resume(); sound.sfx('click'); playFromSite(b.dataset.play); });
+  const siteBoats = $('site-boats');
+  if (siteBoats) siteBoats.addEventListener('click', (e) => { const b = e.target.closest && e.target.closest('button[data-craft]'); if (!b) return; sound.resume(); sound.sfx('click'); G.craft = b.dataset.craft; markCraft(G.craft); useCraft(G.craft === 'yacht' ? 'yacht' : G.craft); });
+  tap('b-menu-bay', () => { if (BAY_GAME) return returnToBay(); G.harbour = true; ensureBayJournal(); G.practiceGuided = !G.save.bay.sailingComplete; if (G.sel.boat !== 'jukung') useCraft(stage.jukungVariant === 'mk' ? 'mk' : 'sun'); returnToBay(); });
+  tap('b-bay-races', () => { if (BAY_GAME) return toast('Races, time trial and the other shores are on the Crest Run page.'); G.harbour = false; G.sel.mode = 'race'; if (!COURSE_KEYS.includes(G.sel.course)) G.sel.course = COURSE_KEYS[0]; useCraft(G.craft === 'yacht' ? 'yacht' : (G.craft === 'mk' ? 'mk' : 'sun')); clearTimeout(toastT); E.toast.classList.remove('show'); sound.music('menu'); startDemo(G.sel.course); paintMenu(); show('menu'); });
+  tap('bay-continue', () => { if (!harbourOn()) return; if (G.baySuggested === ':practice') chooseBayPractice(true); else chooseBayVoyage(G.baySuggested); });
   tap('bay-practice', () => chooseBayPractice());
   tap('bay-replay', () => chooseBayPractice(true));
-  tap('bay-settings', () => { if (!BAY_GAME) return; G.back = 'bay'; paintSettings(); show('settings'); });
-  $('bay-journeys').addEventListener('click', (e) => { const b = e.target.closest('button[data-voyage]'); if (!b || !BAY_GAME) return; sound.resume(); sound.sfx('click'); chooseBayVoyage(b.dataset.voyage); });
+  tap('bay-settings', () => { if (!harbourOn()) return; G.back = 'bay'; paintSettings(); show('settings'); });
+  $('bay-journeys').addEventListener('click', (e) => { const b = e.target.closest('button[data-voyage]'); if (!b || !harbourOn()) return; sound.resume(); sound.sfx('click'); chooseBayVoyage(b.dataset.voyage); });
   tap('sail-lesson-skip', () => { G.sailLesson = null; paintSailingLesson(); });
   tap('sail-lesson-done', returnToBay);
   tap('b-title-settings', () => { G.back = 'title'; paintSettings(); show('settings'); });
   tap('b-menu-settings', () => { G.back = 'menu'; paintSettings(); show('settings'); });
   tap('b-pause-settings', () => { G.back = 'pause'; paintSettings(); show('settings'); });
-  tap('b-set-done', () => { if (G.back === 'menu') paintMenu(); if (BAY_GAME && G.back === 'bay') paintBay(); show(G.back || 'menu'); });
+  tap('b-set-done', () => { if (G.back === 'menu') paintMenu(); if (harbourOn() && G.back === 'bay') paintBay(); show(G.back || 'menu'); });
   tap('b-recal', () => { if (!G.started) return toast('Press START first.'); if (!controls.tiltAvailable()) return toast('No motion data on this device.'); G.afterCal = G.back; controls.mode = 'none'; beginCal(); });
   tap('b-card', () => { $('card-text').textContent = cardText(); show('card'); });
   tap('b-card-done', () => { paintSettings(); show('settings'); });
@@ -1405,15 +1532,15 @@ function wire() {
   $('set-maxdeg').addEventListener('input', (e) => { settings().maxDeg = +e.target.value; $('set-maxdeg-v').textContent = e.target.value; controls.setOptions({ maxDeg: settings().maxDeg, invert: !!settings().invert }); });
   $('set-maxdeg').addEventListener('change', saveNow);
   tap('b-go', () => { if (G.sel.mode === 'rescue' && VOYAGES[G.sel.level]) return openKies(); if (G.sel.mode !== 'sailing' && !PR.courseOpen(G.save, COURSE_KEYS, G.sel.course)) return; startRace(); });
-  tap('b-kies-go', startRace); tap('b-kies-back', () => { if (BAY_GAME) return returnToBay(); paintMenu(); show('menu'); });
+  tap('b-kies-go', startRace); tap('b-kies-back', () => { if (harbourOn()) return returnToBay(); paintMenu(); show('menu'); });
   $('k-rows').addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b) return; sound.resume(); sound.sfx('click'); if (b.dataset.recall !== undefined) { if (b.dataset.recall === 'go') { G.kies.recall = null; G.recalled[G.sel.level] = true; } else G.kies.recall = +b.dataset.recall; return paintKies(); } const key = G.sel.level, C = G.choices[key] = voyageChoices(key, G.choices[key]); const row = VOYAGES[key].rows[+b.dataset.row]; C[row.key] = row.opts[+b.dataset.opt][0]; paintKies(); });
-  tap('b-beach-done', () => { if (G.beach && G.beach.book) { G.beach = G.beach.keep; paintKies(); return show('kies'); } if (BAY_GAME) return returnToBay(); show('results'); });
+  tap('b-beach-done', () => { if (G.beach && G.beach.book) { G.beach = G.beach.keep; paintKies(); return show('kies'); } if (harbourOn()) return returnToBay(); show('results'); });
   $('v-leaves').addEventListener('click', (e) => { const b = e.target.closest('button[data-leaf]'); if (!b || !G.beach) return; sound.resume(); sound.sfx('click'); G.beach.sel = +b.dataset.leaf; G.beach.selKey = G.beach.key; paintBeach(); });
   tap('b-kies-book', () => { G.beach = { book: true, key: G.sel.level, keep: G.beach }; paintBeach(); show('beach'); });
   $('v-qs').addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b || !G.beach) return; sound.resume(); if (b.dataset.fold) { sound.sfx('click'); G.beach.fold = G.beach.fold ? 0 : 1; return paintBeach(); } if (b.dataset.book) { sound.sfx('click'); G.beach.key = b.dataset.book; if (G.beach.fold) G.beach.fold = 0; return paintBeach(); } if (b.dataset.next) { sound.sfx('click'); G.beach.step++; return paintBeach(); } sound.sfx('chip', +b.dataset.q); G.beach.ans[+b.dataset.q] = +b.dataset.a; const r = PR.addLeaves(G.save, G.beach.key, [6 + +b.dataset.q]); if (r.fresh) { G.save = r.save; saveNow(); } paintBeach(); });
   tap('b-retry', startRace);
-  tap('b-nextcourse', () => { if (G.nextCourse === ':beach') return openBeach(); if (BAY_GAME) return returnToBay(); if (G.nextCourse && PR.courseOpen(G.save, COURSE_KEYS, G.nextCourse)) G.sel.course = G.nextCourse; startRace(); });
-  tap('b-next', () => { if (BAY_GAME) return returnToBay(); startDemo(G.sel.course); paintMenu(); show('menu'); });
+  tap('b-nextcourse', () => { if (G.nextCourse === ':beach') return openBeach(); if (harbourOn()) return returnToBay(); if (G.nextCourse && PR.courseOpen(G.save, COURSE_KEYS, G.nextCourse)) G.sel.course = G.nextCourse; startRace(); });
+  tap('b-next', () => { if (harbourOn()) return returnToBay(); startDemo(G.sel.course); paintMenu(); show('menu'); });
   tap('h-pause', () => pause('button'));
   tap('h-vr', () => { enterXr(); });
   tap('h-view', toggleView);
@@ -1421,7 +1548,7 @@ function wire() {
   tap('b-resume', resume); tap('b-resume2', resume); tap('b-resume3', resume);
   tap('b-sensors-tilt', () => { if (controls.tiltFresh()) { controls.setMode('tilt'); paintControlsHint(); resume(); } else toast('Still no motion data: steering stays on touch.'); });
   tap('b-restart', () => { G.paused = false; startRace(); });
-  tap('b-quit', () => { if (BAY_GAME) return returnToBay(); G.paused = false; sound.music('menu'); startDemo(G.sel.course); paintMenu(); show('menu'); });
+  tap('b-quit', () => { if (harbourOn()) return returnToBay(); G.paused = false; sound.music('menu'); startDemo(G.sel.course); paintMenu(); show('menu'); });
   tap('sail-auto', () => { G.sailInput.autoTrim = !G.sailInput.autoTrim; paintSailControls(); });
   $('sail-sheet').addEventListener('input', (e) => { G.sailInput.sheet = +e.target.value / 100; G.sailInput.autoTrim = false; paintSailControls(); });
   $('sail-rig').addEventListener('input', (e) => { G.sailInput.rigBalance = +e.target.value / 100; paintSailControls(); });
@@ -1525,7 +1652,7 @@ try {
     document.querySelector('#s-title .tag').textContent = 'Read the wind. Feel the floats. Find the balance.';
     $('title-note').textContent = PF.env.touch ? 'Hold the phone sideways. Start sets up steering and sound.' : 'A/D or arrows steer \u00B7 Q/E trim \u00B7 T toggles trim assist';
   }
-  show('title'); checkRotation();
+  show('title'); checkRotation(); armHero();
   // film: no menus; the race starts at once with the computer at the wheel and the caller owns the clock (G.filmStep)
   if (G.film) {
     G.started = true; G.auto = true; controls.mode = 'keys';
@@ -1542,4 +1669,5 @@ try {
   }
   if (!G.film) requestAnimationFrame(frame);
   window.__ready = true;
+  if (typeof G.afterReady === 'function') { const fn = G.afterReady; G.afterReady = null; fn(); }
 } catch (e) { bootFail(e, 'The game could not start: ' + String((e && e.message) || e)); }
