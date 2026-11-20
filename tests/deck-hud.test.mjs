@@ -2,12 +2,13 @@
 // with the game harness in tests/bay-ui-lifecycle.test.mjs.
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
 import { DeckFight, hawkCourse, hawkSettings, DECK, COASTAL_NAME } from '../src/sim/deck.mjs';
 import { Race } from '../src/sim/race-sim.mjs';
 import { freshSave, applyRescue } from '../src/sim/progress.mjs';
 import { deckGoal, deckHudSnapshot, hullMarks, armourMarks } from '../src/ui/deck-hud.mjs';
 
-const RACE_FIELDS = ['taken', 'place', 'gap', 'lap', 'boost', 'kmh', 'speed', 'chain', 'position'];
+const RACE_FIELDS = ['taken', 'place', 'gap', 'lap', 'boost', 'kmh', 'speed', 'chain', 'position', 'time', 'clock'];
 
 function fight() {
   const race = new Race(hawkSettings(hawkCourse()), hawkCourse());
@@ -57,6 +58,16 @@ test('the goal line stays until that objective is fulfilled', () => {
   assert.equal(deckGoal(F), rockets);
   F.rockets[0].on = false;
   assert.equal(deckGoal(F), done);
+});
+
+test('deck mode hides the race clock', () => {
+  const css = fs.readFileSync(new URL('../css/game.css', import.meta.url), 'utf8');
+  const rule = css.split('}').find((block) => block.includes('#hud.deck #h-clock') && block.includes('#hud.deck #h-time'));
+  assert.ok(rule, 'the deck HUD lists the race clock among its hidden fields');
+  assert.match(rule, /display:\s*none/);
+  const snap = deckHudSnapshot(fight());
+  assert.equal(Object.hasOwn(snap, 'time'), false);
+  assert.equal(Object.hasOwn(snap, 'clock'), false);
 });
 
 test('a deck result remembers mode deck and a rescue result stays rescue', () => {

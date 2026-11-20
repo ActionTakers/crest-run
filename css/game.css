@@ -256,10 +256,10 @@ pre { text-align: left; white-space: pre-wrap; word-break: break-word; font-size
 /* the rescue level: no course bar; the arrow points at a shark, the line over the speed counts llamas lost */
 /* the boss bar of the second boss level: its name and phase, its health, its stagger, the cast of its great attack */
 #bossbar { display: none; position: absolute; left: calc(30% + var(--sl)); right: calc(30% + var(--sr)); top: calc(67px + var(--st)); text-align: center; pointer-events: none; }
-/* Coastal Run: Iron Hawk. Race place, gap, lap, speed and boost stay off this HUD. Hull, ammo, flares and hawk armour are its own. */
+/* Coastal Run: Iron Hawk. Race place, gap, lap, clock, speed and boost stay off this HUD. Hull, ammo, flares and hawk armour are its own. */
 #h-deck, #h-deck-goal { display: none; }
 #hud.deck #h-left, #hud.deck #h-boostbtn, #hud.deck #h-view, #hud.deck #h-recentre, #hud.deck #h-boost, #hud.deck #h-speed,
-#hud.deck #h-pos, #hud.deck #h-gap, #hud.deck #h-dash, #hud.deck #h-chain, #hud.deck #h-prog { display: none; }
+#hud.deck #h-pos, #hud.deck #h-gap, #hud.deck #h-clock, #hud.deck #h-time, #hud.deck #h-dash, #hud.deck #h-chain, #hud.deck #h-prog { display: none; }
 #hud.deck #h-deck { display: block; position: absolute; left: calc(14px + var(--sl)); bottom: calc(16px + var(--sb)); width: min(280px, 46vw);
   margin: 0; padding: 10px 12px 12px; box-sizing: border-box; text-align: left; background: rgba(6, 18, 31, 0.78); border: 1px solid rgba(255, 255, 255, 0.28); border-radius: 14px; }
 #h-deck p { margin: 0; font-size: 18px; font-weight: 900; letter-spacing: 0.04em; line-height: 1.25; }

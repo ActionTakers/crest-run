@@ -643,7 +643,7 @@ async function startDeck() {
     stage.setRescue(null); stage.setBoss(null); stage.setLevi(null); stage.setVoyage(null); stage.setRace(race, [livery], 0); stage.setGhost(null); const models = stage.setDeck(F);
     const ready = Promise.all([stage.setBoats([G.sel.boat]), stage.setSkippers([OWNER]), models]); if (G.film) await ready;
     stage.setCameraMode('chase'); controls.releaseAll();
-    E.hud.classList.remove('final'); E.hud.classList.add('rescue', 'bossfight', 'deck'); $('h-of').textContent = ''; E.place.textContent = ''; $('h-lap').textContent = ''; $('h-gap').textContent = ''; $('h-chain').textContent = ''; E.count.textContent = ''; E.warn.style.display = 'none';
+    E.hud.classList.remove('final'); E.hud.classList.add('rescue', 'bossfight', 'deck'); $('h-of').textContent = ''; E.place.textContent = ''; $('h-lap').textContent = ''; $('h-gap').textContent = ''; $('h-chain').textContent = ''; $('h-time').textContent = ''; E.count.textContent = ''; E.warn.style.display = 'none';
     for (const k of Object.keys(H)) H[k] = null;
     clearTimeout(msgT); E.msg.className = ''; msgPri = 0; msgUntil = 0;
     E.prog.querySelectorAll('i.rv').forEach((e) => e.remove());
@@ -681,13 +681,12 @@ function endDeck() {
   G.mode = 'after'; G.acc = 0; stage.setCameraMode('orbit'); sound.music('menu'); show('results'); PF.releaseWake();
 }
 // its display: hull, ammo, flares and hawk armour on their own fields, and one goal line that stays until that step is done.
-// Race place, gap and the TAKEN line stay blank. The boss bar keeps the half, the stagger and what the helicopter is doing.
+// Race place, gap, the TAKEN line and the race clock stay blank. The boss bar keeps the half, the stagger and what the helicopter is doing.
 function paintDeck(race, run, dt, me) {
   const F = G.rescue;
   const left = race.go - race.t, ct = left > 0 ? String(Math.ceil(left)) : left > -0.8 ? 'GO' : '';
   if (ct !== run.countShown) { run.countShown = ct; E.count.textContent = ct; if (ct && ct !== 'GO') sound.sfx('count'); }
   run.lastHud += dt; if (run.lastHud < 0.09) return; run.lastHud = 0;
-  const t = race.lapT; setText('h-time', 'time', `${Math.floor(t / 60)}:${(t % 60).toFixed(1).padStart(4, '0')}`);
   const snap = deckHudSnapshot(F);
   setText('h-deck-title', 'dtitle', snap.title);
   setText('h-deck-hull', 'dhull', snap.hull);
@@ -696,7 +695,7 @@ function paintDeck(race, run, dt, me) {
   setText('h-deck-armour-label', 'darmour', snap.armour);
   setText('h-deck-goal', 'dgoal', snap.goal);
   const bar = Math.round(1000 * snap.armourRatio); if (H.dbar !== bar) { H.dbar = bar; $('h-deck-armour-fill').style.transform = `scaleX(${snap.armourRatio})`; }
-  setText('h-place', 'place', ''); setText('h-lap', 'lap', ''); setText('h-gap', 'gap', ''); setText('h-chain', 'chain', '');
+  setText('h-place', 'place', ''); setText('h-lap', 'lap', ''); setText('h-gap', 'gap', ''); setText('h-chain', 'chain', ''); setText('h-time', 'time', '');
   const fl = F.half === 2 && !F.over ? String(F.flares) : ''; if (fl !== H.flares) { H.flares = fl; E.flare.classList.toggle('hidden', fl === ''); E.flare.classList.toggle('none', fl === '0'); $('h-flares').textContent = fl; }
   const low = F.low && F.half === 2 && F.flares > 0 && !F.breach.on; if (low !== H.flareOn) { H.flareOn = low; E.flare.classList.toggle('ready', low); }
   setText('bb-name', 'bbname', HALVES[F.half - 1]);

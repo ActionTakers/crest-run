@@ -55,6 +55,8 @@ class Stage {
   constructor() {
     this.boats = []; this.calls = []; this.tierKey = 'mid'; this.scale = 1; this.dash = { set() {} };
     this.rescueView = { ready: true }; this.rescueLoad = Promise.resolve(true);
+    this.renderer = { setAnimationLoop() {} };
+    this.xrInput = { fire: false, flare: false, hand: 0, pulls: 0 };
   }
   async load(base, options) { this.loadArgs = { base, options: plain(options) }; return { yacht: { triangles: 1, ms: 0 } }; }
   setCamera(camera) { this.camera = camera; } setCameraMode(mode) { this.cameraMode = mode; }
@@ -69,6 +71,7 @@ class Stage {
     this.voyage = value;
   }
   setTier(value) { this.tierKey = value; } setScale(value) { this.scale = value; }
+  async enterXr() { this.xr = true; } exitXr() { this.xr = false; }
   resize() {} update() {} render() {} onEvent() {} renderSize() { return '844x390'; }
 }
 
@@ -120,7 +123,7 @@ async function createGame({ edition = 'bay', query = '', storage = new Map() } =
   // Imports alone are supplied by the harness; no production function or boot
   // branch is removed. Controls run in the same browser-like global context.
   vm.runInContext(controlsSource, context, { filename: 'controls.mjs' });
-  const api = await vm.runInContext(`(async () => {\n${mainSource}\nreturn { G, stepRace, simulate, stepResume, paintSailingLesson };\n})()`, context, { filename: 'main.mjs' });
+  const api = await vm.runInContext(`(async () => {\n${mainSource}\nreturn { G, stepRace, simulate, stepResume, paintSailingLesson, enterXr, xrAgain, navigator };\n})()`, context, { filename: 'main.mjs' });
   assert.equal(window.__error, undefined, 'boot must not fall back to its error screen');
   assert.equal(window.__ready, true);
   const emit = async (id, type = 'click', target = get(id)) => {
@@ -343,7 +346,9 @@ test('restarting Coastal Run stays in deck mode and the HUD snapshot has no race
   assert.equal(text('h-deck-flares'), snap.flares);
   assert.equal(text('h-deck-armour-label'), snap.armour);
   assert.equal(text('h-deck-goal'), snap.goal);
-  for (const id of ['h-place', 'h-lap', 'h-gap', 'h-chain']) assert.doesNotMatch(text(id), /TAKEN|\bLAP\b|behind|ahead|km\/h|BOOST/);
+  for (const id of ['h-place', 'h-lap', 'h-gap', 'h-chain', 'h-time']) assert.doesNotMatch(text(id), /TAKEN|\bLAP\b|behind|ahead|km\/h|BOOST|\d+:\d\d/);
+  assert.equal(text('h-time'), '');
+  assert.equal(h.get('hud').classList.contains('deck'), true);
   // The old restart put the selection back on rescue and could leave the hawk level.
   h.G.sel.mode = 'rescue'; h.G.sel.level = rescue.ARENA.key;
   await h.emit('h-pause');
@@ -361,6 +366,38 @@ test('restarting Coastal Run stays in deck mode and the HUD snapshot has no race
   assert.equal(h.G.run.mode, 'deck');
   assert.equal(h.G.sel.mode, 'deck');
   assert.equal(h.G.rescue.kind, 'deck');
+});
+
+test('headset enter and trigger-again keep Coastal Run in deck mode', async () => {
+  const h = await createGame({ edition: 'crest' });
+  await h.start();
+  h.G.sel.mode = 'deck'; h.G.sel.level = deck.HAWK.key;
+  await h.G.startRace();
+  const fight = h.G.rescue;
+  assert.equal(h.G.run.mode, 'deck');
+  // A pull of the trigger after the fight, the path xrAgain uses.
+  fight.over = true;
+  h.G.xr.overAt = performance.now() - 3000; h.G.xr.pulls = 0; h.G.stage.xrInput.pulls = 1;
+  h.G.sel.mode = 'rescue'; h.G.sel.level = rescue.ARENA.key;
+  await h.xrAgain();
+  assert.equal(h.G.sel.mode, 'deck');
+  assert.equal(h.G.sel.level, deck.HAWK.key);
+  assert.equal(h.G.run.mode, 'deck');
+  assert.equal(h.G.rescue.kind, 'deck');
+  assert.notEqual(h.G.rescue, fight);
+  // Entering the headset restarts through the same door.
+  const again = h.G.rescue;
+  h.G.sel.mode = 'rescue'; h.G.sel.level = rescue.ARENA.key;
+  h.G.xr.ok = true; h.G.xr.on = false;
+  h.navigator.xr = { requestSession: async () => ({ addEventListener() {} }) };
+  await h.enterXr();
+  assert.equal(h.G.xr.on, true);
+  assert.equal(h.G.stage.xr, true);
+  assert.equal(h.G.sel.mode, 'deck');
+  assert.equal(h.G.sel.level, deck.HAWK.key);
+  assert.equal(h.G.run.mode, 'deck');
+  assert.equal(h.G.rescue.kind, 'deck');
+  assert.notEqual(h.G.rescue, again);
 });
 
 test('film addresses for the hawk level start Coastal Run in deck mode', async () => {
