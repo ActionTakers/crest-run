@@ -5,6 +5,7 @@
 // Written 2026-11-13 by the yacht project session.
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { clone as cloneSkinned } from 'three/addons/utils/SkeletonUtils.js';
 
 export const LIVERIES = {
   pearl: { label: 'Pearl', color: [1.0, 1.0, 1.0], amount: 0.0, accent: 0xf2b84b },
@@ -41,7 +42,8 @@ const TINT_MAIN = `
 `;
 export class BoatVisual {
   constructor(yacht, liveryKey = 'pearl') {
-    this.group = yacht.template.clone(true); this.paint = yacht.paint !== false;      // paint false: the boat keeps its own colours
+    // a skinned boat (the Monkey King jukung) must clone its bones with the mesh; Object3D.clone shares the skeleton
+    this.group = yacht.monkeyking ? cloneSkinned(yacht.template) : yacht.template.clone(true); this.paint = yacht.paint !== false;      // paint false: the boat keeps its own colours
     this.livery = { uLivery: { value: new THREE.Vector3(1, 1, 1) }, uLiveryAmt: { value: 0 } };
     this.materials = [];
     this.group.traverse((o) => {

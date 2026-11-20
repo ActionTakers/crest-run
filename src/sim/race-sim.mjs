@@ -8,10 +8,10 @@
 // own driver; two-way contact; a boost the driver controls; landings judged by steering; drafting; places; no per-step garbage.
 // World: metres; x and z on the water, y up. Heading h: forward f = (-sin h, cos h), right r = (-cos h, -sin h). Positive steer,
 // positive h and positive lateral offsets all mean right. Tests: tests/race-sim.test.mjs.
-import * as W from './waves.mjs?v=5e9464f8';
-import { wrapA, wrapS, projectInto, pointInto, lineOffAt, speedProfile } from './courses.mjs?v=5e9464f8';
-import { JUKUNG_SPEC, JUKUNG_PHYSICS } from './jukung-spec.mjs?v=5e9464f8';
-import { makeSailingState, advanceSailing } from './sailing.mjs?v=5e9464f8';
+import * as W from './waves.mjs?v=b691c4e1';
+import { wrapA, wrapS, projectInto, pointInto, lineOffAt, speedProfile } from './courses.mjs?v=b691c4e1';
+import { JUKUNG_SPEC, JUKUNG_PHYSICS } from './jukung-spec.mjs?v=b691c4e1';
+import { makeSailingState, advanceSailing } from './sailing.mjs?v=b691c4e1';
 
 export const DT = 1 / 120;                 // physics step, s
 export const COUNTDOWN_S = 3;

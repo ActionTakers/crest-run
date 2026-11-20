@@ -3,25 +3,26 @@
 // shows it, interpolated between the last two physics steps so the picture is smooth at any frame rate.
 // Written 2026-11-13 by the yacht project session.
 import * as THREE from 'three';
-import * as W from '../sim/waves.mjs?v=5e9464f8';
-import { pointInto, wrapA } from '../sim/courses.mjs?v=5e9464f8';
-import { Sky, WORLDS, makeNoiseTexture } from './sky.mjs?v=5e9464f8';
-import { Sea } from './sea.mjs?v=5e9464f8';
-import { Post } from './post.mjs?v=5e9464f8';
-import { Wake, Spray } from './fx.mjs?v=5e9464f8';
-import { loadYacht, BoatVisual } from './boats.mjs?v=5e9464f8';
-import { Scenery } from './scenery.mjs?v=5e9464f8';
-import { RescueView } from './rescue-view.mjs?v=5e9464f8';
-import { People, crewClip, tick, JACK, CAST_H, SIT_HIP } from './people.mjs?v=5e9464f8';
-import { BossView } from './boss-view.mjs?v=5e9464f8';
-import { LeviathanView } from './leviathan-view.mjs?v=5e9464f8';
-import { DeckView } from './deck-view.mjs?v=5e9464f8';
-import { FLEET } from './fleet.mjs?v=5e9464f8';
-import { Dash } from './dash.mjs?v=5e9464f8';
-import { makeJukung, tickJukung } from './jukung.mjs?v=5e9464f8';
-import { makeRacingJukung, tickRacingJukung } from './jukung-racing.mjs?v=5e9464f8';
-import { JUKUNG_SPEC } from '../sim/jukung-spec.mjs?v=5e9464f8';
-import { BayView } from './bay-view.mjs?v=5e9464f8';
+import * as W from '../sim/waves.mjs?v=b691c4e1';
+import { pointInto, wrapA } from '../sim/courses.mjs?v=b691c4e1';
+import { Sky, WORLDS, makeNoiseTexture } from './sky.mjs?v=b691c4e1';
+import { Sea } from './sea.mjs?v=b691c4e1';
+import { Post } from './post.mjs?v=b691c4e1';
+import { Wake, Spray } from './fx.mjs?v=b691c4e1';
+import { loadYacht, BoatVisual } from './boats.mjs?v=b691c4e1';
+import { Scenery } from './scenery.mjs?v=b691c4e1';
+import { RescueView } from './rescue-view.mjs?v=b691c4e1';
+import { People, crewClip, tick, JACK, CAST_H, SIT_HIP } from './people.mjs?v=b691c4e1';
+import { BossView } from './boss-view.mjs?v=b691c4e1';
+import { LeviathanView } from './leviathan-view.mjs?v=b691c4e1';
+import { DeckView } from './deck-view.mjs?v=b691c4e1';
+import { FLEET } from './fleet.mjs?v=b691c4e1';
+import { Dash } from './dash.mjs?v=b691c4e1';
+import { makeJukung, tickJukung } from './jukung.mjs?v=b691c4e1';
+import { loadMonkeykingBoat, bindMonkeykingBoat, tickMonkeykingBoat } from './jukung-model.mjs?v=b691c4e1';
+import { makeRacingJukung, tickRacingJukung } from './jukung-racing.mjs?v=b691c4e1';
+import { JUKUNG_SPEC } from '../sim/jukung-spec.mjs?v=b691c4e1';
+import { BayView } from './bay-view.mjs?v=b691c4e1';
 
 const clamp = (v, lo, hi) => (v < lo ? lo : v > hi ? hi : v);
 const smooth = (e0, e1, x) => { const t = clamp((x - e0) / (e1 - e0), 0, 1); return t * t * (3 - 2 * t); };
@@ -82,12 +83,23 @@ export class Stage {
     this._v = new THREE.Vector3(); this._o = [0, 0, 0];
     this.stats = { calls: 0, triangles: 0 };
   }
-  async load(base = './assets/', { bay = false } = {}) {
+  async load(base = './assets/', { bay = false, variant } = {}) {
     this.base = base;
-    this.yacht = bay ? makeJukung() : await loadYacht(base + 'models/yacht-b04.glb');
-    this.yacht.key = bay ? 'jukung' : 'yacht'; this.yacht.paint = !bay;
+    if (variant) this.jukungVariant = variant === 'mk' ? 'mk' : 'sun';
+    else if (this.jukungVariant !== 'mk') this.jukungVariant = 'sun';
+    if (bay) {
+      this.yacht = await loadMonkeykingBoat(base, this.jukungVariant);
+      this.yacht.key = 'jukung'; this.yacht.paint = false;
+    } else {
+      this.yacht = await loadYacht(base + 'models/yacht-b04.glb');
+      this.yacht.key = 'yacht'; this.yacht.paint = true;
+    }
     this.dash = new Dash();                                                   // the display inside the cockpit (view/dash.mjs)
     this.fleet = { [this.yacht.key]: this.yacht }; this.fleetLoads = new Map(); // the other boats' models arrive when needed
+    if (!bay) {
+      const jk = await loadMonkeykingBoat(base, this.jukungVariant);
+      jk.key = 'jukung'; jk.paint = false; this.fleet.jukung = jk;             // ready before the title, so the player's boat does not pop in
+    }
     await this.scenery.load(base + 'models/kit.glb');
     // the rescue level's models load behind the title screen; a start of that level waits for them (main.mjs)
     this.rescueLoad = bay ? Promise.resolve(false) : this.rescueView.load(base).catch((e) => { console.warn('rescue models not loaded: ' + (e && e.message)); return false; });
@@ -137,7 +149,7 @@ export class Stage {
     if (this.deck) this.setDeck(null);                     // every level begins with a race of its own: the deck's view leaves with the old one
     this.race = race; this.focus = focus;
     while (this.boats.length < race.boats.length) {
-      const vis = new BoatVisual(this.yacht), wake = new Wake(this.scene, this.sea.U, { n: this.boats.length === 0 ? 120 : 80, stern: this.yacht.length * 0.44 });
+      const vis = this.presentBoat(this.yacht), wake = new Wake(this.scene, this.sea.U, { n: this.boats.length === 0 ? 120 : 80, stern: this.yacht.wakeStern || this.yacht.length * 0.44 });
       this.scene.add(vis.group); this.boats.push({ vis, wake, key: this.yacht.key || 'yacht', want: this.yacht.key || 'yacht', x: 0, y: 0, z: 0, h: 0, pitch: 0, roll: 0, u: 0 });
     }
     this.boats.forEach((B, i) => {
@@ -150,7 +162,7 @@ export class Stage {
   // the ghost of a time trial: one more yacht, see-through, without wake or spray, posed from its own simulation
   setGhost(race) {
     this.ghost = race || null;
-    if (race && !this.ghostVis) { this.ghostVis = new BoatVisual(this.yacht, 'mint'); this.ghostVis.setOpacity(0.36); this.scene.add(this.ghostVis.group); }
+    if (race && !this.ghostVis) { this.ghostVis = this.presentBoat(this.yacht, 'mint'); this.ghostVis.setOpacity(0.36); this.scene.add(this.ghostVis.group); }
     if (this.ghostVis) this.ghostVis.group.visible = !!race;
   }
   // the rescue level's creatures (sim/rescue.mjs), or null for a race
@@ -211,7 +223,11 @@ export class Stage {
     const J = this.jack; if (!J) return;
     if (this.jackAt !== 'bow') { this.bayView.setJack(J, this.jackAt); return; }
     this.bayView.setJack(null); const B = this.boats[this.focus]; if (!B) return;
-    B.vis.group.add(J.hold); J.hold.position.set(0, BOW.y - (J.act.watch ? J.hip : 0), BOW.z); J.hold.rotation.set(0, 0, 0);
+    B.vis.group.add(J.hold);
+    const bow = (this.fleet[B.key] && this.fleet[B.key].sockets && this.fleet[B.key].sockets.bow);
+    if (bow) J.hold.position.set(bow.x, bow.y - (J.act.watch ? J.hip : 0), bow.z);
+    else J.hold.position.set(0, BOW.y - (J.act.watch ? J.hip : 0), BOW.z);
+    J.hold.rotation.set(0, 0, 0);
   }
   setBoss(boss, id = null) { this.boss = boss || null; this.bossId = this.boss ? id : null; this.trimPeople(); return this.bossView.setBoss(this.boss, this.bossId); }
   // a skipper at the helm of each yacht: ids[i] = the code of boat i's figure, or null for an empty helm. A figure appears when
@@ -222,6 +238,12 @@ export class Stage {
     if (this.fleet[key]) return Promise.resolve(this.fleet[key]);
     if (!FLEET[key]) return Promise.resolve(null);
     if (FLEET[key].make === 'jukung') { const t = makeJukung(); t.key = key; t.paint = false; this.fleet[key] = t; return Promise.resolve(t); }   // made in code: nothing to wait for
+    if (FLEET[key].make === 'jukung-model') {
+      if (!this.fleetLoads.has(key)) this.fleetLoads.set(key, loadMonkeykingBoat(this.base, this.jukungVariant || 'sun')
+        .then((t) => { t.key = key; t.paint = false; this.fleet[key] = t; return t; })
+        .catch((e) => { console.warn(`boat ${key} not loaded: ${e && e.message}`); this.fleetLoads.delete(key); return null; }));
+      return this.fleetLoads.get(key);
+    }
     if (FLEET[key].make === 'jukung-racer') { const t = makeRacingJukung({ lookout: false }); t.key = key; t.paint = false; this.fleet[key] = t; return Promise.resolve(t); }
     if (!this.fleetLoads.has(key)) this.fleetLoads.set(key, loadYacht(this.base + 'models/' + FLEET[key].file, { length: FLEET[key].length, keel: FLEET[key].keel })
       .then((t) => { t.key = key; t.paint = FLEET[key].paint; this.fleet[key] = t; return t; }).catch((e) => { console.warn(`boat ${key} not loaded: ${e && e.message}`); this.fleetLoads.delete(key); return null; }));
@@ -240,10 +262,10 @@ export class Stage {
     return Promise.all(waits);
   }
   swapBoat(B, key) {
-    const old = B.vis, vis = new BoatVisual(this.fleet[key], old.liveryKey);
+    const old = B.vis, vis = this.presentBoat(this.fleet[key], old.liveryKey);
     vis.group.position.copy(old.group.position); vis.group.rotation.copy(old.group.rotation); vis.group.visible = old.group.visible; if (old.opacity !== undefined) vis.setOpacity(old.opacity);
     this.scene.add(vis.group); this.scene.remove(old.group); old.dispose();
-    B.vis = vis; B.key = key; B.wake.stern = this.fleet[key].length * 0.44;
+    B.vis = vis; B.key = key; B.wake.stern = this.fleet[key].wakeStern || this.fleet[key].length * 0.44;
     if (B.skipper) { vis.group.add(B.skipper.hold); this.seat(B, B.skipper); }
     if (this.jack && this.jackAt === 'bow' && B === this.boats[this.focus]) this.placeJack();
   }
@@ -253,7 +275,18 @@ export class Stage {
     const T = this.fleet[B.key] || this.yacht, s = FLEET[B.key].seat, own = CAST_H[one.id] !== undefined;
     // The racing craft's seat names the hips directly, just above its low thwart. Voyage seating keeps its existing pose.
     if (B.key === 'jukung-racer') { one.hold.position.set(0, T.height * s.y - (one.act.sit ? one.hip : 0), T.length * s.z); return; }
+    // The modelled jukung seats the hips on SOCK_SEAT. The helm camera is SOCK_SEAT_EYE, ahead of that seat, so the body stays aft of the lens.
+    if (T.sockets && T.sockets.seat && B.key === 'jukung') {
+      const hipY = T.sockets.seat.y + (own ? 0.02 : 0);
+      one.hold.position.set(T.sockets.seat.x, hipY - (one.act.sit ? one.hip : 0), T.sockets.seat.z);
+      return;
+    }
     one.hold.position.set(0, T.height * s.y + (!one.act.sit ? 0 : own ? SIT_HIP + KING_UP - one.hip : -s.drop), T.length * s.z);
+  }
+  presentBoat(model, livery) {
+    const vis = new BoatVisual(model, livery);
+    if (model && model.monkeyking) bindMonkeykingBoat(vis.group, model);
+    return vis;
   }
   setSkippers(ids = []) {
     this.skipperIds = ids.slice(); this.trimPeople(); const waits = [];
@@ -319,8 +352,9 @@ export class Stage {
       const b = R[i], B = this.boats[i];
       if (B.wake.mesh.visible) B.wake.update(B.x, B.z, B.h, b.air ? 0 : B.u, tSim, b.boostLv);
       if (B.key === 'jukung' && B.wake.mesh.visible) {
-        if (!B.fw) B.fw = [-1, 1].map(() => new Wake(this.scene, this.sea.U, { n: 44, stern: 2.9, spread: 0.1, maxHalf: 3.2 }));
-        const rx = -Math.cos(B.h), rz = -Math.sin(B.h); B.fw.forEach((w, k) => { const s = (k ? 1 : -1) * 2.75; w.stern = 2.9; w.mesh.visible = true; w.update(B.x + rx * s, B.z + rz * s, B.h, b.air ? 0 : B.u * 0.8, tSim, 0); });
+        const model = this.fleet[B.key] || {}, floatX = model.floatX || 2.75, stern = model.wakeStern ? model.wakeStern * 0.72 : 2.9;
+        if (!B.fw) B.fw = [-1, 1].map(() => new Wake(this.scene, this.sea.U, { n: 44, stern, spread: 0.1, maxHalf: 3.2 }));
+        const rx = -Math.cos(B.h), rz = -Math.sin(B.h); B.fw.forEach((w, k) => { const s = (k ? 1 : -1) * floatX; w.stern = stern; w.mesh.visible = true; w.update(B.x + rx * s, B.z + rz * s, B.h, b.air ? 0 : B.u * 0.8, tSim, 0); });
       } else if (B.key === 'jukung-racer' && B.wake.mesh.visible) {
         const stern = JUKUNG_SPEC.floatLength * 0.44;
         if (!B.fw) B.fw = [-1, 1].map(() => new Wake(this.scene, this.sea.U, { n: 44, stern, spread: 0.1, maxHalf: 3.2 }));
@@ -330,7 +364,8 @@ export class Stage {
           w.update(B.x + rx * s, B.z + rz * s, B.h, b.air ? 0 : B.u * clamp(load, 0, 1), tSim, 0);
         });
       } else if (B.fw) for (const w of B.fw) w.mesh.visible = false;
-      if (B.key === 'jukung') tickJukung(B.vis.group, { t: this.time + i * 1.7, u: B.u, top: b.P.top, turn: clamp(b.r, -1, 1), look: i === this.focus ? this.lookAt : null, own: !(i === this.focus && this.jack && this.jackAt === 'bow'), see: i === this.focus && !this.relCam && !this.debugCam && this.cam.mode !== 'orbit' && !(CAMS[this.cam.key] || {}).eye ? 0.8 : 1 });   // the sail, and the lookout's arm
+      if (B.vis.group.userData.monkeyking) tickMonkeykingBoat(B.vis.group, { dt, steer: b.steer });
+      else if (B.key === 'jukung') tickJukung(B.vis.group, { t: this.time + i * 1.7, u: B.u, top: b.P.top, turn: clamp(b.r, -1, 1), look: i === this.focus ? this.lookAt : null, own: !(i === this.focus && this.jack && this.jackAt === 'bow'), see: i === this.focus && !this.relCam && !this.debugCam && this.cam.mode !== 'orbit' && !(CAMS[this.cam.key] || {}).eye ? 0.8 : 1 });   // the sail, and the lookout's arm
       if (B.key === 'jukung-racer') {
         tickRacingJukung(B.vis.group, { t: this.time + i * 1.7, u: B.u, top: b.P.top, turn: clamp(b.r, -1, 1), look: null, own: false, sailing: b.sailing || null });
         if (B.skipper) B.skipper.hold.position.x = -0.12 * clamp(b.sailing ? b.sailing.crewBalance || 0 : 0, -1, 1);
@@ -376,28 +411,33 @@ export class Stage {
     }
     if (S.mode === 'orbit') {   // title and results: a slow circle around the boat
       S.orbit += dt * 0.16;
-      const rad = 19, hgt = 4.2 + Math.sin(S.orbit * 0.7) * 1.2;
+      const long = !!((this.fleet[B.key] || {}).monkeyking);
+      const rad = long ? 24 : 19, hgt = (long ? 6.4 : 4.2) + Math.sin(S.orbit * 0.7) * 1.2;
       cam.position.set(B.x + Math.sin(S.orbit) * rad, Math.max(1.6, B.y + hgt), B.z + Math.cos(S.orbit) * rad);
-      this.look.set(B.x, B.y + 1.6, B.z); cam.up.set(0, 1, 0); cam.lookAt(this.look);
+      this.look.set(B.x, B.y + (long ? 2.2 : 1.6), B.z); cam.up.set(0, 1, 0); cam.lookAt(this.look);
       if (Math.abs(cam.fov - 42) > 0.05) { cam.fov = 42; cam.updateProjectionMatrix(); }
       S.h = null; return;
     }
     // on the deck: at the gunner's eyes, looking along the gun (view/deck-view.mjs); a hit shakes the view a little
     if (this.deck) { this.deckView.placeCamera(cam, B, dt, this.look); S.shake = Math.max(0, S.shake - dt * 2.4); if (S.shake > 0) cam.rotateZ(0.012 * S.shake * Math.sin(S.t * 71)); this.dash.mesh.visible = false; S.h = null; return; }
-    // from the driver's own eyes: at the seated figure's head, looking along the hull and a little down, leaning with the boat
-    const own = this.boats[this.focus] && this.boats[this.focus].skipper, eye = C.eye && own ? C.eye : null;
+    // from the driver's own eyes: at the seated figure's head, looking along the hull and a little down, leaning with the boat.
+    // On the modelled jukung the eyes are SOCK_SEAT_EYE, so a taller or shorter figure cannot put the lens in the mast.
+    const model = this.fleet[B.key] || this.yacht, sockEye = model && model.sockets && model.sockets.eye;
+    const own = this.boats[this.focus] && this.boats[this.focus].skipper, eye = C.eye && (own || sockEye) ? C.eye : null;
     if (own) { const hb = own.headBone || (own.headBone = own.root.getObjectByName('Head')), k = eye ? 0.001 : 1; if (hb && hb.scale.x !== k) hb.scale.setScalar(k); }   // his own head is not drawn then
     const near = eye ? eye.near : 0.5; if (cam.near !== near) { cam.near = near; cam.updateProjectionMatrix(); }
     this.dash.mesh.visible = !!eye && !!this.dash.values;
     if (eye) {
-      own.hold.updateWorldMatrix(true, true); const hb = own.headBone, fx = -Math.sin(B.h), fz = Math.cos(B.h);
-      if (hb) hb.getWorldPosition(this._v); else own.hold.getWorldPosition(this._v);
+      const fx = -Math.sin(B.h), fz = Math.cos(B.h);
+      if (sockEye) { B.vis.group.updateWorldMatrix(true, true); this._v.set(sockEye.x, sockEye.y, sockEye.z); B.vis.group.localToWorld(this._v); }
+      else { own.hold.updateWorldMatrix(true, true); const hb = own.headBone; if (hb) hb.getWorldPosition(this._v); else own.hold.getWorldPosition(this._v); }
       S.shake = Math.max(0, S.shake - dt * 2.4); S.dip = Math.max(0, S.dip - dt * 3.2);
       // the cockpit display: fixed to the boat, 0.6 m ahead of his eyes and 0.34 m below them, facing him and tilted up
-      const boat = own.hold.parent, D = this.dash.mesh; if (D.parent !== boat) boat.add(D);
+      const boat = sockEye ? B.vis.group : own.hold.parent, D = this.dash.mesh; if (D.parent !== boat) boat.add(D);
       this._d = this._d || new THREE.Vector3(); boat.worldToLocal(this._d.copy(this._v)); D.position.set(this._d.x, this._d.y - 0.36, this._d.z + 0.55); D.rotation.set(-0.8, Math.PI, 0, 'YXZ');
       cam.position.set(this._v.x + fx * eye.ahead, this._v.y + eye.up, this._v.z + fz * eye.ahead);
-      this.look.set(cam.position.x + fx * 10, cam.position.y - 10 * eye.down, cam.position.z + fz * 10); cam.up.set(0, 1, 0); cam.lookAt(this.look); cam.rotateZ(-eye.roll * B.roll * mo);
+      const down = sockEye ? 0.16 : eye.down; // the yacht's steeper look would point into this boat's deck
+      this.look.set(cam.position.x + fx * 10, cam.position.y - 10 * down, cam.position.z + fz * 10); cam.up.set(0, 1, 0); cam.lookAt(this.look); cam.rotateZ(-eye.roll * B.roll * mo);
       const fovE = eye.fov + 5 * b.boostLv * (0.4 + 0.6 * mo); if (Math.abs(cam.fov - fovE) > 0.05) { cam.fov = fovE; cam.updateProjectionMatrix(); }
       S.h = null; return;
     }
@@ -408,7 +448,7 @@ export class Stage {
     S.y += (B.y - S.y) * ease(dt, b.air ? 0.25 : 0.5);                     // steady camera height; it follows a jump a little faster
     S.drop += ((b.air && b.rampAir ? 1 : 0) - S.drop) * ease(dt, b.air ? 0.25 : 0.5);   // the camera drops low during a ramp jump
     S.dip = Math.max(0, S.dip - dt * 3.2); S.shake = Math.max(0, S.shake - dt * 2.4);
-    const drop = S.drop * mo, back = C.back * (1 - 0.18 * drop) * (1 - 0.06 * b.boostLv), up = C.up * (1 - 0.5 * drop) - 0.5 * S.dip * mo;
+    const drop = S.drop * mo, aft = model.cameraAft || 0, back = (C.back + aft) * (1 - 0.18 * drop) * (1 - 0.06 * b.boostLv), up = C.up * (1 - 0.5 * drop) - 0.5 * S.dip * mo;
     const fx = -Math.sin(S.h), fz = Math.cos(S.h), lh = S.h + C.lead * clamp(b.r, -1.2, 1.2);
     const sh = S.shake * mo * 0.22, t = this.time;
     cam.position.set(B.x - fx * back + Math.sin(t * 47) * sh, Math.max(1.0, S.y + up + Math.sin(t * 61) * sh * 0.7), B.z - fz * back + Math.cos(t * 53) * sh);

@@ -16,6 +16,8 @@
 // 0.9.0 (the same day, after the owner's six pictures of 14:14: the project's research/A7-target-pictures): the jukung's look
 // follows the pictures (view/jukung.mjs), the telling on the beach has a table of planks with nine palm leaves and their signs,
 // the slopes are forested, a village is lit at night, rain falls under the squall, the overdue boat has a canopy.
+// 0.15.0 (2026-11-20, on the owner's words of 20:47: "Put them live"): the player's jukung is Kiki's Monkey King
+// boat, with the lucky bird on the mast tip. ?boat=mk uses the MonkeyKing sail. The yacht and the sailing-trial racer are unchanged.
 // 0.14.0 (2026-11-18, on the owner's words of 10:59:32: "the 27 leaves folding into a cube sounds perfect, please do build and
 // deploy it"): with all 27 leaves the three tables of nine fold into a cube, on the beach after the last telling and in the book
 // of leaves. The three tables are its three faces in sight. No word of the method stands on it (the rule of 0.13.1 holds).
@@ -40,29 +42,29 @@
 // on the beach with nine lesson leaves a voyage; a Voyage tab in the menu; a film camera that travels with the boat.
 // 0.7.0 (the same day): each boat handles its own way (sim/boat-stats.mjs), a display inside the cockpit for the view from the
 // helm (view/dash.mjs), a fifth boat (the red catamaran without its lettering), and a ghost that remembers its boat.
-import { Stage, CAMS } from './view/stage.mjs?v=5e9464f8';
-import { LIVERIES, LIVERY_KEYS } from './view/boats.mjs?v=5e9464f8';
-import { OWNER, KING, JACK, crewFor } from './view/people.mjs?v=5e9464f8';
-import { WORLDS } from './view/sky.mjs?v=5e9464f8';
-import { getCourse, COURSE_DEFS, COURSE_KEYS, pointInto, wrapA, wrapS } from './sim/courses.mjs?v=5e9464f8';
-import { Race, defaultSettings, DT, TUNES, TUNE_KEYS, BOOST, SIM_VERSION, encodeInputs, decodeInputs } from './sim/race-sim.mjs?v=5e9464f8';
-import { Rescue, arenaCourse, rescueSettings, ARENA, RESCUE, S as SHARK } from './sim/rescue.mjs?v=5e9464f8';
-import { Boss, dragonCourse, bossSettings, DRAGON, BOSS as FIGHT } from './sim/boss.mjs?v=5e9464f8';
-import { Leviathan, leviCourse, leviSettings, LEVI, FIGHT as LFIGHT, PHASES } from './sim/leviathan.mjs?v=5e9464f8';
-import { DeckFight, hawkCourse, hawkSettings, HAWK, DECK, HALVES } from './sim/deck.mjs?v=5e9464f8';
-import { makeVoyage, bayCourse, voyageSettings, voyageChoices, VOYAGES, VOYAGES_READY as VOYAGE_KEYS } from './sim/voyages.mjs?v=5e9464f8';
+import { Stage, CAMS } from './view/stage.mjs?v=b691c4e1';
+import { LIVERIES, LIVERY_KEYS } from './view/boats.mjs?v=b691c4e1';
+import { OWNER, KING, JACK, crewFor } from './view/people.mjs?v=b691c4e1';
+import { WORLDS } from './view/sky.mjs?v=b691c4e1';
+import { getCourse, COURSE_DEFS, COURSE_KEYS, pointInto, wrapA, wrapS } from './sim/courses.mjs?v=b691c4e1';
+import { Race, defaultSettings, DT, TUNES, TUNE_KEYS, BOOST, SIM_VERSION, encodeInputs, decodeInputs } from './sim/race-sim.mjs?v=b691c4e1';
+import { Rescue, arenaCourse, rescueSettings, ARENA, RESCUE, S as SHARK } from './sim/rescue.mjs?v=b691c4e1';
+import { Boss, dragonCourse, bossSettings, DRAGON, BOSS as FIGHT } from './sim/boss.mjs?v=b691c4e1';
+import { Leviathan, leviCourse, leviSettings, LEVI, FIGHT as LFIGHT, PHASES } from './sim/leviathan.mjs?v=b691c4e1';
+import { DeckFight, hawkCourse, hawkSettings, HAWK, DECK, HALVES } from './sim/deck.mjs?v=b691c4e1';
+import { makeVoyage, bayCourse, voyageSettings, voyageChoices, VOYAGES, VOYAGES_READY as VOYAGE_KEYS } from './sim/voyages.mjs?v=b691c4e1';
 const VOYAGES_READY_ALL = VOYAGE_KEYS;
-import { FLEET, FLEET_KEYS, rivalBoats } from './view/fleet.mjs?v=5e9464f8';
-import { BOAT_STATS, boatTweak } from './sim/boat-stats.mjs?v=5e9464f8';
-import { Governor, RefreshWatch, measureRefresh } from './sim/governor.mjs?v=5e9464f8';
-import * as PR from './sim/progress.mjs?v=5e9464f8';
-import { Controls } from './ui/controls.mjs?v=5e9464f8';
-import { Sound } from './ui/sound.mjs?v=5e9464f8';
-import * as PF from './ui/platform.mjs?v=5e9464f8';
-import { BAY_SAVE_KEY, BAY_JOURNEYS, makeBaySave, bayProgress } from './ui/bay-flow.mjs?v=5e9464f8';
-import { makeSailingLesson, advanceSailingLesson } from './sim/sailing-lesson.mjs?v=5e9464f8';
+import { FLEET, FLEET_KEYS, rivalBoats } from './view/fleet.mjs?v=b691c4e1';
+import { BOAT_STATS, boatTweak } from './sim/boat-stats.mjs?v=b691c4e1';
+import { Governor, RefreshWatch, measureRefresh } from './sim/governor.mjs?v=b691c4e1';
+import * as PR from './sim/progress.mjs?v=b691c4e1';
+import { Controls } from './ui/controls.mjs?v=b691c4e1';
+import { Sound } from './ui/sound.mjs?v=b691c4e1';
+import * as PF from './ui/platform.mjs?v=b691c4e1';
+import { BAY_SAVE_KEY, BAY_JOURNEYS, makeBaySave, bayProgress } from './ui/bay-flow.mjs?v=b691c4e1';
+import { makeSailingLesson, advanceSailingLesson } from './sim/sailing-lesson.mjs?v=b691c4e1';
 
-export const VERSION = 'crest-run 0.14.0', BUILD = '2026-11-18 #5e9464f8';
+export const VERSION = 'crest-run 0.15.0', BUILD = '2026-11-20 #b691c4e1';
 const $ = (id) => document.getElementById(id);
 const Q = new URLSearchParams(location.search);
 const BAY_GAME = document.body.dataset.game === 'bay';
@@ -92,6 +94,10 @@ const G = window.__game = { version: VERSION, build: BUILD, game: BAY_GAME ? 'ba
 const settings = () => G.save.settings;
 G.sel = { mode: ['trial', 'rescue'].includes(G.save.last.mode) ? G.save.last.mode : 'race', course: COURSE_KEYS.includes(G.save.last.course) ? G.save.last.course : COURSE_KEYS[0],
   tune: G.save.unlocked.tunes.includes(G.save.last.tune) ? G.save.last.tune : 'cruise', livery: G.save.unlocked.liveries.includes(G.save.last.livery) ? G.save.last.livery : 'pearl', difficulty: settings().difficulty, level: ARENA.key, boat: FLEET_KEYS.includes(settings().boat) ? settings().boat : 'yacht' };
+const boatParam = (Q.get('boat') || '').toLowerCase();
+if (boatParam === 'mk' || boatParam === 'c' || boatParam === 'sun' || boatParam === 'a' || boatParam === 'jukung') G.sel.boat = 'jukung';
+else if (boatParam === 'yacht') G.sel.boat = 'yacht';
+else if (FLEET[boatParam] && !FLEET[boatParam].practiceOnly) G.sel.boat = boatParam;
 if (Q.get('sailing') === '1') G.sel.mode = 'sailing';
 if (BAY_GAME) {
   G.sel.level = BAY_JOURNEYS.includes(Q.get('voyage')) ? Q.get('voyage') : bayProgress(G.save).recommended;
@@ -1498,6 +1504,7 @@ G.renderSound = async (from, to, rate = 44100, mute = []) => {
 try {
   wire(); applySettings(); size();
   $('boot-bar').style.width = '30%';
+  stage.jukungVariant = boatParam === 'mk' || boatParam === 'c' ? 'mk' : 'sun';
   const loaded = await stage.load(new URL('./assets/', document.baseURI).href, { bay: BAY_GAME }); G.loaded = loaded;
   $('boot-bar').style.width = '100%';
   stage.setTier('low'); stage.setScale(0.5);              // light and small while the screen's frame rate is measured
