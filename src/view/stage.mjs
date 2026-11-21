@@ -399,7 +399,7 @@ export class Stage {
     if (this.rescue) this.rescueView.update(dt, tSim, this.camera, M);
     if (this.boss) this.bossView.update(dt, tSim, this.camera, M);
     if (this.levi) this.leviView.update(dt, tSim, this.camera, M);
-    if (this.deck) this.deckView.update(dt, tSim, this.camera, M);
+    if (this.deck) { this.deckView.motion = this.cam.motion; this.deckView.update(dt, tSim, this.camera, M); }
     if (this.voyage) { this.bayView.update(dt, tSim, this.camera, M); const K = this.voyage.look; this.lookAt = K ? wrapA(Math.atan2(-(K.x - M.x), K.z - M.z) - M.h) : null; }   // the lookout points at what the voyage names
     // picture effects
     const fx = this.post.fx, F = this.fx, top = me.P.top, k = clamp(me.u / top, 0, 1.4), mo = this.cam.motion;
