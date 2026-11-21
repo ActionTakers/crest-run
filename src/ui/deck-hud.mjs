@@ -1,6 +1,6 @@
 // deck-hud.mjs: the Coastal Run: Iron Hawk display. The race HUD's place, gap, lap, speed and boost
 // are not reused here. The goal line stays until the fight state that asked for it has changed.
-import { COASTAL_NAME, DECK } from '../sim/deck.mjs?v=b016c49c';
+import { COASTAL_NAME, DECK, HAWK, aimAt } from '../sim/deck.mjs?v=b016c49c';
 
 const FILLED = '\u25CF', EMPTY = '\u25CB', ARMOUR_ON = '\u25AE', ARMOUR_OFF = '\u25AF';
 const ARMOUR_CELLS = 4;
@@ -56,6 +56,60 @@ export function deckHudSnapshot(F) {
 }
 
 // ---- readable targets (phone and VR). None of this changes a combat number. ----
+// The airframe reads as blue-grey. Gold weak spots sit on it. Green and khaki do not.
+export const HULL_NEUTRAL = 0x8d99a8;
+export const HULL_NEUTRAL_DARK = 0x5e6a76;
+// Eyes sit above and beside the mast. These offsets are the picture only; the sim gun stays at HAWK.gun.
+export const DECK_EYE = { up: 3.4, side: 1.35 };
+// Above the rotor disc, so the mast and the blades do not cover the stagger bar.
+export const STAGGER_LIFT = 11.8;
+
+export function hullReadsNeutral(hex) {
+  const n = Number(hex) >>> 0;
+  const r = (n >> 16) & 255, g = (n >> 8) & 255, b = n & 255;
+  const spread = Math.max(r, g, b) - Math.min(r, g, b);
+  return b >= g - 6 && b >= r - 6 && spread < 55 && g < 190 && b > 90;
+}
+
+// Where the gun looks so the helicopter, not the empty bow, fills the sight. Does not move the helicopter.
+export function openingAim(F) {
+  const g = F.gunAt();
+  return aimAt(F.me.h, g.x, g.y, g.z, F.x, F.y, F.z);
+}
+
+// Until the player takes the gun, the sight stays on the hawk. A touch returns null and the player's aim is kept.
+export function acquireAim(F, touched) {
+  if (touched || !F || F.over) return null;
+  const aim = openingAim(F);
+  const ap = Math.min(HAWK.aim.up, Math.max(HAWK.aim.down, aim.ap));
+  return { ay: aim.ay, ap };
+}
+
+// How far the aim sits from the hawk, radians. Zero means the weak spots are in front of the barrel.
+export function aimOffHawk(F, ay, ap) {
+  const want = openingAim(F);
+  const dy = Math.atan2(Math.sin(want.ay - ay), Math.cos(want.ay - ay));
+  return Math.hypot(dy, want.ap - ap);
+}
+
+// A gold HAWK tag at the edge when the helicopter is beside or behind the sight, as plain as TOO FAR.
+export function hawkMarker(ndc) {
+  if (!ndc) return { on: false };
+  const beside = !!ndc.behind || Math.abs(ndc.x) > 0.42 || Math.abs(ndc.y) > 0.42;
+  if (!beside) return { on: false };
+  const far = ndc.behind || Math.abs(ndc.x) > 1 || Math.abs(ndc.y) > 1;
+  const edge = far ? threatEdge(ndc, 0.8) : threatEdge({ x: ndc.x * 4, y: ndc.y * 4, behind: false }, 0.8);
+  if (!edge.off) return { on: false };
+  return { on: true, label: 'HAWK', left: edge.left, top: edge.top, angle: edge.angle };
+}
+
+// World size of a damage chip. Weak spots stay larger than body hits at every distance.
+export function chipWorldScale(weak, dist) {
+  const k = Math.min(4.4, Math.max(1.35, (Number(dist) || 0) / 32));
+  const base = weak ? 3.6 : 2.0;
+  return { x: base * k, y: base * k * 0.5, k };
+}
+
 // Gold on blue-grey. The weak spots are never marked red against green.
 export const WEAK_GOLD = '#ffc24a';
 export const RANGE_GREY = '#9aa3ab';

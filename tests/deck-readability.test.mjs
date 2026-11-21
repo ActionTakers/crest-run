@@ -3,9 +3,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { DeckFight, hawkCourse, hawkSettings, DECK, autoDeck } from '../src/sim/deck.mjs';
+import { DeckFight, hawkCourse, hawkSettings, DECK, HAWK, autoDeck } from '../src/sim/deck.mjs';
 import { Race } from '../src/sim/race-sim.mjs';
-import { deckRange, damageChip, laneLook, passCountdown, threatEdge, impactRing } from '../src/ui/deck-hud.mjs';
+import { deckRange, damageChip, laneLook, passCountdown, threatEdge, impactRing, HULL_NEUTRAL, hullReadsNeutral, DECK_EYE, STAGGER_LIFT, openingAim, acquireAim, aimOffHawk, hawkMarker, chipWorldScale } from '../src/ui/deck-hud.mjs';
 
 const LOCKED = ['nearD: 72', 'mul: 0.35', 'dmg: 0.5', 'dmg: 0.36', 'dmg: 0.12', 'aimS: 1.9', 'stagger: 80', 'stunS: 6.5', 'stunMul: 1.6', 'need: 6', 'graceS: 1.6'];
 
@@ -110,6 +110,51 @@ test('the pass countdown ticks 3 then 2 then 1 and then stops', () => {
   assert.equal(passCountdown(F).n, 0);
   F.st = 'orbit';
   assert.equal(passCountdown(F).label, '');
+});
+
+test('the opening sight is on the hawk and the sim bearing is untouched', () => {
+  const F = fight();
+  const th = F.th;
+  F.place();
+  const aim = openingAim(F);
+  assert.ok(aimOffHawk(F, aim.ay, aim.ap) < 0.02);
+  const held = acquireAim(F, false);
+  assert.ok(aimOffHawk(F, held.ay, held.ap) < 0.02);
+  assert.equal(acquireAim(F, true), null);
+  assert.equal(F.th, th);
+  assert.equal(th, 0.9);
+  assert.equal(HAWK.gun.up, 3);
+  assert.ok(DECK_EYE.up > 1);
+  assert.notEqual(DECK_EYE.side, 0);
+  assert.ok(STAGGER_LIFT > 9);
+});
+
+test('the hull fallback is blue-grey and a side hawk gets a HAWK tag', () => {
+  assert.equal(hullReadsNeutral(HULL_NEUTRAL), true);
+  assert.equal(hullReadsNeutral(0x3d4a3f), false);
+  assert.equal(hawkMarker({ x: 0, y: 0, behind: false }).on, false);
+  const side = hawkMarker({ x: 0.7, y: 0.1, behind: false });
+  assert.equal(side.on, true);
+  assert.equal(side.label, 'HAWK');
+  assert.ok(side.left > 70 || side.left < 30);
+  const weak = chipWorldScale(true, 100), body = chipWorldScale(false, 100);
+  assert.ok(weak.x > body.x);
+  assert.ok(weak.x > 8);
+});
+
+test('deck layout keeps the race count off the sight and the clock hidden', () => {
+  const css = readFileSync(new URL('../css/game.css', import.meta.url), 'utf8');
+  const clock = css.split('}').find((block) => block.includes('#hud.deck #h-clock') && block.includes('#hud.deck #h-time'));
+  assert.ok(clock);
+  assert.match(clock, /display:\s*none/);
+  const count = css.split('}').find((block) => block.includes('#hud.deck #h-count') && block.includes('transform: none'));
+  assert.ok(count);
+  assert.match(count, /left:\s*calc\(16px/);
+  assert.doesNotMatch(count, /top:\s*46%/);
+  assert.match(css, /#deck-range \{[^}]*top:\s*54px/);
+  const main = readFileSync(new URL('../src/main.mjs', import.meta.url), 'utf8');
+  assert.match(main, /setText\('h-time', 'time', ''\)/);
+  assert.doesNotMatch(main.slice(main.indexOf('function paintDeck'), main.indexOf('function paintDeckReadout')), /lapT/);
 });
 
 test('an off-screen rocket gets an edge arrow and a closing ring', () => {

@@ -57,7 +57,7 @@ import { Rescue, arenaCourse, rescueSettings, ARENA, RESCUE, S as SHARK } from '
 import { Boss, dragonCourse, bossSettings, DRAGON, BOSS as FIGHT } from './sim/boss.mjs?v=b016c49c';
 import { Leviathan, leviCourse, leviSettings, LEVI, FIGHT as LFIGHT, PHASES } from './sim/leviathan.mjs?v=b016c49c';
 import { DeckFight, hawkCourse, hawkSettings, HAWK, DECK, HALVES, COASTAL_NAME } from './sim/deck.mjs?v=b016c49c';
-import { deckHudSnapshot, deckRange, passCountdown } from './ui/deck-hud.mjs?v=b016c49c';
+import { deckHudSnapshot, deckRange, passCountdown, acquireAim, hawkMarker } from './ui/deck-hud.mjs?v=b016c49c';
 import { makeVoyage, bayCourse, voyageSettings, voyageChoices, VOYAGES, VOYAGES_READY as VOYAGE_KEYS } from './sim/voyages.mjs?v=b016c49c';
 const VOYAGES_READY_ALL = VOYAGE_KEYS;
 import { FLEET, FLEET_KEYS, rivalBoats } from './view/fleet.mjs?v=b016c49c';
@@ -592,12 +592,12 @@ function paintLevi(race, run, dt, me) {
 // holds it, its kind is 'deck'. The boat sails itself (the fight's handover); the player aims a gun: DK holds where it points
 // (radians from the bow, and up), whether it fires, and a flare that is asked for. A finger or the mouse drags the aim and
 // fires while it is down; the keys: arrows or WASD aim, the space bar fires, F sends a flare. ----------
-const DK = { ay: 0, ap: 0.12, fire: false, flare: false, id: null, x: 0, y: 0, keys: { left: false, right: false, up: false, down: false, fire: false } };
+const DK = { ay: 0, ap: 0.12, fire: false, flare: false, id: null, x: 0, y: 0, touched: false, keys: { left: false, right: false, up: false, down: false, fire: false } };
 const deckOn = () => !!G.rescue && G.rescue.kind === 'deck' && G.mode === 'race';
 const DECK_KEYS = { ArrowLeft: 'left', KeyA: 'left', ArrowRight: 'right', KeyD: 'right', ArrowUp: 'up', KeyW: 'up', ArrowDown: 'down', KeyS: 'down', Space: 'fire' };
-function deckKey(code, down) { if (code === 'KeyF') { if (down) DK.flare = true; return true; } const k = DECK_KEYS[code]; if (!k) return false; DK.keys[k] = down; return true; }
+function deckKey(code, down) { if (code === 'KeyF') { if (down) DK.flare = true; return true; } const k = DECK_KEYS[code]; if (!k) return false; if (down && k !== 'fire') DK.touched = true; DK.keys[k] = down; return true; }
 function deckPointer(kind, e) {
-  if (kind === 'down') { DK.id = e.pointerId; DK.x = e.clientX; DK.y = e.clientY; DK.fire = true; }
+  if (kind === 'down') { DK.touched = true; DK.id = e.pointerId; DK.x = e.clientX; DK.y = e.clientY; DK.fire = true; }
   else if (kind === 'move' && e.pointerId === DK.id) { const k = 1.7 / Math.max(240, window.innerHeight); DK.ay = wrapA(DK.ay + (e.clientX - DK.x) * k); DK.ap = clamp(DK.ap - (e.clientY - DK.y) * k, HAWK.aim.down, HAWK.aim.up); DK.x = e.clientX; DK.y = e.clientY; }
   else if (kind === 'up' && e.pointerId === DK.id) { DK.id = null; DK.fire = false; }
 }
@@ -622,6 +622,7 @@ function xrAgain() { const F = G.rescue; if (!F || F.kind !== 'deck' || !F.over 
 // one step of the fight's input: the computer's gunner (tests and film), or the player's hand
 function deckInput(F) {
   if (G.auto) { F.gunner(0.85); DK.ay = F.input.ay; DK.ap = F.input.ap; return; }
+  if (!DK.touched && !XR.on) { const aim = acquireAim(F, false); if (aim) { DK.ay = aim.ay; DK.ap = aim.ap; } }
   if (XR.on) {                                                 // in the headset: the hand aims, the trigger fires, the grip sends a flare
     const I = stage.xrInput, A = stage.xrAim(F.me.h, DK); if (A) DK.ap = clamp(DK.ap, HAWK.aim.down, HAWK.aim.up);
     F.input.ay = DK.ay; F.input.ap = DK.ap; F.input.fire = I.fire; F.input.flare = I.flare; I.flare = false; return;
@@ -639,7 +640,7 @@ async function startDeck() {
     G.race = race; G.rescue = F; G.ghost = null; G.mode = 'race'; G.acc = 0; G.timeScale = 1; G.slowLeft = 0; G.slowArmed = false; G.paused = false; G.pausedBy = null; G.resultsAt = null; G.resumeLeft = 0;
     G.run = { mode: 'deck', course: HAWK.key, tune, livery, difficulty, at: new Date().toISOString(), frames: 0, late: 0, worst: 0, sumMs: 0, mot0: controls.tilt.counts.mot, th0: performance.now(), steerMode: controls.mode, recentres0: controls.recentres,
       lastHud: 0, countShown: '', dots: [], trackW: 1, wake0: PF.wake.releases, marks: [new Float32Array(1)], markN: new Int32Array(1), gmarks: null, gmarkN: 0, named: false, toldRocket: false, bpm0: sound.bpm0 };
-    askXr(); Object.assign(DK, { ay: 0, ap: 0.12, fire: false, flare: false, id: null }); for (const k of Object.keys(DK.keys)) DK.keys[k] = false;
+    askXr(); const aim0 = acquireAim(F, false); Object.assign(DK, { ay: aim0.ay, ap: aim0.ap, fire: false, flare: false, id: null, touched: false }); F.input.ay = aim0.ay; F.input.ap = aim0.ap; for (const k of Object.keys(DK.keys)) DK.keys[k] = false;
     stage.setRescue(null); stage.setBoss(null); stage.setLevi(null); stage.setVoyage(null); stage.setRace(race, [livery], 0); stage.setGhost(null); const models = stage.setDeck(F);
     const ready = Promise.all([stage.setBoats([G.sel.boat]), stage.setSkippers([OWNER]), models]); if (G.film) await ready;
     stage.setCameraMode('chase'); controls.releaseAll();
@@ -741,6 +742,15 @@ function paintDeckReadout() {
     el.hidden = false; el.style.left = m.left.toFixed(1) + '%'; el.style.top = m.top.toFixed(1) + '%'; el.style.transform = `rotate(${m.angle.toFixed(1)}deg)`;
     const ring = el.querySelector('.remain'), pct = Math.round(m.remain * 100);
     if (ring._pct !== pct) { ring._pct = pct; ring.setAttribute('stroke-dasharray', pct + ' 100'); }
+  }
+  const hawk = hawkMarker(stage.deckView && stage.deckView.built ? stage.deckView.hawkScreen(stage.camera) : null);
+  const tag = $('deck-hawk');
+  if (tag) {
+    tag.classList.toggle('on', !!hawk.on);
+    if (hawk.on) {
+      tag.style.left = hawk.left.toFixed(1) + '%'; tag.style.top = hawk.top.toFixed(1) + '%';
+      const arrow = tag.querySelector('i'); if (arrow) arrow.style.transform = `rotate(${hawk.angle.toFixed(1)}deg)`;
+    }
   }
 }
 // ---------- the rescue voyages in the bay (sim/voyage.mjs; PLAN-MONKEYKING.md). The same frame again: G.rescue holds the voyage,

@@ -5,17 +5,17 @@
 // worked on in Blender; assets/SOURCES.md): the owner's words of 2026-11-17 05:12:50, "made by tripo, finetuned by blender".
 // The shapes drawn in code below (makeHeli, makeMeg, makeGun) are shown only when a model file does not arrive. What spins,
 // glows and flies as light is code: effects. What the research step A8 asks of the picture: the boss's own body announces its attack and the
-// place is lit (T18: the nose dips, the gun pod glows, a lane on the water); nothing drawn hides the target (T23: thin
-// lines, a ring round each rocket); the great moment is the leap (T25). NOT_ASSESSED on a phone or in a headset.
+// place is lit (T18: the nose dips, the gun pod glows, a lane on the water); nothing drawn hides the target (T23: the
+// eyes sit above the mast, the stagger bar clears the rotor, chips rise off the hull); the great moment is the leap (T25). NOT_ASSESSED on a phone or in a headset.
 // Written 2026-11-17 by the yacht project session.
 import * as THREE from 'three';
 import * as W from '../sim/waves.mjs?v=b016c49c';
 import { HAWK, DECK, aimDir } from '../sim/deck.mjs?v=b016c49c';
-import { deckRange, damageChip, laneLook, passCountdown, threatEdge, impactRing } from '../ui/deck-hud.mjs?v=b016c49c';
+import { deckRange, damageChip, laneLook, passCountdown, threatEdge, impactRing, HULL_NEUTRAL, HULL_NEUTRAL_DARK, DECK_EYE, STAGGER_LIFT, chipWorldScale } from '../ui/deck-hud.mjs?v=b016c49c';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { Parts, at, bar } from './jukung.mjs?v=b016c49c';
 
-const C = { hull: 0x3d4a3f, hullD: 0x232a25, glass: 0x9fd6ea, metal: 0x2a2e33, steel: 0x646c74, red: 0xb3262b, grey: 0x60717e, greyD: 0x43515d, belly: 0xe8edf0, gum: 0x7a2630, tooth: 0xf5f2e8, black: 0x0c0e10 };
+const C = { hull: HULL_NEUTRAL, hullD: HULL_NEUTRAL_DARK, glass: 0x9fd6ea, metal: 0x2a2e33, steel: 0x646c74, red: 0xb3262b, grey: 0x60717e, greyD: 0x43515d, belly: 0xe8edf0, gum: 0x7a2630, tooth: 0xf5f2e8, black: 0x0c0e10 };
 // the three models: the file of each, and how long it is made along its own z (the nose, the muzzle), metres
 export const MODELS = { hawk: ['models/deck/hawk.glb', 14], meg: ['models/deck/megalodon.glb', 24], gun: ['models/deck/gun.glb', 1.5] };
 // a loaded model in a holder of its own: as long as asked along z, its middle at the holder's origin; half: its half sizes
@@ -31,7 +31,7 @@ function clamp(v, lo, hi) { return v < lo ? lo : v > hi ? hi : v; }
 const wrapA = (a) => { while (a > Math.PI) a -= 2 * Math.PI; while (a < -Math.PI) a += 2 * Math.PI; return a; };
 const std = (o = {}) => new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.6, metalness: 0.2, ...o });
 const glow = (r, g, b, o = {}) => new THREE.MeshBasicMaterial({ color: new THREE.Color(r, g, b), transparent: true, depthWrite: false, ...o });
-// gold against the blue-grey airframe. The body itself is never recolored.
+// gold against the blue-grey airframe. The body is painted neutral; the rims stay gold.
 const GOLD = new THREE.Color(1.15, 0.76, 0.22);
 const FRESNEL_VS = 'varying vec3 vN; varying vec3 vW; void main() { vec4 w = modelMatrix * vec4(position, 1.0); vW = w.xyz; vN = normalize(mat3(modelMatrix) * normal); gl_Position = projectionMatrix * viewMatrix * w; }';
 const FRESNEL_FS = 'uniform vec3 uColor; varying vec3 vN; varying vec3 vW; void main() { float f = pow(1.0 - abs(dot(normalize(vN), normalize(cameraPosition - vW))), 2.1); gl_FragColor = vec4(uColor, f * 0.92); }';
@@ -68,6 +68,28 @@ function drawThreatIcon(ctx, remain) {
   ctx.moveTo(c, 8); ctx.lineTo(c + 9, 26); ctx.lineTo(c + 3.5, 26); ctx.lineTo(c + 3.5, 42); ctx.lineTo(c - 3.5, 42); ctx.lineTo(c - 3.5, 26); ctx.lineTo(c - 9, 26); ctx.closePath(); ctx.fill();
 }
 function prefersStill() { return typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches; }
+// The loaded helicopter keeps its shape. Its khaki paint is replaced so the body reads blue-grey and the gold rims stay the weak spots.
+function tintHull(root) {
+  root.traverse((m) => {
+    if (!m.isMesh || !m.material) return;
+    const list = Array.isArray(m.material) ? m.material : [m.material];
+    const next = list.map((mat) => {
+      if (!mat || !mat.color) return mat;
+      const c = mat.color;
+      if (c.b > c.r + 0.12 && c.b > c.g + 0.05 && !mat.map) return mat;
+      const copy = mat.clone();
+      copy.color.setHex(HULL_NEUTRAL);
+      copy.map = null;
+      if (copy.emissive) { copy.emissive.setHex(0x1c2630); copy.emissiveIntensity = 0.18; }
+      if (copy.emissiveMap) copy.emissiveMap = null;
+      copy.metalness = Math.min(copy.metalness == null ? 0.25 : copy.metalness, 0.35);
+      copy.roughness = Math.max(copy.roughness == null ? 0.62 : copy.roughness, 0.55);
+      copy.needsUpdate = true;
+      return copy;
+    });
+    m.material = Array.isArray(m.material) ? next : next[0];
+  });
+}
 
 // the helicopter: nose along +z, about 13 m long; its rotor, tail rotor and gun pod are parts of their own
 function makeHeli() {
@@ -157,10 +179,10 @@ export class DeckView {
     this.beam = flat(new THREE.Mesh(new THREE.ConeGeometry(1, 1, 18, 1, true).translate(0, -0.5, 0).rotateX(-Math.PI / 2), glow(2.2, 1.45, 0.4, { opacity: 0.12, side: THREE.DoubleSide, blending: THREE.AdditiveBlending }))); this.beam.visible = false;
     // stagger, in the world above the helicopter: a gold bar on a blue track, the same reading as the HUD
     this.stagBar = new THREE.Group(); this.stagBar.name = 'hawk-stagger'; this.stagBar.renderOrder = 6;
-    this.stagBg = new THREE.Mesh(new THREE.PlaneGeometry(8, 1.7), new THREE.MeshBasicMaterial({ color: 0x16304a, transparent: true, opacity: 0.88, depthWrite: false, toneMapped: false }));
-    const fillGeo = new THREE.PlaneGeometry(7.5, 1.15); fillGeo.translate(3.75, 0, 0.02);
+    this.stagBg = new THREE.Mesh(new THREE.PlaneGeometry(12, 2.6), new THREE.MeshBasicMaterial({ color: 0x16304a, transparent: true, opacity: 0.92, depthWrite: false, toneMapped: false }));
+    const fillGeo = new THREE.PlaneGeometry(11.2, 1.85); fillGeo.translate(5.6, 0, 0.02);
     this.stagFill = new THREE.Mesh(fillGeo, new THREE.MeshBasicMaterial({ color: 0xffc24a, depthWrite: false, toneMapped: false }));
-    this.stagFill.position.set(-3.75, 0, 0.04); this.stagBg.frustumCulled = false; this.stagFill.frustumCulled = false;
+    this.stagFill.position.set(-5.6, 0, 0.05); this.stagBg.frustumCulled = false; this.stagFill.frustumCulled = false;
     this.stagBar.add(this.stagBg); this.stagBar.add(this.stagFill); G.add(this.stagBar);
     this.countMark = textSprite(256, 128); this.countMark.visible = false; this.countMark.renderOrder = 7; G.add(this.countMark);
     this.chips = []; for (let i = 0; i < 8; i++) { const s = textSprite(256, 128); s.visible = false; s.userData.t = 9; s.userData.life = 0.7; G.add(s); this.chips.push(s); }
@@ -184,7 +206,7 @@ export class DeckView {
   // puts into each holder what is there to show: nothing while the files are on their way; then the model, or the shape of code
   dress() {
     if (!this.built || !this.models || this.dressed) return; this.dressed = true; const M = this.models;
-    const hawk = M.hawk || makeHeli(), H = hawk.userData.half; this.heli.add(hawk);
+    const hawk = M.hawk || makeHeli(), H = hawk.userData.half; if (M.hawk) tintHull(hawk); this.heli.add(hawk);
     this.fx = heliEffects(new THREE.Group(), H ? [0, H.y + 0.15, 0.06 * H.z] : undefined, H ? [0.45, 0.62 * H.y, -0.93 * H.z] : undefined); this.heli.add(this.fx);
     this.rotor = this.fx.getObjectByName('hawk-rotor'); this.tailRotor = this.fx.getObjectByName('hawk-tail'); this.pod = this.fx.getObjectByName('hawk-pod');
     const meg = M.meg || makeMeg(); this.meg.add(meg); this.jaw = meg.getObjectByName('meg-jaw') || null; this.megHalf = meg.userData.half || new THREE.Vector3(MEG.r, MEG.r, MEG.len / 2);
@@ -203,8 +225,8 @@ export class DeckView {
     const g = F.gunAt(), dist = Math.hypot(e.x - g.x, e.y - g.y, e.z - g.z), chip = damageChip(F, e.hit, dist);
     if (!chip) return;
     const s = this.chips.reduce((a, c) => (c.userData.t > a.userData.t ? c : a));
-    s.userData.t = 0; s.userData.life = 0.72; s.userData.weak = chip.weak; s.position.set(e.x, e.y + 0.8, e.z); s.visible = true;
-    const sc = chip.weak ? 2.6 : 1.45; s.scale.set(sc, sc * 0.5, 1);
+    s.userData.t = 0; s.userData.life = 0.9; s.userData.weak = chip.weak; s.userData.baseY = e.y + 3.2; s.position.set(e.x, s.userData.baseY, e.z); s.visible = true;
+    const sc = chipWorldScale(chip.weak, 40); s.scale.set(sc.x, sc.y, 1);
     paintPlate(s, chip.text, { size: chip.weak ? 78 : 52, color: chip.gold ? '#ffc24a' : '#f4f7fb' });
   }
   // off-screen rockets: edge position and a ring that closes as impact nears. The page paints these; the headset draws them on the gun's view.
@@ -222,6 +244,16 @@ export class DeckView {
       out.push({ ...edge, ...impactRing(q.t, q.T) });
     }
     return out;
+  }
+  // where the helicopter sits on this camera, for the HAWK edge tag
+  hawkScreen(camera) {
+    const F = this.deck; if (!F || !camera) return null;
+    camera.updateMatrixWorld(true);
+    camera.getWorldDirection(this._fwd);
+    const c = camera.position;
+    const behind = (F.x - c.x) * this._fwd.x + (F.y - c.y) * this._fwd.y + (F.z - c.z) * this._fwd.z <= 0.4;
+    this._v.set(F.x, F.y, F.z).project(camera);
+    return { x: this._v.x, y: this._v.y, behind };
   }
   line(x, y, z, w = 1, life = 0.07) { const q = this.tr.reduce((a, c) => (c.t / c.life > a.t / a.life ? c : a)); q.t = 0; q.life = life; q.w = w; this.muzzle(q.a); q.b.set(x, y, z); }
   onEvent(e, stage) {
@@ -242,18 +274,18 @@ export class DeckView {
       default: break;
     }
   }
-  // the camera at the gunner's eyes: on the foredeck, looking along the gun; it leans a little with the boat
+  // the camera at the gunner's eyes, raised and stepped aside so the mast and the sail do not cover the hawk (T23)
   placeCamera(cam, B, dt, look) {
     const F = this.deck, I = F.input, k = 1 - Math.exp(-dt / 0.04), fx = -Math.sin(B.h), fz = Math.cos(B.h);
     this.vay = wrapA(this.vay + wrapA(I.ay - this.vay) * k); this.vap += (I.ap - this.vap) * k;
-    cam.position.set(B.x + fx * HAWK.gun.ahead, B.y + HAWK.gun.up, B.z + fz * HAWK.gun.ahead);
+    cam.position.set(B.x + fx * HAWK.gun.ahead + Math.cos(B.h) * DECK_EYE.side, B.y + HAWK.gun.up + DECK_EYE.up, B.z + fz * HAWK.gun.ahead + Math.sin(B.h) * DECK_EYE.side);
     const d = aimDir(B.h, this.vay, this.vap); look.set(cam.position.x + d.x * 50, cam.position.y + d.y * 50, cam.position.z + d.z * 50); cam.up.set(0, 1, 0); cam.lookAt(look); cam.rotateZ(-0.25 * B.roll);
     if (Math.abs(cam.fov - 64) > 0.05 || cam.near !== 0.12) { cam.fov = 64; cam.near = 0.12; cam.updateProjectionMatrix(); }
   }
   // the headset's rig: the player's feet on the foredeck, facing the bow; it travels and turns with the boat, and rides only a
   // third of the waves' rise and fall (a standing player's eyes come out near the gunner's 3 m)
   placeRig(rig, B, dt) {
-    const fx = -Math.sin(B.h), fz = Math.cos(B.h); rig.position.set(B.x + fx * HAWK.gun.ahead, 0.35 * B.y + HAWK.gun.up - 1.6, B.z + fz * HAWK.gun.ahead); rig.rotation.set(0, Math.PI - B.h, 0); rig.updateMatrixWorld(true);
+    const fx = -Math.sin(B.h), fz = Math.cos(B.h); rig.position.set(B.x + fx * HAWK.gun.ahead + Math.cos(B.h) * DECK_EYE.side, 0.35 * B.y + HAWK.gun.up - 1.6 + DECK_EYE.up * 0.45, B.z + fz * HAWK.gun.ahead + Math.sin(B.h) * DECK_EYE.side); rig.rotation.set(0, Math.PI - B.h, 0); rig.updateMatrixWorld(true);
   }
   // one frame. dt: seconds of picture time; t: simulation time (the sea's); boat: the stage's pose of the player's boat
   update(dt, t, camera, boat) {
@@ -309,8 +341,8 @@ export class DeckView {
     const stunOnly = F.st === 'stun', ratio = stunOnly ? Math.max(0, 1 - F.t / D.stunS) : Math.min(1, Math.max(0, F.stag / D.stagger));
     this.stagBar.visible = this.heli.visible && !F.over;
     if (this.stagBar.visible) {
-      const dist = Math.max(8, camera.position.distanceTo(this.heli.position)), k = dist / 42;
-      this.stagBar.position.set(this.heli.position.x, this.heli.position.y + 7.4 * k, this.heli.position.z);
+      const dist = Math.max(16, camera.position.distanceTo(this.heli.position)), k = Math.min(3.4, Math.max(1.65, dist / 46));
+      this.stagBar.position.set(this.heli.position.x, this.heli.position.y + STAGGER_LIFT, this.heli.position.z);
       this.stagBar.scale.setScalar(k); this.stagBar.quaternion.copy(camera.quaternion);
       this.stagFill.scale.x = Math.max(0.001, ratio); this.stagFill.material.color.setHex(stunOnly ? 0xfff6d8 : 0xffc24a);
     }
@@ -321,7 +353,12 @@ export class DeckView {
       this.countMark.position.set(px, this.seaY(wv, px, pz, t) + 6.5, pz);
       const ck = Math.max(0.6, camera.position.distanceTo(this.countMark.position) / 28); this.countMark.scale.set(3.4 * ck, 1.7 * ck, 1);
     } else this.countN = 0;
-    for (const s of this.chips) { if (s.userData.t >= s.userData.life) { s.visible = false; continue; } s.userData.t += dt; s.visible = true; s.position.y += dt * 2.4; s.material.opacity = Math.max(0, 1 - s.userData.t / s.userData.life); }
+    for (const s of this.chips) {
+      if (s.userData.t >= s.userData.life) { s.visible = false; continue; }
+      s.userData.t += dt; s.visible = true; s.position.y = (s.userData.baseY || s.position.y) + s.userData.t * 4.5;
+      const sc = chipWorldScale(!!s.userData.weak, Math.max(12, camera.position.distanceTo(s.position))); s.scale.set(sc.x, sc.y, 1);
+      s.material.opacity = Math.max(0, 1 - s.userData.t / s.userData.life);
+    }
     const range = deckRange(F), inVr = !!this.hand;
     this.gunSight.visible = inVr && show; if (this.gunSight.visible) this.gunSight.material.color.set(range.far ? 0x9aa3ab : 0xffc24a);
     this.rangeLabel.visible = inVr && !!range.far && show;
