@@ -1,6 +1,6 @@
 {
   "regen": "REGEN_SIM_FIXTURES=1 node --test tests/deck.test.mjs",
-  "about": "Stand-in gunner on Iron Hawk. One bucket is 120 ticks (1s). hash is sha256 of the JSON lines of events and state in that bucket. Regenerate with the regen command. Do not edit by hand, and do not regenerate tests/fixtures/deck-sim-main.json from here.",
+  "about": "Stand-in gunner on Iron Hawk. One bucket is 120 ticks (1s). hash is sha256 of the JSON lines of events and state in that bucket. Every number in those lines is rounded to 1e-4 so Node 22 and Node 24 (V8 13.6) agree. Regenerate on Node 22 with the regen command. Do not edit by hand, and do not regenerate tests/fixtures/deck-sim-main.json from here.",
   "sim": "deck",
   "bucketTicks": 120,
   "script": {
@@ -9,11 +9,11 @@
     "skill": 0.8
   },
   "ticks": 7706,
-  "digest": "fd59765aced1b5d4def278ea5c1ed277130511de10ab03b67992d3bc44c4bff9",
+  "digest": "6b47ee14a27f7b86d0bc9b536e695f204b992f07cc5b53d578824dea0a1fdb65",
   "buckets": [
     {
       "tick": 120,
-      "hash": "2aef2b1b90b60aeabc7c227d482c425defcb01afda179a1a1b0e46814206a493",
+      "hash": "19c3c7fd3cd316a37d3aaab5d824882a3e91a12497f83509f9d76f9c5519fbdd",
       "t": 0,
       "events": 0,
       "hull": 5,
@@ -22,7 +22,7 @@
     },
     {
       "tick": 240,
-      "hash": "2aef2b1b90b60aeabc7c227d482c425defcb01afda179a1a1b0e46814206a493",
+      "hash": "19c3c7fd3cd316a37d3aaab5d824882a3e91a12497f83509f9d76f9c5519fbdd",
       "t": 0,
       "events": 0,
       "hull": 5,
@@ -31,7 +31,7 @@
     },
     {
       "tick": 360,
-      "hash": "2aef2b1b90b60aeabc7c227d482c425defcb01afda179a1a1b0e46814206a493",
+      "hash": "19c3c7fd3cd316a37d3aaab5d824882a3e91a12497f83509f9d76f9c5519fbdd",
       "t": 0,
       "events": 0,
       "hull": 5,
@@ -40,7 +40,7 @@
     },
     {
       "tick": 480,
-      "hash": "33bdd3ab0c59c8e7405539f8ac0b02a49c0873d46e5ae5a40cf331fc40f476d0",
+      "hash": "cab883ed1530a5f6b126e6012a1a0f4d3afd023b828e4ca42582e1c1de8a116b",
       "t": 1,
       "events": 1,
       "hull": 5,
@@ -49,7 +49,7 @@
     },
     {
       "tick": 600,
-      "hash": "db7596916bce4fd1eb4c7e686df2b26466a869cb74a26b3981af910edec9d92e",
+      "hash": "fcd36e46ba7a99c735e63c5a5dbdfda45ed0fd77ad5e5ba68d17f03731dce138",
       "t": 2,
       "events": 0,
       "hull": 5,
@@ -58,7 +58,7 @@
     },
     {
       "tick": 720,
-      "hash": "89f550cc1c44afdbdff5368578a0a799b271c09895dfcd682e7acebb2148fc35",
+      "hash": "0e3b4252fe1b81bb43aba3b4e6ed0acede54fd79a013bd554140717d4f4d4616",
       "t": 3,
       "events": 0,
       "hull": 5,
@@ -67,7 +67,7 @@
     },
     {
       "tick": 840,
-      "hash": "7e6b196364f468b19f54989cce202ee5b7c9f5da5b6cdb3c0e1d066b8a547ffe",
+      "hash": "26d6b5ab6c8a6fed27204dc8c6cb63ef2bce3ec2eeb5114a5b7696a7179040b8",
       "t": 4,
       "events": 1,
       "hull": 5,
@@ -76,7 +76,7 @@
     },
     {
       "tick": 960,
-      "hash": "fc7f1dc48834a87d08503fd43bcef252982f906731c1775f623d5b61b5cb3a56",
+      "hash": "b4c6e959979d54297de58021e5a6771e1574b3eba72c67880d42fe23cdb66f63",
       "t": 5,
       "events": 4,
       "hull": 5,
@@ -85,7 +85,7 @@
     },
     {
       "tick": 1080,
-      "hash": "2776fa871c72f0472c5a211b5cc949277a1480f53a8dd89b60198d3e2abaca68",
+      "hash": "5cfb68a40358011e891c6325e8c3dbf0d89b52806559e0126ae5f48eefdc0d4e",
       "t": 6,
       "events": 0,
       "hull": 5,
@@ -94,7 +94,7 @@
     },
     {
       "tick": 1200,
-      "hash": "0ed6087c7add72fa558baf4351ebfc046ef9823bede845add13061d069bba737",
+      "hash": "294599804582cce281562662f9bb342f63e8841462a02059789bbe26913261a0",
       "t": 7,
       "events": 0,
       "hull": 5,
@@ -103,7 +103,7 @@
     },
     {
       "tick": 1320,
-      "hash": "fe17646c95f801257a8e5e8cc2bf9c6bdc9375773a74a44d9587ddf6e937de10",
+      "hash": "b75530d0419f7f108086cf04875cc101454701d8d013343e703d52427a5efc38",
       "t": 8,
       "events": 0,
       "hull": 5,
@@ -112,7 +112,7 @@
     },
     {
       "tick": 1440,
-      "hash": "32e1b2039bb730026006d7aaec1ead2630de65bc33133336931cfc8bb5e6d0f3",
+      "hash": "c7f17c249fee951b30f2c56d4ad30e5dcac034bf9a3e3ee99928e311abe956de",
       "t": 9,
       "events": 0,
       "hull": 5,
@@ -121,7 +121,7 @@
     },
     {
       "tick": 1560,
-      "hash": "28bb3bd3bd6eb5b880239ffe8837d70b0877e8a3293593931ea212d54742e457",
+      "hash": "d5e8ce3c2242fc5a15e729fe601dd6a1c767850c5d35dbeaf91410d62b0711c5",
       "t": 10,
       "events": 0,
       "hull": 5,
@@ -130,7 +130,7 @@
     },
     {
       "tick": 1680,
-      "hash": "cea7e7dd7f61ce6fa25c679eb263474c85ae1787e3592041da7f6c8502087534",
+      "hash": "84cb3776efc0d857fab810ed3e7acbfc88fef8cd7f4e0957e068fb0dc2956005",
       "t": 11,
       "events": 1,
       "hull": 5,
@@ -139,7 +139,7 @@
     },
     {
       "tick": 1800,
-      "hash": "6dfa084a6e90bd0544821561108ed190924e8dda77f435266d92b4000e362b76",
+      "hash": "4885da011dbbc1bc6b06080785ce90858c8be7cec40fdaa09cbd086480914e76",
       "t": 12,
       "events": 10,
       "hull": 5,
@@ -148,7 +148,7 @@
     },
     {
       "tick": 1920,
-      "hash": "ec9df2c990f078a03f87560a89ca298508fca0eec3d8927b769f8dc29870fee7",
+      "hash": "7119001bc17b4b5a12e199c19506c96450b9626408058151ef6907981e845558",
       "t": 13,
       "events": 10,
       "hull": 5,
@@ -157,7 +157,7 @@
     },
     {
       "tick": 2040,
-      "hash": "8af6fdbee67702b274bdd4a27c063d7c01d569b4e4e1aceee0b606d54a4ebef9",
+      "hash": "f87ea5ad41bc688deee7444350296a0bd2475721dd24c5456e2c3b618cca0cbe",
       "t": 14,
       "events": 8,
       "hull": 5,
@@ -166,7 +166,7 @@
     },
     {
       "tick": 2160,
-      "hash": "0bc5e51d358b8dd0b513ee59d74a164b6e1e36e445e18e096824960b736c770c",
+      "hash": "fe647294f0ff895cc3089371772e4af8b423d7af80a467a85dfb2c409e7db5f2",
       "t": 15,
       "events": 9,
       "hull": 5,
@@ -175,7 +175,7 @@
     },
     {
       "tick": 2280,
-      "hash": "6b650deb73685a54221223eb34eeacd404d917efcaca8996855a6b75a2876ee3",
+      "hash": "ccb824565884fb196fd4381ff55cd3b297ff35ad3027fbdf3805b62580d84daa",
       "t": 16,
       "events": 0,
       "hull": 5,
@@ -184,7 +184,7 @@
     },
     {
       "tick": 2400,
-      "hash": "e31fbc6987f1a280a63e478c80b1803e2dc0d89134e083fb60f66375c82a4bac",
+      "hash": "461f49b4cfd1f421bb90897597ed2a25e28ba4a33c1eca17a0cfc3825c531593",
       "t": 17,
       "events": 7,
       "hull": 5,
@@ -193,7 +193,7 @@
     },
     {
       "tick": 2520,
-      "hash": "7c3a14479f0b5a19a69a04b1016a5af2d1c4b53b800fb6da0821102d67ab92a8",
+      "hash": "f32c5146f6107d1e341aa46c8e9f7b168e898c2d1eeaccc864cf06643cacd653",
       "t": 18,
       "events": 10,
       "hull": 5,
@@ -202,7 +202,7 @@
     },
     {
       "tick": 2640,
-      "hash": "a9727036454f4661ddd1a9678085af9de6e0ed212c950148a56b711b54e1cffb",
+      "hash": "a9d64d2dfeea5e0934ec1e3a10bc5eaf8d33c474cf601a26d4d5473986d22640",
       "t": 19,
       "events": 5,
       "hull": 5,
@@ -211,7 +211,7 @@
     },
     {
       "tick": 2760,
-      "hash": "0e3272edea1ec9f85722e7af7242e01df4d055d244358221f1cd3878c47ac4d5",
+      "hash": "458865a929021c5cba15126113a97fd43250b70abec6c028fa239660fe53fe34",
       "t": 20,
       "events": 1,
       "hull": 5,
@@ -220,7 +220,7 @@
     },
     {
       "tick": 2880,
-      "hash": "0a754c2a9238baeeb546521beffb7fa9fc7620ebe06e3bf36632a607e9830217",
+      "hash": "80db20065a438f43e2d9e5efbd1fac2b76382ab2e937d68b8483976cab569e35",
       "t": 21,
       "events": 0,
       "hull": 5,
@@ -229,7 +229,7 @@
     },
     {
       "tick": 3000,
-      "hash": "4d3d6e111d588e4eae8b59c823ac698eb2a8bb36c1f82840866ba8a32715b2ac",
+      "hash": "73fc1d4b55be1403875fdb2363719002dbcb583fe18116300e0e5fbaf4e867ac",
       "t": 22,
       "events": 1,
       "hull": 5,
@@ -238,7 +238,7 @@
     },
     {
       "tick": 3120,
-      "hash": "7143a372300a87ccba2230ddbb344e506a5323c43f1a3511b035ccf1339bdbe9",
+      "hash": "209da533f6a022c5734d5c632ec14d214012d84277deaff343ba4f5943bab0b5",
       "t": 23,
       "events": 0,
       "hull": 5,
@@ -247,7 +247,7 @@
     },
     {
       "tick": 3240,
-      "hash": "1f1b368067022b772a16de69e985742e6c23134282bbfef36362099815b051c2",
+      "hash": "a577ab8603230fbc526a9d916e098d67429bf40baed2dc5c458513b36e9e9b5f",
       "t": 24,
       "events": 0,
       "hull": 5,
@@ -256,7 +256,7 @@
     },
     {
       "tick": 3360,
-      "hash": "5e6b7e8687080ab91c537212f465f862bece729d21652ac6650b93b0e62b2444",
+      "hash": "8c61437c2d57f864bb2185bfa5ec218cbf1d07a5219c47574d790da6378d5745",
       "t": 25,
       "events": 0,
       "hull": 5,
@@ -265,7 +265,7 @@
     },
     {
       "tick": 3480,
-      "hash": "ff361ae22ce5a09f8337fac38e2fee3f583d0b5ca2ff263f6aea47483956ec1b",
+      "hash": "f59365443667a883c6c93d20fda7221f43730478b8db8b12ce8cefd4d1bf28ee",
       "t": 26,
       "events": 0,
       "hull": 5,
@@ -274,7 +274,7 @@
     },
     {
       "tick": 3600,
-      "hash": "c9d208dd0cdef2ebafbc97a5bca5e18dc8de9736bad249e03a6cc0a891df7c97",
+      "hash": "ed113283653bff7fe518f879631db18df01650147f6c43b6bc1a1caa331617fc",
       "t": 27,
       "events": 5,
       "hull": 5,
@@ -283,7 +283,7 @@
     },
     {
       "tick": 3720,
-      "hash": "f5745ec7f2d501650e515d91cf77eace9c5df6661220ab0c6c9518ef3513666e",
+      "hash": "831337bd627dd747d86407699ee7dc5b8c4ff550f3b283f3ee6d17b084205da6",
       "t": 28,
       "events": 0,
       "hull": 5,
@@ -292,7 +292,7 @@
     },
     {
       "tick": 3840,
-      "hash": "a0721e5f9a55e72aef16a8fe8b53fbf429c4b3065bd67ff5fa1042b9348dfe8f",
+      "hash": "fdb19a4bdedc3750f6ec02ea578f0fdc4d978a76030fcee8737e97952db3c3d4",
       "t": 29,
       "events": 6,
       "hull": 5,
@@ -301,7 +301,7 @@
     },
     {
       "tick": 3960,
-      "hash": "3ed1b5595e7367bc88002ec261a1b0c92b122cf91c3173ec30c562183bc099e3",
+      "hash": "58febb64d77f8804fc386a2131293c7548a12eb106645809fd58ae7ab49d0022",
       "t": 30,
       "events": 8,
       "hull": 5,
@@ -310,7 +310,7 @@
     },
     {
       "tick": 4080,
-      "hash": "1987267fb05585687b6192b89aba5b61e0cd26392a65ed28f303af2f5a463a5c",
+      "hash": "eef27be5b5bc4c401d8e06de73be4912c6b85a7b1bf289646392c1475379b8e1",
       "t": 31,
       "events": 11,
       "hull": 5,
@@ -319,7 +319,7 @@
     },
     {
       "tick": 4200,
-      "hash": "5b396ddbbc01731d93b5a3e4f38d0915de391b5b816b98c86207cf33ed4e9d0d",
+      "hash": "13f626c8d44113edcf6bc0a20759054b6b3ddcdb591ee5dd41d585080052cdfe",
       "t": 32,
       "events": 8,
       "hull": 5,
@@ -328,7 +328,7 @@
     },
     {
       "tick": 4320,
-      "hash": "a273c6bcf750d61b28d89f7b72290ac59c6f166ff6c5f60a3f2523aec55300ab",
+      "hash": "91ff64f97303b09e2f4a9fa7266a6f58059b783364490c32587e591e2352ac60",
       "t": 33,
       "events": 5,
       "hull": 5,
@@ -337,7 +337,7 @@
     },
     {
       "tick": 4440,
-      "hash": "c248245c2e727c2427ab82ff4b4dcf26a404993aa7034224d8ffed155f798501",
+      "hash": "d3e354cd228bb77c6e271e839a99179f10480c6b3584e914517dd2bb1c81e540",
       "t": 34,
       "events": 3,
       "hull": 5,
@@ -346,7 +346,7 @@
     },
     {
       "tick": 4560,
-      "hash": "b86ab65c48decfebb46c97bda6fcf8bde73253a5262de98441c48812dfee77f7",
+      "hash": "44835c298c51c7fa527c7ac57c2c41a59c43db2b02e187eb182134176f6203f3",
       "t": 35,
       "events": 9,
       "hull": 5,
@@ -355,7 +355,7 @@
     },
     {
       "tick": 4680,
-      "hash": "c301e6cf3b0800e03078634d353269d8c96a9f69edb2e04e352e1938111babb7",
+      "hash": "7b5c46069b68938b84e9753d61160c035d5fdb4ad21260858abfdd02187d6108",
       "t": 36,
       "events": 9,
       "hull": 5,
@@ -364,7 +364,7 @@
     },
     {
       "tick": 4800,
-      "hash": "339fc46eb78b59554b77229087c34fdc8242834cd30cead3c3ba60cc8738ddb4",
+      "hash": "a4830386033ddf0b2209eb651dac2bc7248afc5b6c83433e44d200cf7ad28951",
       "t": 37,
       "events": 8,
       "hull": 5,
@@ -373,7 +373,7 @@
     },
     {
       "tick": 4920,
-      "hash": "4540e69f574d613106f8fa12ae751b13eab8c929c22e3dd6ebde1fb06a33a208",
+      "hash": "4e7b61f0d8d01a01ed046a36e139978c1f6588b5a91d816c7bf5f2ea457bee34",
       "t": 38,
       "events": 10,
       "hull": 5,
@@ -382,7 +382,7 @@
     },
     {
       "tick": 5040,
-      "hash": "44c835b9ddc624dc697da018ed3128d10920f43993f3712324b3cfa86cd122f2",
+      "hash": "1c37aa995387883c16a8bcb6ad327c1e7dde04a93c830110b08d08503cd95c8a",
       "t": 39,
       "events": 0,
       "hull": 5,
@@ -391,7 +391,7 @@
     },
     {
       "tick": 5160,
-      "hash": "40d72f54efd3a6285982c574942f78751e8e28e47f0d6a3e70b9eddb4a5a0966",
+      "hash": "0c8125d757acba888dbb26c1e77040d33fb414790c40e06143811917824b0514",
       "t": 40,
       "events": 10,
       "hull": 5,
@@ -400,7 +400,7 @@
     },
     {
       "tick": 5280,
-      "hash": "64c95a80ecf1c26b05e74d9a3f8883494ab62e3f7250cc2430071dbeb21d4fb2",
+      "hash": "50d7011b8992f19e865739e5d03a53f5eb12441d8c7fa5df803acf3d41c2d71e",
       "t": 41,
       "events": 6,
       "hull": 5,
@@ -409,7 +409,7 @@
     },
     {
       "tick": 5400,
-      "hash": "132eebb810a30f1545fe401c1f99acd897217e70054fb8c9534b2dbe44f82fe1",
+      "hash": "a3fb781622f852a6bb382fb8f698b1c353771ea49f1bcd40aa024d009683814c",
       "t": 42,
       "events": 0,
       "hull": 5,
@@ -418,7 +418,7 @@
     },
     {
       "tick": 5520,
-      "hash": "3ed8751ec89eba9381b598fb336b7b795e91a9319c5faa94c4a41eca30727565",
+      "hash": "22d4a79897191d2e8e06f3e9710e5d64bf124890b17c9f122c0af2199f9320d5",
       "t": 43,
       "events": 0,
       "hull": 5,
@@ -427,7 +427,7 @@
     },
     {
       "tick": 5640,
-      "hash": "9da3046bd8f13130b8a43c715e32f6e7f92c59ef7e39ac7b44a8122bacbd1611",
+      "hash": "8047ae9d54c5996936de148685086ec0713493781fcd708f440a2de03781a18f",
       "t": 44,
       "events": 0,
       "hull": 5,
@@ -436,7 +436,7 @@
     },
     {
       "tick": 5760,
-      "hash": "2430a65fe26927af44d1a01859c375804db086ae9d72b905a7a523d6df0f49b1",
+      "hash": "5a1ca55ccdd5220fb405cea4f244c60d41f901b1bf6724558ffb98f3a7a614c0",
       "t": 45,
       "events": 8,
       "hull": 5,
@@ -445,7 +445,7 @@
     },
     {
       "tick": 5880,
-      "hash": "b3d8cba85c6bbd2c32d90b256a2fb39566771f6bc1c08cd6c96aefb5ce08eb08",
+      "hash": "3e6c503add97696929edd4408eef96473b6f97eeaad0c7f250e3b52cacf1e0c1",
       "t": 46,
       "events": 0,
       "hull": 5,
@@ -454,7 +454,7 @@
     },
     {
       "tick": 6000,
-      "hash": "fe8230ca6eac22a8f43b4d75eba852698df96fe192f6c507f621c0535a7a3483",
+      "hash": "bb626ef3a74fc159acaf3e7e496a964fef9f9e3bfdc1aa45faaa4405d9bd97e6",
       "t": 47,
       "events": 0,
       "hull": 5,
@@ -463,7 +463,7 @@
     },
     {
       "tick": 6120,
-      "hash": "bead5f9dec05fa05025bf0bc6363a20f8462f4acd9c43159ab97a8c235202d3d",
+      "hash": "6285a317540e43f28e1da36d93031574ebce235ca68a11810c764b017d3f3fd9",
       "t": 48,
       "events": 0,
       "hull": 5,
@@ -472,7 +472,7 @@
     },
     {
       "tick": 6240,
-      "hash": "48e1ee9ff479e8253bcc46f921cea4bffcd310a5d622d76c3867c6189c03f9b7",
+      "hash": "6e3c708267a7fb19ddbbec1227219854ae82c1b80296a6fd7c8e847d218b9d39",
       "t": 49,
       "events": 0,
       "hull": 5,
@@ -481,7 +481,7 @@
     },
     {
       "tick": 6360,
-      "hash": "53e67bc53863ae265b8542a6e00892b467ee1a9839d60e6487f087a047d936f2",
+      "hash": "4cd9da0a33565871cc0868fc6f21e7f9d878f4b68e07112ee07c02078c703ea4",
       "t": 50,
       "events": 0,
       "hull": 5,
@@ -490,7 +490,7 @@
     },
     {
       "tick": 6480,
-      "hash": "50ab18a9175485b58572cc42c5b7d546e6033199059e454591bb732790971fb6",
+      "hash": "4e9868c91190366fba74e5547cd8b96b8984759a6a4bb5791251891efbf30318",
       "t": 51,
       "events": 0,
       "hull": 5,
@@ -499,7 +499,7 @@
     },
     {
       "tick": 6600,
-      "hash": "2e57969ed3a11724e13d223853fc074106d65338edd0f869106320c026cc0208",
+      "hash": "05a31012b065a67b34b16cf2f20948b64ecfe3f46a04e3b5d2141693038a3193",
       "t": 52,
       "events": 12,
       "hull": 5,
@@ -508,7 +508,7 @@
     },
     {
       "tick": 6720,
-      "hash": "f0fa59cc98af3fbf91fde514ac7d8b76176a58eb0e07951fa48a1fb7e8a883f6",
+      "hash": "f7b6396893d5daf15f6b4f8797fbd630c4ef11354072a25d4dbca2a73be86e1b",
       "t": 53,
       "events": 0,
       "hull": 5,
@@ -517,7 +517,7 @@
     },
     {
       "tick": 6840,
-      "hash": "af8176cbfc0e24292871f2e5984720a138d6cf4aa08efe725d0c4ec44a1b8992",
+      "hash": "431a2ddd515784e041ec7ea35c5d0bdd79e138cb80e51c17c2838759d9c63f03",
       "t": 54,
       "events": 11,
       "hull": 5,
@@ -526,7 +526,7 @@
     },
     {
       "tick": 6960,
-      "hash": "f908e4a4c05082c315bb959ef2fee2d9eff1b7c2cccd1652d02c1b44ba0bbae6",
+      "hash": "2e83df4fab210c8055a6632dbedfe1b7e29d97031018d49429b1cbea205bc517",
       "t": 55,
       "events": 12,
       "hull": 5,
@@ -535,7 +535,7 @@
     },
     {
       "tick": 7080,
-      "hash": "84d09ff652e8152d6b6cf7a0d19b94155ec840b81966126082c409c4cf71802d",
+      "hash": "701f10634decdcb7c354d4d814abf2c48858c2b0396d2baac224ffbb1206df71",
       "t": 56,
       "events": 12,
       "hull": 5,
@@ -544,7 +544,7 @@
     },
     {
       "tick": 7200,
-      "hash": "fe20e11ddd2af04f1216da076d5f3fd53395ab7219626de7084d4fe197216579",
+      "hash": "735aa3c875b8e2283e1f3907291fb4267283d4dd2bad700f500844faa327f3ae",
       "t": 57,
       "events": 4,
       "hull": 5,
@@ -553,7 +553,7 @@
     },
     {
       "tick": 7320,
-      "hash": "8a5ef17d3d8cbf90c2701ef6fae3231e040bd2631672d847d416b7e390bd19f8",
+      "hash": "aef73c0148f6f837e1980832ee395e4f3a78fdc597fca297d0cbb46b11b8a3ee",
       "t": 58,
       "events": 3,
       "hull": 5,
@@ -562,7 +562,7 @@
     },
     {
       "tick": 7440,
-      "hash": "a4dbae1b12ceacc9681d9ece62769948029a9a16853a357f972bac59a37e8816",
+      "hash": "05d3590a9c0f15b97493d2132806342e396263a92f30a25cad1aa4832d08e12c",
       "t": 59,
       "events": 0,
       "hull": 5,
@@ -571,7 +571,7 @@
     },
     {
       "tick": 7560,
-      "hash": "a6b2a7841a16f66727d628198a1c1a1e2398d85e060e74a8df728c276c7e9288",
+      "hash": "710543bab548eae28cce5690c86eebcfff50fda0b11673b9bd1652753336808e",
       "t": 60,
       "events": 0,
       "hull": 5,
@@ -580,7 +580,7 @@
     },
     {
       "tick": 7680,
-      "hash": "4bdfe48a77031405bb4ce24f6ad8d050fab76c2eda28f4f60d828a611ae014d4",
+      "hash": "62b0667efbfafe7d3a55d8f74362d8a3354943fe4c4b7ddf4f5ec420ce00d908",
       "t": 61,
       "events": 3,
       "hull": 5,
@@ -589,7 +589,7 @@
     },
     {
       "tick": 7706,
-      "hash": "09d45551657d4645abcf0c7c7806282560cb09abf91669179503e3e5314a09d3",
+      "hash": "48a119c609fec362c4e820acafd3c5dc02e839a3d9e3f66ab2be7102f26a2325",
       "t": 61.22,
       "events": 2,
       "hull": 5,

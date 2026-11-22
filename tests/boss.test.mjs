@@ -39,7 +39,7 @@ function runBoss({ difficulty, seed, steer = true, maxTicks, tape = null }) {
       race.events.length = 0;
       const state = bossState(B, race);
       const problem = B.hull < 0 ? { hull: B.hull } : null;
-      return { over: B.over, t: race.lapT, input, eventCount: events.length, state, problem, record: JSON.stringify({ events, state }) };
+      return { over: B.over, t: race.lapT, input, eventCount: events.length, state, problem, record: { events, state } };
     },
     row(s) { return { hull: s.hull, ammo: null, flares: null, broken: s.broken }; },
   });
@@ -64,7 +64,7 @@ test('stand-in replay matches the golden trace, a restart matches, and the steer
   assert.deepEqual(live.summary, autoBoss({ difficulty: 'normal', seed: 9, steer: true, maxS: 300 }).summary());
   matchFixture(FIXTURE, {
     regen: 'REGEN_SIM_FIXTURES=1 node --test tests/boss.test.mjs',
-    about: 'Stand-in pilot on the World Dragon. One bucket is 120 ticks (1s). hash is sha256 of the JSON lines of events and state in that bucket. ammo and flares are null: this fight has neither stock. Regenerate with the regen command. Do not edit by hand.',
+    about: 'Stand-in pilot on the World Dragon. One bucket is 120 ticks (1s). hash is sha256 of the JSON lines of events and state in that bucket, with every number rounded to 1e-4 so Node 22 and Node 24 agree. ammo and flares are null: this fight has neither stock. Regenerate on Node 22 with the regen command. Do not edit by hand.',
     sim: 'boss',
     bucketTicks: BUCKET_TICKS,
     script: SCRIPT,
@@ -86,27 +86,64 @@ test('the same steer script with another seed changes the trace', () => {
 });
 
 for (const difficulty of ['easy', 'normal', 'hard']) {
-  test(`boss ${difficulty}: the stand-in wins inside the tick bound and a restart matches`, () => {
+  test(`boss ${difficulty}: the stand-in wins under the cap, which is only a runaway net, and a restart matches`, () => {
     const maxTicks = tickBound(BOSS.capS);
     const won = runBoss({ difficulty, seed: 9, steer: true, maxTicks });
     const restart = runBoss({ difficulty, seed: 9, steer: true, maxTicks });
     assert.equal(won.over, true);
     assert.equal(won.won, true);
-    assert.ok(won.ticks <= maxTicks, `${won.ticks} > ${maxTicks}`);
+    assert.ok(won.ticks <= maxTicks, `safety net ${maxTicks}, ran ${won.ticks}`);
     assert.equal(won.problems.length, 0, JSON.stringify(won.problems[0]));
     assert.ok(won.summary.hull >= 0);
     assertSameTrace(won, restart);
     assert.deepEqual(won.summary, restart.summary);
   });
 
-  test(`boss ${difficulty}: nobody at the wheel loses inside the tick bound with hull at least 0`, () => {
+  test(`boss ${difficulty}: nobody at the wheel loses under the cap with hull at least 0`, () => {
     const maxTicks = tickBound(BOSS.capS);
     const lost = runBoss({ difficulty, seed: 9, steer: false, maxTicks });
     assert.equal(lost.over, true);
     assert.equal(lost.won, false);
-    assert.ok(lost.ticks <= maxTicks, `${lost.ticks} > ${maxTicks}`);
+    assert.ok(lost.ticks <= maxTicks, `safety net ${maxTicks}, ran ${lost.ticks}`);
     assert.equal(lost.problems.length, 0, JSON.stringify(lost.problems[0]));
     assert.equal(lost.summary.finished, true);
     assert.ok(lost.summary.hull >= 0);
   });
 }
+
+// Seeds 1 through 40, hard, stand-in at the wheel. Two fires can land on one tick and step hull by 2,
+// so a yacht on 1 hull ends at -1. summary() clamps that to 0. Measured on Node 22 and Node 24: only seed 18.
+const SWEEP = Array.from({ length: 40 }, (_, i) => i + 1);
+
+function watchBoss(seed) {
+  const course = dragonCourse();
+  const race = new Race(bossSettings(course), course);
+  const B = new Boss(race, { difficulty: 'hard', seed });
+  const inp = { steer: 0, brake: 0, boost: 0 };
+  const maxTicks = tickBound(BOSS.capS);
+  let minHull = B.hull, ticks = 0;
+  for (; ticks < maxTicks && !B.over; ticks++) {
+    B.pilot(inp);
+    race.step(inp.steer, inp.brake, inp.boost); B.step(); race.events.length = 0;
+    if (B.hull < minHull) minHull = B.hull;
+  }
+  return { ticks, over: B.over, won: B.won, minHull, summaryHull: B.summary().hull, maxTicks };
+}
+
+test('boss hard seeds 1..40: raw hull reaches -1 only on seed 18, and the summary clamps it to 0', () => {
+  const negative = [];
+  for (const seed of SWEEP) {
+    const row = watchBoss(seed);
+    assert.equal(row.over, true, `seed ${seed} did not finish`);
+    assert.ok(row.ticks <= row.maxTicks, `seed ${seed} safety net ${row.maxTicks}, ran ${row.ticks}`);
+    assert.ok(row.minHull >= -1, `seed ${seed} hull ${row.minHull}`);
+    assert.ok(row.summaryHull >= 0, `seed ${seed} summary hull ${row.summaryHull}`);
+    if (row.minHull < 0) {
+      negative.push(seed);
+      assert.equal(row.minHull, -1, `seed ${seed}`);
+      assert.equal(row.summaryHull, 0, `seed ${seed}`);
+      assert.equal(row.won, false, `seed ${seed}`);
+    }
+  }
+  assert.deepEqual(negative, [18]);
+});
