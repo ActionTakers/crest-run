@@ -56,7 +56,7 @@ import { Race, defaultSettings, DT, TUNES, TUNE_KEYS, BOOST, SIM_VERSION, encode
 import { Rescue, arenaCourse, rescueSettings, ARENA, RESCUE, S as SHARK } from './sim/rescue.mjs?v=4881be4d';
 import { Boss, dragonCourse, bossSettings, DRAGON, BOSS as FIGHT } from './sim/boss.mjs?v=4881be4d';
 import { Leviathan, leviCourse, leviSettings, LEVI, FIGHT as LFIGHT, PHASES } from './sim/leviathan.mjs?v=4881be4d';
-import { DeckFight, hawkCourse, hawkSettings, HAWK, DECK, HALVES, COASTAL_NAME } from './sim/deck.mjs?v=4881be4d';
+import { DeckFight, hawkCourse, hawkSettings, HAWK, DECK, HALVES, COASTAL_NAME, stickFlick, tiltLane, swipeStep } from './sim/deck.mjs?v=4881be4d';
 import { deckHudSnapshot, deckRange, passCountdown, acquireAim, hawkMarker } from './ui/deck-hud.mjs?v=4881be4d';
 import { makeVoyage, bayCourse, voyageSettings, voyageChoices, VOYAGES, VOYAGES_READY as VOYAGE_KEYS } from './sim/voyages.mjs?v=4881be4d';
 const VOYAGES_READY_ALL = VOYAGE_KEYS;
@@ -595,12 +595,43 @@ function paintLevi(race, run, dt, me) {
 }
 // ---------- the third boss level: Iron Hawk, the level on the deck (sim/deck.mjs). The same frame as the other fights: G.rescue
 // holds it, its kind is 'deck'. The boat sails itself (the fight's handover); the player aims a gun: DK holds where it points
-// (radians from the bow, and up), whether it fires, and a flare that is asked for. A finger or the mouse drags the aim and
-// fires while it is down; the keys: arrows or WASD aim, the space bar fires, F sends a flare. ----------
-const DK = { ay: 0, ap: 0.12, fire: false, flare: false, id: null, x: 0, y: 0, touched: false, keys: { left: false, right: false, up: false, down: false, fire: false } };
+// (radians from the bow, and up), whether it fires, and a flare that is asked for. A finger or the mouse on the right
+// half drags the aim and fires while it is down. The left half swipes a lane. The keys: arrows or WASD aim, the space
+// bar fires, F sends a flare, Q and E step one lane. A and D stay on the gun. ----------
+const DK = { ay: 0, ap: 0.12, fire: false, flare: false, id: null, x: 0, y: 0, touched: false, lane: 0, swipe: null, stickArmed: true, tiltHeld: false, keys: { left: false, right: false, up: false, down: false, fire: false } };
 const deckOn = () => !!G.rescue && G.rescue.kind === 'deck' && G.mode === 'race';
 const DECK_KEYS = { ArrowLeft: 'left', KeyA: 'left', ArrowRight: 'right', KeyD: 'right', ArrowUp: 'up', KeyW: 'up', ArrowDown: 'down', KeyS: 'down', Space: 'fire' };
-function deckKey(code, down) { if (code === 'KeyF') { if (down) DK.flare = true; return true; } const k = DECK_KEYS[code]; if (!k) return false; if (down && k !== 'fire') DK.touched = true; DK.keys[k] = down; return true; }
+function deckKey(code, down) {
+  if (code === 'KeyF') { if (down) DK.flare = true; return true; }
+  if (code === 'KeyQ' || code === 'KeyE') { if (down) DK.lane = Math.max(-1, Math.min(1, DK.lane + (code === 'KeyE' ? 1 : -1))); return true; }
+  const k = DECK_KEYS[code]; if (!k) return false; if (down && k !== 'fire') DK.touched = true; DK.keys[k] = down; return true;
+}
+function takeStick(axis) {
+  const flick = stickFlick(axis, DK.stickArmed);
+  DK.stickArmed = flick.armed;
+  if (flick.step) DK.lane = Math.max(-1, Math.min(1, DK.lane + flick.step));
+  return flick;
+}
+function pollDeckStick() {
+  if (!XR.on || !deckOn()) return;
+  let x = null;
+  for (const src of xrSources()) {
+    const ax = src && src.gamepad && src.gamepad.axes;
+    if (!ax || !ax.length || !Number.isFinite(+ax[0])) continue;
+    const v = +ax[0];
+    if (x === null || Math.abs(v) > Math.abs(x)) x = v;
+  }
+  if (x !== null) takeStick(x);
+}
+// tilt owns the lane only while the phone is actually tipped. A level phone keeps a swipe. Coming back to level returns to the middle.
+function applyDeckLane(F) {
+  if (!XR.on && controls.mode === 'tilt') {
+    const picked = tiltLane(controls.steer);
+    if (picked !== 0) { DK.lane = picked; DK.tiltHeld = true; }
+    else if (DK.tiltHeld) { DK.lane = 0; DK.tiltHeld = false; }
+  }
+  F.input.lane = DK.lane;
+}
 function xrSources() {
   if (!XR.on || !XR.session) return [];
   try { return XR.session.inputSources ? Array.from(XR.session.inputSources) : []; } catch (e) { return []; }
@@ -624,6 +655,17 @@ function deckFeel(e) {
   paintComfort();
 }
 function deckPointer(kind, e) {
+  const swipe = DK.swipe;
+  if (swipe && e.pointerId === swipe.id) {
+    if (kind === 'move') {
+      const flick = swipeStep(e.clientX - swipe.x, e.clientY - swipe.y, swipe.sent);
+      swipe.sent = flick.sent;
+      if (flick.step) DK.lane = Math.max(-1, Math.min(1, DK.lane + flick.step));
+    } else if (kind === 'up') DK.swipe = null;
+    return;
+  }
+  // the right thumb aims and fires. A swipe starts on the left half and never becomes an aim drag.
+  if (kind === 'down' && e.clientX < window.innerWidth * 0.5) { DK.swipe = { id: e.pointerId, x: e.clientX, y: e.clientY, sent: false }; return; }
   if (kind === 'down') { DK.touched = true; DK.id = e.pointerId; DK.x = e.clientX; DK.y = e.clientY; DK.fire = true; ownShotHaptic('shot'); }
   else if (kind === 'move' && e.pointerId === DK.id) { const k = 1.7 / Math.max(240, window.innerHeight); DK.ay = wrapA(DK.ay + (e.clientX - DK.x) * k); DK.ap = clamp(DK.ap - (e.clientY - DK.y) * k, HAWK.aim.down, HAWK.aim.up); DK.x = e.clientX; DK.y = e.clientY; }
   else if (kind === 'up' && e.pointerId === DK.id) { DK.id = null; DK.fire = false; }
@@ -648,6 +690,7 @@ function leaveXr() { if (!XR.on) return; XR.on = false; XR.session = null; stage
 function xrAgain() { const F = G.rescue; if (!F || F.kind !== 'deck' || !F.over || stage.xrInput.pulls === XR.pulls || performance.now() - XR.overAt < 2500 || G.rescueStarting) return; XR.pulls = stage.xrInput.pulls; restartCurrent(); }
 // one step of the fight's input: the computer's gunner (tests and film), or the player's hand
 function deckInput(F) {
+  if (!G.auto) applyDeckLane(F);
   if (G.auto) { F.gunner(0.85); DK.ay = F.input.ay; DK.ap = F.input.ap; return; }
   if (!DK.touched && !XR.on) { const aim = acquireAim(F, false); if (aim) { DK.ay = aim.ay; DK.ap = aim.ap; } }
   if (XR.on) {                                                 // in the headset: the hand aims, the trigger fires, the grip sends a flare
@@ -667,7 +710,7 @@ async function startDeck() {
     G.race = race; G.rescue = F; G.ghost = null; G.mode = 'race'; G.acc = 0; G.timeScale = 1; G.slowLeft = 0; G.slowArmed = false; G.paused = false; G.pausedBy = null; G.resultsAt = null; G.resumeLeft = 0;
     G.run = { mode: 'deck', course: HAWK.key, tune, livery, difficulty, at: new Date().toISOString(), frames: 0, late: 0, worst: 0, sumMs: 0, mot0: controls.tilt.counts.mot, th0: performance.now(), steerMode: controls.mode, recentres0: controls.recentres,
       lastHud: 0, countShown: '', dots: [], trackW: 1, wake0: PF.wake.releases, marks: [new Float32Array(1)], markN: new Int32Array(1), gmarks: null, gmarkN: 0, named: false, toldRocket: false, bpm0: sound.bpm0 };
-    askXr(); const aim0 = acquireAim(F, false); Object.assign(DK, { ay: aim0.ay, ap: aim0.ap, fire: false, flare: false, id: null, touched: false }); F.input.ay = aim0.ay; F.input.ap = aim0.ap; for (const k of Object.keys(DK.keys)) DK.keys[k] = false;
+    askXr(); const aim0 = acquireAim(F, false); Object.assign(DK, { ay: aim0.ay, ap: aim0.ap, fire: false, flare: false, id: null, touched: false, lane: 0, swipe: null, stickArmed: true, tiltHeld: false }); F.input.ay = aim0.ay; F.input.ap = aim0.ap; F.input.lane = 0; for (const k of Object.keys(DK.keys)) DK.keys[k] = false;
     stage.setRescue(null); stage.setBoss(null); stage.setLevi(null); stage.setVoyage(null); stage.setRace(race, [livery], 0); stage.setGhost(null); const models = stage.setDeck(F);
     const ready = Promise.all([stage.setBoats([G.sel.boat]), stage.setSkippers([OWNER]), models]); if (G.film) await ready;
     stage.setCameraMode('chase'); controls.releaseAll();
@@ -722,6 +765,8 @@ function paintDeck(race, run, dt, me) {
   setText('h-deck-flares', 'dflares', snap.flares);
   setText('h-deck-armour-label', 'darmour', snap.armour);
   setText('h-deck-goal', 'dgoal', snap.goal);
+  setText('h-deck-lane', 'dlane', snap.lane);
+  const laneEl = $('h-deck-lane'); if (laneEl) { laneEl.classList.toggle('hot', !!snap.laneHot); laneEl.classList.toggle('clear', !!snap.laneSafe); }
   const bar = Math.round(1000 * snap.armourRatio); if (H.dbar !== bar) { H.dbar = bar; $('h-deck-armour-fill').style.transform = `scaleX(${snap.armourRatio})`; }
   setText('h-place', 'place', ''); setText('h-lap', 'lap', ''); setText('h-gap', 'gap', ''); setText('h-chain', 'chain', ''); setText('h-time', 'time', '');
   const fl = F.half === 2 && !F.over ? String(F.flares) : ''; if (fl !== H.flares) { H.flares = fl; E.flare.classList.toggle('hidden', fl === ''); E.flare.classList.toggle('none', fl === '0'); $('h-flares').textContent = fl; }
@@ -1500,6 +1545,7 @@ function stepRace(race, run) {
   else race.step(controls.steer, controls.brake, controls.boost);
   if (G.rescue && G.rescue.kind === 'deck') deckInput(G.rescue);
   if (G.rescue) G.rescue.step();
+  if (G.rescue && G.rescue.kind === 'deck' && G.rescue.laneMoving) feedback.comfort(0.58, performance.now());
   if (G.ghost && !G.ghost.race.done) { const gh = G.ghost, k = gh.race.step_; if (k < gh.steer.length) gh.race.step(gh.steer[k] / 100, gh.flags[k] & 1, (gh.flags[k] >> 1) & 1); gh.race.events.length = 0; }
   // when each boat passes each 10 m mark, for the time gaps of the display (P13)
   const B = race.boats, mk = run.marks, mn = run.markN;
@@ -1563,7 +1609,7 @@ function pollPad() {
 }
 function frame(ts) {
   if (!G.film && !XR.on) requestAnimationFrame(frame);          // in the headset the renderer calls this, on the headset's clock
-  if (XR.on) xrAgain();
+  if (XR.on) { xrAgain(); pollDeckStick(); }
   pollPad();
   // The shore is the page until Play. The film in the hero is the motion; the sea waits.
   if (!G.film && !XR.on && $('site') && !document.body.classList.contains('in-game')) return;
@@ -1702,6 +1748,12 @@ G.platform = PF; G.startRace = startRace; G.startDemo = startDemo; G.endRace = e
 G.skip = (seconds) => { const n = Math.round(seconds / DT), race = G.race, was = G.auto; if (G.mode === 'race') G.auto = true;
   for (let i = 0; i < n && !race.done; i++) { if (G.mode === 'race') stepRace(race, G.run); else { race.step(0, 0, 0); for (const e of race.events) stage.onEvent(e); race.events.length = 0; } }
   G.auto = was; return race.lapT; };
+// one thumbstick sample. A hold does not repeat. Roll stays 0: the stick never tips the reference space.
+G.deckStick = (axis) => {
+  const flick = takeStick(axis);
+  if (G.rescue && G.rescue.input) G.rescue.input.lane = DK.lane;
+  return { lane: DK.lane, armed: DK.stickArmed, step: flick.step, roll: 0 };
+};
 // film: the caller owns the clock. step(ms) advances the game by exactly that much and draws one frame.
 G.filmStep = (ms) => { G.filmT += ms / 1000; frame((last === null ? 0 : last) + ms); return { t: G.race ? G.race.lapT : 0, mode: G.mode, screen: G.screen }; };
 // the pixels of the frame just drawn (call it right after filmStep, before the browser presents). framePixels: base64 of RGBA

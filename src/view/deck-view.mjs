@@ -10,7 +10,7 @@
 // Written 2026-11-17 by the yacht project session.
 import * as THREE from 'three';
 import * as W from '../sim/waves.mjs?v=4881be4d';
-import { HAWK, DECK, aimDir } from '../sim/deck.mjs?v=4881be4d';
+import { HAWK, DECK, aimDir, laneCentre } from '../sim/deck.mjs?v=4881be4d';
 import { deckRange, damageChip, laneLook, passCountdown, threatEdge, impactRing, HULL_NEUTRAL, HULL_NEUTRAL_DARK, DECK_EYE, STAGGER_LIFT, chipWorldScale } from '../ui/deck-hud.mjs?v=4881be4d';
 import { scaleFlash } from '../ui/feedback.mjs?v=4881be4d';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
@@ -176,6 +176,8 @@ export class DeckView {
     this.sparks = flat(new THREE.InstancedMesh(new THREE.SphereGeometry(0.5, 8, 6), glow(6, 3.4, 1, { opacity: 0.9, blending: THREE.AdditiveBlending }), 10)); this.sp = []; for (let i = 0; i < 10; i++) this.sp.push({ t: 9, life: 0.14, p: new THREE.Vector3(), s: 1 });
     this.lane = flat(new THREE.Mesh(new THREE.PlaneGeometry(1, 1).rotateX(-Math.PI / 2), glow(2.1, 1.45, 0.4, { opacity: 0.62, side: THREE.DoubleSide, toneMapped: false }))); this.lane.renderOrder = 3; this.lane.visible = false;
     this.laneEdges = [-1, 1].map((side) => { const edge = new THREE.Mesh(new THREE.PlaneGeometry(1, 1).rotateX(-Math.PI / 2), glow(2.4, 1.7, 0.45, { opacity: 0.72, side: THREE.DoubleSide, toneMapped: false })); edge.position.x = side * 0.54; edge.scale.set(0.09, 1, 1); edge.renderOrder = 4; edge.frustumCulled = false; this.lane.add(edge); return edge; });
+    // the boat's own lane: a short blue bar under the hull, so it can be told apart from the gold strafe lane
+    this.you = flat(new THREE.Mesh(new THREE.PlaneGeometry(1, 1).rotateX(-Math.PI / 2), glow(0.45, 0.78, 1, { opacity: 0.8, side: THREE.DoubleSide, toneMapped: false }))); this.you.renderOrder = 5; this.you.scale.set(16, 1, 34); this.you.visible = false;
     this.shadow = flat(new THREE.Mesh(new THREE.CircleGeometry(1, 36).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0x020a14, transparent: true, opacity: 0, depthWrite: false }))); this.shadow.renderOrder = 2; this.shadow.visible = false;
     this.waveRing = flat(new THREE.Mesh(new THREE.TorusGeometry(1, 0.03, 6, 64).rotateX(Math.PI / 2), glow(1.4, 2.6, 3.4, { opacity: 0.9 }))); this.waveRing.visible = false;
     this.beam = flat(new THREE.Mesh(new THREE.ConeGeometry(1, 1, 18, 1, true).translate(0, -0.5, 0).rotateX(-Math.PI / 2), glow(2.2, 1.45, 0.4, { opacity: 0.12, side: THREE.DoubleSide, blending: THREE.AdditiveBlending }))); this.beam.visible = false;
@@ -285,7 +287,8 @@ export class DeckView {
     if (Math.abs(cam.fov - 64) > 0.05 || cam.near !== 0.12) { cam.fov = 64; cam.near = 0.12; cam.updateProjectionMatrix(); }
   }
   // the headset's rig: the player's feet on the foredeck, facing the bow; it travels and turns with the boat, and rides only a
-  // third of the waves' rise and fall (a standing player's eyes come out near the gunner's 3 m)
+  // third of the waves' rise and fall (a standing player's eyes come out near the gunner's 3 m).
+  // A lane change is already in B (the stage moved the deck). Roll stays 0: the reference space is not tipped.
   placeRig(rig, B, dt) {
     const fx = -Math.sin(B.h), fz = Math.cos(B.h); rig.position.set(B.x + fx * HAWK.gun.ahead + Math.cos(B.h) * DECK_EYE.side, 0.35 * B.y + HAWK.gun.up - 1.6 + DECK_EYE.up * 0.45, B.z + fz * HAWK.gun.ahead + Math.sin(B.h) * DECK_EYE.side); rig.rotation.set(0, Math.PI - B.h, 0); rig.updateMatrixWorld(true);
   }
@@ -298,11 +301,19 @@ export class DeckView {
     if (!this.held) { this.heli.position.set(F.x, F.y + (stun ? 0.5 * Math.sin(T * 9) : 0), F.z); this.heli.rotation.set(F.st === 'aim' || F.st === 'pass' ? 0.26 : stun ? 0.1 * Math.sin(T * 5) : 0.08, hy, F.st === 'orbit' || F.st === 'climb' ? -0.3 * F.dir : stun ? 0.25 * Math.sin(T * 3.3) : 0, 'YXZ'); }
     const still = prefersStill() || this.motion < 0.999;
     if (this.fx) { this.rotor.rotation.y += dt * (stun ? 14 : 38); this.tailRotor.rotation.x += dt * 50; this.pod.scale.setScalar(1); this.pod.material.opacity = !still && ann ? 0.84 + 0.14 * Math.sin(T * 2.2) : 0.92; }
-    // the lane of the pass, lit on the water, and the beam from the helicopter to the boat
+    // the lane of the pass stays on the lane it was announced on. The blue bar is the boat's lane.
+    // with no helm offset and a middle pass, both sit on the boat, which is where the lane was drawn before.
+    const ax = boat.routeX !== undefined ? boat.routeX : boat.x, az = boat.routeZ !== undefined ? boat.routeZ : boat.z;
+    const half = F.race && F.race.c ? F.race.c.halfWidth : HAWK.halfWidth;
+    const rx = -Math.cos(boat.h), rz = -Math.sin(boat.h);
+    const passLat = laneCentre(F.passLane || 0, half), boatLat = F.laneOff || 0;
+    const sx = ax + rx * passLat, sz = az + rz * passLat;
+    const yx = ax + rx * boatLat, yz = az + rz * boatLat;
+    this.you.visible = !F.over; if (this.you.visible) { this.you.position.set(yx, this.seaY(wv, yx, yz, t) + 0.22, yz); this.you.rotation.y = boat.h; }
     this.lane.visible = ann; this.beam.visible = ann;
-    if (ann) { this.lane.position.set(boat.x, this.seaY(wv, boat.x, boat.z, t) + 0.12, boat.z); this.lane.rotation.y = hy; this.lane.scale.set(9, 1, 240);
+    if (ann) { this.lane.position.set(sx, this.seaY(wv, sx, sz, t) + 0.12, sz); this.lane.rotation.y = hy; this.lane.scale.set(9, 1, 240);
       const look = laneLook(T, still); this.lane.material.opacity = look.lane; for (const edge of this.laneEdges) edge.material.opacity = look.edge;
-      const P = F.part('pod', {}); this.beam.position.set(P.x, P.y, P.z); this.beam.lookAt(boat.x, boat.y + 1, boat.z); const len = Math.hypot(P.x - boat.x, P.y - boat.y, P.z - boat.z); this.beam.scale.set(len * 0.09, len * 0.09, len); }
+      const P = F.part('pod', {}); this.beam.position.set(P.x, P.y, P.z); this.beam.lookAt(sx, boat.y + 1, sz); const len = Math.hypot(P.x - sx, P.y - boat.y, P.z - sz); this.beam.scale.set(len * 0.09, len * 0.09, len); }
     // rockets: each with its flame and a ring that faces the camera, so that it is seen against any sky
     F.rockets.forEach((r, i) => {
       if (!r.on) { M.makeScale(0, 0, 0); this.rockets.setMatrixAt(i, M); this.flames.setMatrixAt(i, M); this.rings.setMatrixAt(i, M); return; }
@@ -352,7 +363,7 @@ export class DeckView {
     const cd = passCountdown(F); this.countMark.visible = ann && cd.n > 0;
     if (this.countMark.visible) {
       if (this.countN !== cd.n) { this.countN = cd.n; paintPlate(this.countMark, cd.label, { size: 92, color: '#ffc24a' }); }
-      const dx = F.x - boat.x, dz = F.z - boat.z, len = Math.hypot(dx, dz) || 1, px = boat.x + dx / len * 34, pz = boat.z + dz / len * 34;
+      const dx = F.x - sx, dz = F.z - sz, len = Math.hypot(dx, dz) || 1, px = sx + dx / len * 34, pz = sz + dz / len * 34;
       this.countMark.position.set(px, this.seaY(wv, px, pz, t) + 6.5, pz);
       const ck = Math.max(0.6, camera.position.distanceTo(this.countMark.position) / 28); this.countMark.scale.set(3.4 * ck, 1.7 * ck, 1);
     } else this.countN = 0;

@@ -63,6 +63,59 @@ export function aimDir(h, ay, ap, out = {}) { const y = h + ay, c = Math.cos(ap)
 // the yaw and pitch that point the gun from (gx, gy, gz) at (x, y, z), for a boat heading h
 export function aimAt(h, gx, gy, gz, x, y, z, out = {}) { const dx = x - gx, dy = y - gy, dz = z - gz; out.ay = wrapA(Math.atan2(-dx, dz) - h); out.ap = Math.atan2(dy, Math.hypot(dx, dz)); return out; }
 
+// B1 helm-dodge. The boat keeps riding the ring. The player only shifts across it.
+// Three lanes, left / middle / right. `reach` is the share of halfWidth from the centre line to an outer
+// lane, so a lane centre is inside the track. `speed` is metres per second and does not ramp: each step
+// moves by the same amount until the lane centre, then stops (Meta quantized velocity).
+export const HELM = { reach: 2 / 3, speed: 240, tilt: 0.42, stickDead: 0.5, stickRelease: 0.28, swipePx: 42 };
+export function laneIndex(v) { const n = Number(v); if (!Number.isFinite(n) || n === 0) return 0; return n < 0 ? -1 : 1; }
+export function laneName(index) { const i = laneIndex(index); return i < 0 ? 'LEFT' : i > 0 ? 'RIGHT' : 'MID'; }
+// metres to starboard. Positive is right, the same way as the race. Clamped inside halfWidth.
+export function laneCentre(index, halfWidth = HAWK.halfWidth) {
+  const half = halfWidth > 0 ? halfWidth : HAWK.halfWidth;
+  // multiply before dividing so 120 * 2 / 3 is 80, not a repeating 2/3.
+  const centre = laneIndex(index) * half * 2 / 3;
+  return centre < -half ? -half : centre > half ? half : centre;
+}
+// which of the three lanes an offset occupies. The boundary is halfway to the next centre.
+export function helmLane(offset, halfWidth = HAWK.halfWidth) {
+  const half = halfWidth > 0 ? halfWidth : HAWK.halfWidth, edge = half * 2 / 3 * 0.5;
+  const off = Number(offset) || 0;
+  if (off >= edge) return 1;
+  if (off <= -edge) return -1;
+  return 0;
+}
+// one physics step of the slide. Constant speed, no ramp, and the result is never outside halfWidth.
+export function stepLane(offset, target, halfWidth = HAWK.halfWidth, speed = HELM.speed, dt = DT) {
+  const half = halfWidth > 0 ? halfWidth : HAWK.halfWidth;
+  const from = offset < -half ? -half : offset > half ? half : (Number(offset) || 0);
+  const to = target < -half ? -half : target > half ? half : (Number(target) || 0);
+  const cap = speed * dt;
+  let d = to - from;
+  if (d > cap) d = cap; else if (d < -cap) d = -cap;
+  const next = from + d;
+  return next < -half ? -half : next > half ? half : next;
+}
+// phone tilt, already in [-1, 1] from tilt-input. Level is the middle lane.
+export function tiltLane(value) { const v = Number(value); if (!Number.isFinite(v) || Math.abs(v) < HELM.tilt) return 0; return v > 0 ? 1 : -1; }
+// one thumbstick flick. A hold past the deadzone does not repeat. The stick must come back inside `stickRelease` first.
+export function stickFlick(axis, armed) {
+  const x = Number(axis);
+  if (!Number.isFinite(x)) return { step: 0, armed: !!armed };
+  const mag = Math.abs(x);
+  if (mag <= HELM.stickRelease) return { step: 0, armed: true };
+  if (mag < HELM.stickDead || !armed) return { step: 0, armed: !!armed && mag < HELM.stickDead };
+  return { step: x > 0 ? 1 : -1, armed: false };
+}
+// one horizontal swipe. A drag that is still mostly vertical does not take a lane, and a second move of the same gesture does not.
+export function swipeStep(dx, dy, sent) {
+  if (sent) return { step: 0, sent: true };
+  const x = Number(dx), y = Number(dy);
+  if (!Number.isFinite(x) || !Number.isFinite(y)) return { step: 0, sent: false };
+  if (Math.abs(x) < HELM.swipePx || Math.abs(x) <= Math.abs(y)) return { step: 0, sent: false };
+  return { step: x > 0 ? 1 : -1, sent: true };
+}
+
 export class DeckFight {
   constructor(race, { difficulty = 'normal', seed = 5 } = {}) {
     this.kind = 'deck'; this.race = race; this.difficulty = DECK.levels[difficulty] ? difficulty : 'normal'; this.level = DECK.levels[this.difficulty];
@@ -71,7 +124,8 @@ export class DeckFight {
     this.st = 'orbit'; this.t = 0; this.th = 0.9; this.r = DECK.far.r; this.y = DECK.far.y; this.dir = 1; this.x = 0; this.z = 0; this.nx = 0; this.nz = 1;   // the helicopter: state, seconds in it, bearing from the bow, distance, height
     this.podHits = 0; this.broken = false; this.struck = false; this.rocketT = DECK.rocket.first;
     this.rockets = []; for (let i = 0; i < 6; i++) this.rockets.push({ on: false, t: 0, T: 1, sx: 0, sy: 0, sz: 0, x: 0, y: 0, z: 0, w: 0, lift: 0 });
-    this.input = { ay: 0, ap: 0.12, fire: false, flare: false }; this.flareHeld = false;
+    this.input = { ay: 0, ap: 0.12, fire: false, flare: false, lane: 0 }; this.flareHeld = false;
+    this.laneOff = 0; this.lane = 0; this.passLane = 0; this.laneMoving = false;   // helm-dodge: metres to starboard, the lane that offset is in, the lane the pass committed to
     this.mag = DECK.gun[0].mag; this.cool = 0; this.reload = 0; this.flares = 0; this.breach = { on: false, t: 0, x: 0, z: 0, hit: false, devour: false, called: false };
     this.fin = 0;                                                    // the megalodon's fin: its bearing round the boat (radians), for the picture
     this.shots = 0; this.hits = 0; this.weak = 0; this.down = 0; this.taken = 0; this.stuns = 0; this.bites = 0; this.wasted = 0; this.breaks = 0; this.passes = 0; this.safeT = -1e9; this.cripT = 0;
@@ -90,9 +144,25 @@ export class DeckFight {
     else { const k = this.st === 'pass' ? 1 : Math.sign(this.r || 1); this.nx = Math.sin(a) * k; this.nz = -Math.cos(a) * k; }                                                   // toward the boat, and on through
   }
   part(name, out = {}) { const P = DECK[name]; if (name === 'pod') { out.x = this.x + this.nx * P.ahead; out.y = this.y - P.down; out.z = this.z + this.nz * P.ahead; } else if (name === 'tail') { out.x = this.x - this.nx * P.back; out.y = this.y + P.up; out.z = this.z - this.nz * P.back; } else { out.x = this.x; out.y = this.y; out.z = this.z; } return out; }
-  gunAt(out = {}) { const b = this.me; out.x = b.x - Math.sin(b.h) * HAWK.gun.ahead; out.y = HAWK.gun.up; out.z = b.z + Math.cos(b.h) * HAWK.gun.ahead; return out; }
+  gunAt(out = {}) {
+    const b = this.me;
+    out.x = b.x - Math.sin(b.h) * HAWK.gun.ahead; out.y = HAWK.gun.up; out.z = b.z + Math.cos(b.h) * HAWK.gun.ahead;
+    // a lane of 0 adds nothing, so the gun stays on the numbers the fight had before helm-dodge
+    const lat = this.laneOff;
+    if (lat) { out.x += -Math.cos(b.h) * lat; out.z += -Math.sin(b.h) * lat; }
+    return out;
+  }
+  // slide toward the lane the player asked for. The ring (the race boat) is not moved.
+  helm() {
+    const half = this.race && this.race.c && this.race.c.halfWidth > 0 ? this.race.c.halfWidth : HAWK.halfWidth;
+    const prev = this.laneOff;
+    this.laneOff = stepLane(prev, laneCentre(this.input && this.input.lane, half), half);
+    this.lane = helmLane(this.laneOff, half);
+    this.laneMoving = this.laneOff !== prev;
+  }
 
   step() {
+    this.helm();
     const race = this.race, b = this.me, T = race.lapT;
     b.pace = HAWK.pace;
     if (!race.racing) { this.place(); return; }
@@ -110,13 +180,19 @@ export class DeckFight {
     const D = DECK, h = this.half - 1, ease = (v, to, k) => v + (to - v) * Math.min(1, k * DT); this.t += DT;
     if (this.st === 'orbit') {
       this.th = wrapA(this.th + this.dir * D.orbit.w * DT); this.r = ease(this.r, D.far.r, 1.2); this.y = ease(this.y, D.far.y, 1.2);
-      if (this.t >= D.orbit.s[h]) { this.st = 'aim'; this.t = 0; this.podHits = 0; this.broken = false; this.struck = false; this.passes++; this.ev({ type: 'dAim', need: this.need }); }
+      if (this.t >= D.orbit.s[h]) { this.st = 'aim'; this.t = 0; this.podHits = 0; this.broken = false; this.struck = false; this.passes++; this.passLane = this.lane; this.ev({ type: 'dAim', need: this.need }); }
     } else if (this.st === 'aim') {
       this.y = ease(this.y, 26, 1.6);
       if (this.t >= D.pass.aimS) { this.st = 'pass'; this.t = 0; this.r0 = this.r; this.ev({ type: 'dPass' }); }
     } else if (this.st === 'pass') {
       const k = Math.min(1, this.t / D.pass.s); this.r = this.r0 * (1 - 2 * k); this.y = D.pass.low + (26 - D.pass.low) * Math.abs(1 - 2 * k) ** 1.5;
-      if (!this.struck && !this.broken && Math.abs(this.r) < D.pass.hitR) { this.struck = true; const hit = this.strike(1); this.ev({ type: 'dStrafe', hit, hull: this.hull }); }
+      if (!this.struck && !this.broken && Math.abs(this.r) < D.pass.hitR) {
+        this.struck = true;
+        // the pass was announced on passLane. A boat that has left that lane takes none of this strafe.
+        // staying on it, which is the middle lane when the player never shifts, calls strike exactly as before.
+        const hit = this.lane !== this.passLane ? false : this.strike(1);
+        this.ev({ type: 'dStrafe', hit, hull: this.hull });
+      }
       if (k >= 1) { this.th = wrapA(this.th + Math.PI); this.r = -this.r; this.dir = -this.dir; this.st = 'orbit'; this.t = 0; }
     } else if (this.st === 'stun') {
       this.r = ease(this.r, D.stun.r, 1.5); this.y = ease(this.y, D.stun.y, 1.8); this.th = wrapA(this.th + 0.05 * DT);
