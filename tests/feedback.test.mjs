@@ -8,6 +8,7 @@ import {
   HAPTIC_PRIORITY, HAPTIC_PROFILES, VIBRATE_PATTERNS, PLAYER_GESTURES, FLASH_DEFAULT, FLASH_MAX, VIGNETTE_MS,
   SHAKE_METRES, CLASSIC_ROLL, DEFAULT_FEEDBACK_SETTINGS, normalizeSettings, scaleFlash, scalePulse,
   readActuator, canVibrate, createPulseQueue, createFeedback, edgeAnchor, bearingDir, shakePose,
+  mergeHaptics, withFirstStep, getActuator,
 } from '../src/ui/feedback.mjs';
 import { deckHapticName, deckEdge, deckDirection } from '../src/ui/crest-feedback.mjs';
 import { freshSave } from '../src/sim/progress.mjs';
@@ -261,4 +262,112 @@ test('deck events map onto the shared profiles and a directional edge', () => {
   assert.match(edgeCss, /#h-edge\.hit \{ animation: edge 250ms ease-out 1; \}/);
   assert.match(edgeCss, /--hit-angle/);
   assert.doesNotMatch(edgeCss, /infinite|alternate/);
+  assert.match(feedbackSrc, /2 a second/);
+  assert.match(feedbackSrc, /never be applied to the XR camera/);
+});
+
+test('a game can merge its own profiles and ranks without changing the Crest defaults', () => {
+  const crestHit = HAPTIC_PRIORITY.hit;
+  const crestRocket = HAPTIC_PROFILES.rocket.steps[0].value;
+  const merged = mergeHaptics({
+    priorities: { block: 1, hit: 2, punish: 3, ko: 4, speed: 'fast' },
+    profiles: {
+      jab: { priority: 'hit', hands: 'fire', steps: [{ value: 0.2, duration: 25 }] },
+      block: { priority: 'block', hands: 'both', steps: [{ value: 0.3, duration: 40 }] },
+      punish: { priority: 'punish', hands: 'fire', steps: [{ value: 0.7, duration: 80 }] },
+      ko: { priority: 'ko', hands: 'both', steps: [{ value: 1, duration: 160 }, { value: 0.4, duration: 80 }] },
+      broken: { timeScale: 1 },
+    },
+    vibratePatterns: { ko: [160, 40, 80], jab: 'no' },
+    timeScale: 0.2,
+  });
+  assert.equal(HAPTIC_PRIORITY.hit, crestHit);
+  assert.equal(HAPTIC_PROFILES.rocket.steps[0].value, crestRocket);
+  assert.ok(merged.priorities.ko > merged.priorities.punish);
+  assert.ok(merged.priorities.punish > merged.priorities.hit);
+  assert.ok(merged.priorities.hit > merged.priorities.block);
+  assert.equal(merged.priorities.shot, 1);
+  assert.equal(merged.priorities.speed, undefined);
+  assert.equal(merged.profiles.jab.steps[0].duration, 25);
+  assert.equal(merged.profiles.shot.steps[0].value, 0.15);
+  assert.equal(merged.profiles.broken, undefined);
+  assert.deepEqual([...merged.patterns.ko], [160, 40, 80]);
+  assert.equal(merged.patterns.jab, undefined);
+  assert.equal(merged.timeScale, undefined);
+  const pulses = [];
+  const actuator = { pulse(v, ms) { pulses.push([v, ms]); } };
+  const ff = createFeedback({
+    profiles: merged.profiles,
+    priorities: merged.priorities,
+    vibratePatterns: { ko: [160, 40, 80] },
+    ios: () => false,
+    vibrate: () => false,
+  });
+  ff.play('punish', { xr: true, sources: [{ gamepad: { hapticActuators: [actuator] } }], now: 0 });
+  ff.play('block', { xr: true, sources: [{ gamepad: { hapticActuators: [actuator] } }], now: 10 });
+  ff.play('ko', { xr: true, sources: [{ gamepad: { hapticActuators: [actuator] } }], now: 20 });
+  assert.deepEqual(pulses[0], [0.7, 80]);
+  assert.deepEqual(pulses.at(-1), [1, 160]);
+  ff.tick(20 + 160);
+  assert.deepEqual(pulses.at(-1), [0.4, 80]);
+  const buzz = [];
+  const phone = createFeedback({
+    profiles: { ko: merged.profiles.ko },
+    priorities: { ko: 4 },
+    vibratePatterns: { ko: [160, 40, 80] },
+    ios: () => false,
+    vibrate: (pattern) => { buzz.push(pattern); return true; },
+  });
+  assert.deepEqual(phone.play('ko', { now: 0 }).pattern, [160, 40, 80]);
+  assert.equal(phone.play('shot', { now: 0 }).reason, 'none');
+  assert.deepEqual(buzz, [[160, 40, 80]]);
+});
+
+test('value and duration override only the first step, and a disabled override does not throw', () => {
+  const pulses = [];
+  const actuator = { pulse(v, ms) { pulses.push([v, ms]); } };
+  const source = { gamepad: { hapticActuators: [actuator] } };
+  const fb = createFeedback({ ios: () => false, vibrate: () => false });
+  fb.play('ram', { xr: true, sources: [source], value: 0.55, duration: 80, now: 0 });
+  assert.deepEqual(pulses[0], [0.55, 80]);
+  fb.tick(80);
+  assert.deepEqual(pulses[1], [0.4, 150]);
+  fb.play('shot', { xr: true, sources: [source], value: 4, duration: -3, now: 1000 });
+  assert.deepEqual(pulses.at(-1), [1, 20]);
+  const shaped = withFirstStep(HAPTIC_PROFILES.ram, { value: 0.2, duration: 30 });
+  assert.equal(shaped.steps[0].value, 0.2);
+  assert.equal(shaped.steps[0].duration, 30);
+  assert.equal(shaped.steps[1].value, 0.4);
+  assert.equal(HAPTIC_PROFILES.ram.steps[0].value, 1);
+  fb.configure({ haptics: 'off' });
+  assert.doesNotThrow(() => {
+    const quiet = fb.play('ram', { xr: true, sources: [null, { get gamepad() { throw new Error('gone'); } }], value: { bad: true }, duration: 'nope', now: 2000 });
+    assert.equal(quiet.reason, 'off');
+  });
+  assert.equal(pulses.length, 3);
+});
+
+test('left and right select a hand, and an index still addresses sources', () => {
+  const left = [], right = [], hooked = [];
+  const sources = [
+    { handedness: 'left', gamepad: { hapticActuators: [{ pulse(v, ms) { left.push([v, ms]); } }] } },
+    { handedness: 'right', gamepad: { hapticActuators: [{ pulse(v, ms) { right.push([v, ms]); } }] } },
+  ];
+  const fb = createFeedback({ ios: () => false, vibrate: () => false });
+  fb.play('shot', { xr: true, sources, hand: 'right', now: 0 });
+  assert.deepEqual(right, [[0.15, 20]]);
+  assert.deepEqual(left, []);
+  fb.play('shot', { xr: true, sources, hand: 0, now: 100 });
+  assert.deepEqual(left, [[0.15, 20]]);
+  assert.equal(getActuator('left', sources), sources[0].gamepad.hapticActuators[0]);
+  assert.equal(getActuator('missing', [{ get gamepad() { throw new Error('no pad'); } }]), null);
+  assert.doesNotThrow(() => fb.play('shot', { xr: true, sources: [{ gamepad: null }], hand: 'left', now: 200 }));
+  const viaHook = createFeedback({
+    ios: () => false,
+    vibrate: () => false,
+    getActuator(hand) { return hand === 'right' ? { pulse(v, ms) { hooked.push([v, ms]); } } : null; },
+  });
+  viaHook.play('shot', { xr: true, sources, hand: 'right', now: 0 });
+  assert.deepEqual(hooked, [[0.15, 20]]);
+  assert.equal(right.length, 1);
 });

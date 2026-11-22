@@ -3,9 +3,14 @@
 // createFeedback(), then play() with a profile name, that game's own XR input
 // sources, and its own settings object. Nothing here imports Crest Run.
 //
+// A second game passes profiles, priorities and vibratePatterns to merge over
+// the Crest defaults. play(name, { value, duration }) replaces only the first
+// step. hand may be an index or 'left' / 'right'.
+//
 // A missing actuator, vibrate(), or gamepad is a no-op. Game state must not
 // depend on a pulse landing. Repeated pulse() calls overwrite each other, so
-// the queue lets the stronger one speak: hit, then ram, then shot.
+// the queue lets the stronger one speak: hit, then ram, then shot, unless a
+// game passes its own ranks.
 
 export const HAPTIC_PRIORITY = Object.freeze({ shot: 1, ram: 2, hit: 3 });
 
@@ -130,14 +135,98 @@ export function canVibrate(nav) {
   }
 }
 
+// hand is a numeric index into sources, or 'left' / 'right' matching
+// XRInputSource.handedness. A number still falls back to the first source.
+// A named hand that is not in the list returns null, so the other hand is
+// not pulsed by mistake.
+export function pickSource(sources, hand) {
+  const list = Array.isArray(sources) ? sources : [];
+  if (hand === 'left' || hand === 'right') return list.find((source) => source && source.handedness === hand) || null;
+  if (Number.isFinite(hand)) return list[hand] || list[0] || null;
+  return list[0] || null;
+}
+
+export function getActuator(hand, sources) {
+  try {
+    return readActuator(pickSource(sources, hand));
+  } catch (e) {
+    return null;
+  }
+}
+
 function copySteps(profile) {
   return profile.steps.map((s) => ({ value: s.value, duration: s.duration }));
 }
 
+function normalizeProfile(raw) {
+  if (!raw || typeof raw !== 'object' || !Array.isArray(raw.steps) || !raw.steps.length) return null;
+  const steps = [];
+  for (const item of raw.steps) {
+    const value = Number(item && item.value);
+    const duration = Number(item && item.duration);
+    if (!Number.isFinite(value) || !Number.isFinite(duration) || duration <= 0) return null;
+    steps.push(Object.freeze({ value: clamp(value, 0, 1), duration }));
+  }
+  return Object.freeze({
+    priority: typeof raw.priority === 'string' && raw.priority ? raw.priority : 'shot',
+    hands: raw.hands === 'both' ? 'both' : 'fire',
+    steps: Object.freeze(steps),
+  });
+}
+
+// Copies the Crest tables and overlays a game's own names. A key replaces the
+// same key; every other Crest profile, rank and vibrate pattern stays. Keys
+// that are not a rank, a profile or a duration list are ignored, including a
+// game-speed field. The exported defaults are not mutated.
+export function mergeHaptics(extra = {}) {
+  const src = extra && typeof extra === 'object' ? extra : {};
+  const priorities = { ...HAPTIC_PRIORITY };
+  if (src.priorities && typeof src.priorities === 'object') {
+    for (const [name, rank] of Object.entries(src.priorities)) {
+      if (Number.isFinite(rank)) priorities[name] = rank;
+    }
+  }
+  const profiles = { ...HAPTIC_PROFILES };
+  if (src.profiles && typeof src.profiles === 'object') {
+    for (const [name, profile] of Object.entries(src.profiles)) {
+      const next = normalizeProfile(profile);
+      if (next) profiles[name] = next;
+    }
+  }
+  const patterns = { ...VIBRATE_PATTERNS };
+  if (src.vibratePatterns && typeof src.vibratePatterns === 'object') {
+    for (const [name, pattern] of Object.entries(src.vibratePatterns)) {
+      if (Array.isArray(pattern) && pattern.length && pattern.every((n) => Number.isFinite(n) && n >= 0)) patterns[name] = Object.freeze([...pattern]);
+    }
+  }
+  return { priorities, profiles, patterns };
+}
+
+// value and duration replace the first pulse only. Later steps (a ram's
+// after-pulse, a sink's later beats) stay on the profile. A bad number is
+// ignored. Intensity is clamped to 0..1.
+export function withFirstStep(profile, ctx = {}) {
+  const value = Number(ctx && ctx.value);
+  const duration = Number(ctx && ctx.duration);
+  const useValue = Number.isFinite(value);
+  const useDuration = Number.isFinite(duration) && duration > 0;
+  if (!profile || (!useValue && !useDuration)) return profile;
+  const steps = copySteps(profile);
+  if (!steps.length) return profile;
+  if (useValue) steps[0].value = clamp(value, 0, 1);
+  if (useDuration) steps[0].duration = duration;
+  return { priority: profile.priority, hands: profile.hands, steps };
+}
+
 // One channel per actuator. A higher rank replaces what is playing. An equal
 // or lower rank waits, and a second event of a rank that is already waiting
-// is dropped so a stream of shots cannot pile up behind a hit.
-export function createPulseQueue() {
+// is dropped so a stream of shots cannot pile up behind a hit. priorities
+// defaults to the Crest order; a game passes its own map.
+export function createPulseQueue(priorities = HAPTIC_PRIORITY) {
+  const rankOf = (profile) => {
+    const n = priorities[profile && profile.priority];
+    return Number.isFinite(n) ? n : 0;
+  };
   const channels = new Map();
   function state(key) {
     let s = channels.get(key);
@@ -150,7 +239,7 @@ export function createPulseQueue() {
   return {
     keys() { return [...channels.keys()]; },
     offer(key, profile, now) {
-      const rank = HAPTIC_PRIORITY[profile.priority] || 0;
+      const rank = rankOf(profile);
       const steps = copySteps(profile);
       const s = state(key);
       const idle = now >= s.until && !s.next;
@@ -200,7 +289,9 @@ function safePulse(actuator, value, duration) {
 
 // dir.x > 0 is to the player's right. dir.y > 0 is up. The anchor is where the
 // colour sits: a CSS percentage, and a gradient angle whose last stop is that
-// edge. 0 degrees is up. One fade of VIGNETTE_MS, not a loop.
+// edge. 0 degrees is up. One fade of VIGNETTE_MS, not a loop. showEdge does
+// not rate-limit: the caller keeps flashes inside its studio budget, at most
+// 2 a second in any 10° of the view, and never a full-field white or red.
 export function edgeAnchor(dir) {
   const x = clamp(Number(dir && dir.x) || 0, -1, 1);
   const y = clamp(Number(dir && dir.y) || 0, -1, 1);
@@ -236,9 +327,9 @@ export function bearingDir(from, to) {
   return { x: clamp(right / len, -1, 1), y: clamp(ahead >= 0 ? 0.45 : -0.7, -1, 1) };
 }
 
-// Translation is in deck axes: x right, y up, z forward. roll is the old
-// phone camera roll, in radians, before the sin. In XR, roll is always 0:
-// the cabin may move, the horizon may not.
+// Translation is in deck axes: x right, y up, z forward. The offset may move
+// a prop, a panel, or the Crest deck rig. It must never be applied to the XR camera or the reference space.
+// roll is the old phone camera roll, in radians, before the sin. In XR, roll is always 0.
 export function shakePose(amount, time, settings, opts = {}) {
   const s = normalizeSettings(settings);
   const mag = Math.max(0, Number(amount) || 0);
@@ -267,10 +358,12 @@ function defaultVibrate(pattern) {
 
 export function createFeedback(options = {}) {
   const settings = normalizeSettings(options.settings);
-  const pulseQueue = createPulseQueue();
+  const tables = mergeHaptics(options);
+  const pulseQueue = createPulseQueue(tables.priorities);
   const isIos = typeof options.ios === 'function' ? options.ios : () => !!options.ios;
   const iosTap = typeof options.iosTap === 'function' ? options.iosTap : () => {};
   const vibrate = typeof options.vibrate === 'function' ? options.vibrate : defaultVibrate;
+  const actuatorHook = typeof options.getActuator === 'function' ? options.getActuator : null;
   const clock = typeof options.now === 'function' ? options.now : () => (typeof performance !== 'undefined' ? performance.now() : Date.now());
   const buzz = { rank: 0, until: 0, wait: [] };
   let comfortAmt = 0;
@@ -279,13 +372,17 @@ export function createFeedback(options = {}) {
   function enabled() {
     return settings.haptics === 'on' && settings.hapticStrength > 0;
   }
+  function rankOf(profile) {
+    const n = tables.priorities[profile && profile.priority];
+    return Number.isFinite(n) ? n : 0;
+  }
   function offerBuzz(name, now) {
-    const pattern = VIBRATE_PATTERNS[name];
-    const profile = HAPTIC_PROFILES[name];
+    const pattern = tables.patterns[name];
+    const profile = tables.profiles[name];
     if (!pattern || !profile) return { action: 'skip' };
     const played = scalePattern(pattern, settings.hapticStrength);
     const dur = played.reduce((sum, ms) => sum + ms, 0);
-    const rank = HAPTIC_PRIORITY[profile.priority] || 0;
+    const rank = rankOf(profile);
     const idle = now >= buzz.until;
     if (idle || rank > buzz.rank) {
       buzz.rank = rank;
@@ -306,6 +403,15 @@ export function createFeedback(options = {}) {
     if (ok === false) return { played: false, via: 'vibrate', reason: 'missing' };
     return { played: true, via: 'vibrate', pattern: decision.pattern };
   }
+  function oneActuator(hand, list) {
+    if (actuatorHook) {
+      try {
+        const custom = actuatorHook(hand, list);
+        if (custom && typeof custom.pulse === 'function') return custom;
+      } catch (e) { /* the named hand is missing */ }
+    }
+    return getActuator(hand, list);
+  }
   function sendPulse(profile, sources, hand, now) {
     const list = Array.isArray(sources) ? sources : [];
     const chosen = [];
@@ -315,9 +421,7 @@ export function createFeedback(options = {}) {
         if (actuator && !chosen.includes(actuator)) chosen.push(actuator);
       }
     } else {
-      const index = Number.isFinite(hand) ? hand : 0;
-      const source = list[index] || list[0];
-      const actuator = readActuator(source);
+      const actuator = oneActuator(hand, list);
       if (actuator) chosen.push(actuator);
     }
     if (!chosen.length) return null;
@@ -343,25 +447,26 @@ export function createFeedback(options = {}) {
     },
     play(name, ctx = {}) {
       try {
-        const profile = HAPTIC_PROFILES[name];
+        const call = ctx && typeof ctx === 'object' ? ctx : {};
+        const profile = withFirstStep(tables.profiles[name], call);
         if (!profile) return { played: false, reason: 'unknown' };
         if (!enabled()) return { played: false, reason: 'off' };
-        const now = Number.isFinite(ctx.now) ? ctx.now : clock();
+        const now = Number.isFinite(call.now) ? call.now : clock();
         // iPhone has no Vibration API. The switch tap only lands inside the
         // gesture that fired or flared, and a hit never schedules one for later.
         if (isIos()) {
-          if (ctx.gesture && PLAYER_GESTURES.includes(name)) {
+          if (call.gesture && PLAYER_GESTURES.includes(name)) {
             try { iosTap(); } catch (e) { /* no switch tap here */ }
             return { played: true, via: 'ios' };
           }
           return { played: false, via: 'ios', reason: 'visual' };
         }
-        if (ctx.iosOnly) return { played: false, reason: 'ios-only' };
-        if (ctx.xr) {
-          const pulsed = sendPulse(profile, ctx.sources, ctx.hand, now);
+        if (call.iosOnly) return { played: false, reason: 'ios-only' };
+        if (call.xr) {
+          const pulsed = sendPulse(profile, call.sources, call.hand, now);
           if (pulsed && pulsed.handled) return pulsed;
         }
-        if (!VIBRATE_PATTERNS[name]) return { played: false, reason: 'none' };
+        if (!tables.patterns[name]) return { played: false, reason: 'none' };
         return sendBuzz(name, now);
       } catch (e) {
         return { played: false, reason: 'error' };
