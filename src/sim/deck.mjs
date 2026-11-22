@@ -16,8 +16,8 @@
 // Pure (no DOM, no three.js), fixed step, seeded; it runs on a Race in free mode like sim/leviathan.mjs. Every number is
 // tuned with the stand-in gunner below, never by a person. Tests: tests/deck.test.mjs.
 // Written 2026-11-17 by the yacht project session.
-import { DT, Race } from './race-sim.mjs?v=b016c49c';
-import { buildCourse, wrapA } from './courses.mjs?v=b016c49c';
+import { DT, Race } from './race-sim.mjs?v=4881be4d';
+import { buildCourse, wrapA } from './courses.mjs?v=4881be4d';
 
 const DEG = Math.PI / 180;
 const clamp = (v, lo, hi) => (v < lo ? lo : v > hi ? hi : v);

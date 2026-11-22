@@ -5,8 +5,8 @@
 // The owner's approved ivory/teal/red/gold palette and existing sail emblem are reused.
 // Bow +z, waterline y=0, +x port. Actual Captain Jack is seated by Stage; no engine or duplicate lookout.
 import * as THREE from 'three';
-import { JUKUNG_SPEC, JUKUNG_SPAN } from '../sim/jukung-spec.mjs?v=b016c49c';
-import { Parts, at, bar, COL as TOUR_COL, makeLookout } from './jukung.mjs?v=b016c49c';
+import { JUKUNG_SPEC, JUKUNG_SPAN } from '../sim/jukung-spec.mjs?v=4881be4d';
+import { Parts, at, bar, COL as TOUR_COL, makeLookout } from './jukung.mjs?v=4881be4d';
 
 const clamp = (v, lo, hi) => (v < lo ? lo : v > hi ? hi : v);
 const COL = { ...TOUR_COL, white: TOUR_COL.cream, blue: TOUR_COL.teal };

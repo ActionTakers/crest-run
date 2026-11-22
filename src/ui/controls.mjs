@@ -4,7 +4,7 @@
 // Covers the tilt edge cases of the F1 analysis: a permission prompt that answers late or never (INPUT-04), sensor events that arrive late
 // (INPUT-03: offered, never switched silently), a phone lying flat (INPUT-11), a recentre that does not jump (INPUT-10).
 // Written 2026-11-13 by the yacht project session.
-import { TiltInput } from '../sim/tilt-input.mjs?v=b016c49c';
+import { TiltInput } from '../sim/tilt-input.mjs?v=4881be4d';
 
 const clamp = (v, lo, hi) => (v < lo ? lo : v > hi ? hi : v);
 const now = () => performance.now();
