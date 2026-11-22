@@ -19,6 +19,8 @@ import * as PR from '../src/sim/progress.mjs';
 import * as bay from '../src/ui/bay-flow.mjs';
 import * as lesson from '../src/sim/sailing-lesson.mjs';
 import { TiltInput } from '../src/sim/tilt-input.mjs';
+import { createFeedback, showEdge } from '../src/ui/feedback.mjs';
+import { deckHapticName, deckEdge, deckDirection } from '../src/ui/crest-feedback.mjs';
 import { sailingForces } from '../src/sim/sailing.mjs';
 
 const read = path => fs.readFileSync(new URL('../' + path, import.meta.url), 'utf8');
@@ -117,6 +119,7 @@ async function createGame({ edition = 'bay', query = '', storage = new Map() } =
     LIVERIES: liveries, LIVERY_KEYS: Object.keys(liveries),
     WORLDS: { sunset: { label: 'Sunset', zenith: [1, 1, 1], horizon: [1, 1, 1], scatter: [1, 1, 1] } },
     document, window, location: { search: query, hostname: 'example.test' }, URL, URLSearchParams,
+    createFeedback, showEdge, deckHapticName, deckEdge, deckDirection,
     Element: Node, performance, console, navigator: {}, setTimeout: () => 0, clearTimeout() {},
     requestAnimationFrame: fn => frames.push(fn), confirm: () => false,
   });
@@ -225,7 +228,12 @@ test('real voyage results retain the beach gate, reflection returns to bay, and 
 
 test('settings return to their title, hub or pause origin; recalibration keeps the bay route', async () => {
   const h = await createGame();
+  const speed = h.G.timeScale;
   await h.emit('b-title-settings'); assert.equal(h.G.screen, 'settings');
+  assert.equal(h.G.timeScale, speed);
+  assert.equal(h.get('set-flash').value, '0.15');
+  assert.equal(h.get('set-shake').value, '100');
+  assert.equal(h.get('h-comfort').id, 'h-comfort');
   await h.emit('b-set-done'); assert.equal(h.G.screen, 'title');
   await h.start(); await h.emit('bay-settings'); assert.equal(h.G.screen, 'settings');
   await h.emit('b-set-done'); assertBay(h);

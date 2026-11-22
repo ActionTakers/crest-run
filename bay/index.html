@@ -26,6 +26,7 @@
 
 <div id="hud" class="layer hidden" aria-live="off">
   <div id="h-edge"></div>
+  <div id="h-comfort"></div>
   <div id="h-prog"><i id="h-prog-me"></i></div>
   <div id="h-pos"><b id="h-place">1</b><span id="h-of">/4</span><small id="h-lap">LAP 1/2</small></div>
   <div id="h-clock"><b id="h-time">0:00.0</b><small id="h-gap"></small></div>
@@ -241,6 +242,13 @@
         <label>Reverse tilt<div class="chips" data-set="invert"><button data-v="false">Off</button><button data-v="true">On</button></div></label>
         <label>Camera<div class="chips" data-set="camera"><button data-v="chase">Chase</button><button data-v="high">High</button><button data-v="low">Low</button></div></label>
         <label>Camera motion<div class="chips" data-set="motion"><button data-v="full">Full</button><button data-v="calm">Calm</button></div></label>
+        <label>Screen shake<div class="chips" data-set="shake"><button data-v="on">On</button><button data-v="off">Off</button></div></label>
+        <label><span>Shake strength <b id="set-shake-v">100</b>%</span><input id="set-shake" type="range" min="0" max="100" step="5" value="100"></label>
+        <label>Shake style<div class="chips" data-set="shakeStyle"><button data-v="rig">Deck</button><button data-v="classic">Classic</button></div></label>
+        <label>Comfort vignette<div class="chips" data-set="vignette"><button data-v="on">On</button><button data-v="off">Off</button></div></label>
+        <label><span>Hit flash <b id="set-flash-v">0.15</b></span><input id="set-flash" type="range" min="0" max="0.3" step="0.01" value="0.15"></label>
+        <label>Haptics<div class="chips" data-set="haptics"><button data-v="on">On</button><button data-v="off">Off</button></div></label>
+        <label><span>Haptic strength <b id="set-haptic-v">100</b>%</span><input id="set-haptic" type="range" min="0" max="100" step="5" value="100"></label>
         <label>Sound<div class="chips" data-set="sound"><button data-v="true">On</button><button data-v="false">Off</button></div></label>
         <label>Music<div class="chips" data-set="music"><button data-v="true">On</button><button data-v="false">Off</button></div></label>
         <label>Picture quality<div class="chips" data-set="quality"><button data-v="auto">Auto</button><button data-v="low">Low</button><button data-v="mid">Mid</button><button data-v="high">High</button></div></label>

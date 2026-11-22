@@ -18,6 +18,7 @@ import { LeviathanView } from './leviathan-view.mjs?v=4881be4d';
 import { DeckView } from './deck-view.mjs?v=4881be4d';
 import { FLEET } from './fleet.mjs?v=4881be4d';
 import { Dash } from './dash.mjs?v=4881be4d';
+import { shakePose, DEFAULT_FEEDBACK_SETTINGS } from '../ui/feedback.mjs?v=4881be4d';
 import { makeJukung, tickJukung } from './jukung.mjs?v=4881be4d';
 import { loadMonkeykingBoat, bindMonkeykingBoat, tickMonkeykingBoat } from './jukung-model.mjs?v=4881be4d';
 import { makeRacingJukung, tickRacingJukung } from './jukung-racing.mjs?v=4881be4d';
@@ -77,6 +78,7 @@ export class Stage {
     this.yacht = null; this.world = null; this.worldKey = null; this.course = null; this.race = null;
     this.tierKey = 'mid'; this.tier = TIERS.mid; this.dpr = 1; this.cssW = 2; this.cssH = 2; this.scale = 1;
     this.cam = { key: 'chase', h: null, y: 0, fov: 60, shake: 0, drop: 0, dip: 0, motion: 1, orbit: 0, mode: 'chase', t: 0 };
+    this.feedback = { ...DEFAULT_FEEDBACK_SETTINGS };   // hit shake, flash, haptics, comfort vignette (ui/feedback.mjs). Not game speed.
     this.fx = { flash: 0, flashCol: [1, 1, 1], bloomPulse: 0, speed: 0, blur: 0 };
     this.time = 0; this.focus = 0; this.lookAt = null;   // lookAt: the bearing the jukung's lookout points at (radians from the bow), or null
     this.jack = null; this.jackAt = null; this.jackId = null;   // Little Captain Jack of the voyages and where he is ('bow', 'boat', 'beach'): setJack
@@ -185,7 +187,9 @@ export class Stage {
         c.addEventListener('selectstart', () => { I.fire = true; I.hand = i; I.pulls++; }); c.addEventListener('selectend', () => { if (I.hand === i) I.fire = false; });
         c.addEventListener('squeezestart', () => { I.flare = true; }); this.scene.add(c); return c; });
     }
-    this.xrInput.fire = false; this.xrInput.flare = false; this.xrRig.add(this.dash.mesh); this.dash.mesh.position.set(0, 1.02, -0.72); this.dash.mesh.rotation.set(-0.7, 0, 0); this.dash.mesh.scale.setScalar(1.5);
+    this.xrInput.fire = false; this.xrInput.flare = false; this.xrRig.add(this.dash.mesh);
+    this.dashHome = { x: 0, y: 1.02, z: -0.72 };
+    this.dash.mesh.position.set(this.dashHome.x, this.dashHome.y, this.dashHome.z); this.dash.mesh.rotation.set(-0.7, 0, 0); this.dash.mesh.scale.setScalar(1.5);
     this.xr = true; this.xrBase = null; return r.xr.setSession(session).then(() => { this.xrBase = r.xr.getReferenceSpace(); });
   }
   exitXr() {
@@ -318,6 +322,27 @@ export class Stage {
     return Promise.all(waits);       // the film waits for the figures, a player does not
   }
   setCamera(key, motion = 1) { if (CAMS[key]) this.cam.key = key; this.cam.motion = motion; }
+  // 0 when shake is off, otherwise the strength slider. Chase-camera shake uses this.
+  // The deck uses shakePose, which also knows Classic roll from XR translation.
+  shakeScale() {
+    const f = this.feedback;
+    if (!f) return 1;
+    if (f.shake === 'off' || f.shake === false) return 0;
+    const k = Number(f.shakeStrength);
+    return Number.isFinite(k) ? Math.max(0, Math.min(1, k)) : 1;
+  }
+  // Move the boat and, in a headset, the panel. The reference space is left
+  // alone, so the horizon does not roll. pose is in deck axes (x right, y up, z forward).
+  applyDeckImpact(B, pose) {
+    const h = B && B.h || 0;
+    const x = pose.x * Math.cos(h) + pose.z * -Math.sin(h);
+    const y = pose.y;
+    const z = pose.x * Math.sin(h) + pose.z * Math.cos(h);
+    if (this.deckView && this.deckView.impact) this.deckView.impact.set(x, y, z);
+    const vis = this.boats[this.focus] && this.boats[this.focus].vis;
+    if (vis && vis.group) { vis.group.position.x += x; vis.group.position.y += y; vis.group.position.z += z; }
+    if (this.xr && this.dash && this.dash.mesh && this.dashHome) this.dash.mesh.position.set(this.dashHome.x + pose.x, this.dashHome.y + pose.y, this.dashHome.z + pose.z);
+  }
   setCameraMode(mode) { if (this.cam.mode !== mode) { this.cam.mode = mode; this.cam.t = 0; } }
   // ---------- events from the simulation: flashes, bursts, gate colours ----------
   onEvent(e) {
@@ -414,7 +439,17 @@ export class Stage {
     const cam = this.camera, C = CAMS[this.cam.key] || CAMS.chase, S = this.cam, P = b.P, mo = S.motion;
     S.t += dt;
     // in the headset the camera is the headset's: only the rig it rides on is placed, on the foredeck, turning with the boat
-    if (this.xr) { this.deckView.placeRig(this.xrRig, B, dt); this.xrSpace(); this.deckView.hand = this.deck ? this.xrHands[this.xrInput.hand] || null : null; this.dash.mesh.visible = !!this.dash.values; S.shake = Math.max(0, S.shake - dt * 2.4); S.h = null; return; }
+    // The headset camera is the player's head. Shake moves the deck and the panel,
+    // never the reference space, and never rolls the view.
+    if (this.xr) {
+      if (this.xrRig) this.deckView.placeRig(this.xrRig, B, dt);
+      this.xrSpace();
+      this.deckView.hand = this.deck ? this.xrHands[this.xrInput.hand] || null : null;
+      this.dash.mesh.visible = !!this.dash.values;
+      S.shake = Math.max(0, S.shake - dt * 2.4);
+      this.applyDeckImpact(B, this.deck ? shakePose(S.shake, S.t, this.feedback, { xr: true }) : { x: 0, y: 0, z: 0, roll: 0 });
+      S.h = null; return;
+    }
     // test and film hook: a fixed camera { pos: [x, y, z], look: [x, y, z], fov }
     if (this.debugCam) { const D = this.debugCam; cam.position.fromArray(D.pos); this.look.fromArray(D.look); cam.up.set(0, 1, 0); cam.lookAt(this.look); if (cam.fov !== (D.fov || 50)) { cam.fov = D.fov || 50; cam.updateProjectionMatrix(); } S.h = null; return; }
     // film hook: a camera that travels with the boat { ahead, right, up (metres from its middle), lookAhead, lookRight, lookUp, fov }
@@ -433,8 +468,16 @@ export class Stage {
       if (Math.abs(cam.fov - 42) > 0.05) { cam.fov = 42; cam.updateProjectionMatrix(); }
       S.h = null; return;
     }
-    // on the deck: at the gunner's eyes, looking along the gun (view/deck-view.mjs); a hit shakes the view a little
-    if (this.deck) { this.deckView.placeCamera(cam, B, dt, this.look); S.shake = Math.max(0, S.shake - dt * 2.4); if (S.shake > 0) cam.rotateZ(0.012 * S.shake * Math.sin(S.t * 71)); this.dash.mesh.visible = false; S.h = null; return; }
+    // on the deck: at the gunner's eyes, looking along the gun (view/deck-view.mjs).
+    // A hit translates the deck. Classic shake is the old phone roll, and only on the phone.
+    if (this.deck) {
+      this.deckView.placeCamera(cam, B, dt, this.look);
+      S.shake = Math.max(0, S.shake - dt * 2.4);
+      const pose = shakePose(S.shake, S.t, this.feedback, { xr: false });
+      if (pose.roll) cam.rotateZ(pose.roll * Math.sin(S.t * 71));
+      this.applyDeckImpact(B, pose);
+      this.dash.mesh.visible = false; S.h = null; return;
+    }
     // from the driver's own eyes: at the seated figure's head, looking along the hull and a little down, leaning with the boat.
     // On the modelled jukung the eyes are SOCK_SEAT_EYE, so a taller or shorter figure cannot put the lens in the mast.
     const model = this.fleet[B.key] || this.yacht, sockEye = model && model.sockets && model.sockets.eye;
@@ -465,7 +508,7 @@ export class Stage {
     S.dip = Math.max(0, S.dip - dt * 3.2); S.shake = Math.max(0, S.shake - dt * 2.4);
     const drop = S.drop * mo, aft = model.cameraAft || 0, back = (C.back + aft) * (1 - 0.18 * drop) * (1 - 0.06 * b.boostLv), up = C.up * (1 - 0.5 * drop) - 0.5 * S.dip * mo;
     const fx = -Math.sin(S.h), fz = Math.cos(S.h), lh = S.h + C.lead * clamp(b.r, -1.2, 1.2);
-    const sh = S.shake * mo * 0.22, t = this.time;
+    const sh = S.shake * mo * 0.22 * this.shakeScale(), t = this.time;
     cam.position.set(B.x - fx * back + Math.sin(t * 47) * sh, Math.max(1.0, S.y + up + Math.sin(t * 61) * sh * 0.7), B.z - fz * back + Math.cos(t * 53) * sh);
     this.look.set(B.x - Math.sin(lh) * C.look, S.y + C.lookUp + (B.y - S.y) * 0.6, B.z + Math.cos(lh) * C.look);
     cam.up.set(0, 1, 0); cam.lookAt(this.look);

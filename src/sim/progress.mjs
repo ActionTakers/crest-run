@@ -6,7 +6,7 @@ export const SAVE_VERSION = 1;
 export const SAVE_KEY = 'crest-run-save';
 
 export const DEFAULT_SETTINGS = { steering: 'auto', maxDeg: 25, invert: false, camera: 'chase', motion: 'full', sound: true, music: true, volume: 0.8,
-  quality: 'auto', difficulty: 'normal', units: 'kmh', haptics: true };
+  quality: 'auto', difficulty: 'normal', units: 'kmh', haptics: 'on', hapticStrength: 1, shake: 'on', shakeStrength: 1, shakeStyle: 'rig', flash: 0.15, vignette: 'on' };
 // what each thing takes to unlock (shown on its lock in the menu). Spread so that the first race pays one colour and, on a
 // podium, the next course, and later races still have something to give (review r3, P12).
 export const UNLOCKS = {
