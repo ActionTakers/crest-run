@@ -1,0 +1,910 @@
+{
+  "regen": "REGEN_SIM_FIXTURES=1 node --test tests/boss.test.mjs",
+  "about": "Stand-in pilot on the World Dragon. One bucket is 120 ticks (1s). hash is sha256 of the JSON lines of events and state in that bucket. ammo and flares are null: this fight has neither stock. Regenerate with the regen command. Do not edit by hand.",
+  "sim": "boss",
+  "bucketTicks": 120,
+  "script": {
+    "difficulty": "normal",
+    "seed": 9,
+    "steer": true
+  },
+  "ticks": 10532,
+  "digest": "6cc338b790e0b46b55d8cbd446dac186e288cb2169a2d6e3697ea00b24e5e557",
+  "buckets": [
+    {
+      "tick": 120,
+      "hash": "8b8d7d6ecfeb2805887465cf463896df3ef1c4c0c960b93ff3bf8ce0c1c20fcf",
+      "t": 0,
+      "events": 0,
+      "hull": 5,
+      "ammo": null,
+      "flares": null,
+      "broken": 0
+    },
+    {
+      "tick": 240,
+      "hash": "8b8d7d6ecfeb2805887465cf463896df3ef1c4c0c960b93ff3bf8ce0c1c20fcf",
+      "t": 0,
+      "events": 0,
+      "hull": 5,
+      "ammo": null,
+      "flares": null,
+      "broken": 0
+    },
+    {
+      "tick": 360,
+      "hash": "8b8d7d6ecfeb2805887465cf463896df3ef1c4c0c960b93ff3bf8ce0c1c20fcf",
+      "t": 0,
+      "events": 0,
+      "hull": 5,
+      "ammo": null,
+      "flares": null,
+      "broken": 0
+    },
+    {
+      "tick": 480,
+      "hash": "24c8671de9bbcce60c64483123f7615b7065f9788fad3f4e5d6049234376a4c8",
+      "t": 1,
+      "events": 1,
+      "hull": 5,
+      "ammo": null,
+      "flares": null,
+      "broken": 0
+    },
+    {
+      "tick": 600,
+      "hash": "33bc9c396809c9848b171a580bc134fffe1465a27fe7d6bb5ef6ea47d0e9f36a",
+      "t": 2,
+      "events": 0,
+      "hull": 5,
+      "ammo": null,
+      "flares": null,
+      "broken": 0
+    },
+    {
+      "tick": 720,
+      "hash": "486a633835f3d9e0b0e7f6b002795a48dcc054b617d6d886e41191190988bd9f",
+      "t": 3,
+      "events": 0,
+      "hull": 5,
+      "ammo": null,
+      "flares": null,
+      "broken": 0
+    },
+    {
+      "tick": 840,
+      "hash": "68df0442b2c5035f4a6628d09877da4bb5b09cdd220095b8ca9a006d77367c19",
+      "t": 4,
+      "events": 1,
+      "hull": 5,
+      "ammo": null,
+      "flares": null,
+      "broken": 0
+    },
+    {
+      "tick": 960,
+      "hash": "4bd0022b1e92d4b9c722b3c4b3aa051bc9939f50dbffeb9e29cffa37d5907333",
+      "t": 5,
+      "events": 7,
+      "hull": 5,
+      "ammo": null,
+      "flares": null,
+      "broken": 0
+    },
+    {
+      "tick": 1080,
+      "hash": "d1786ffeb52d4af2efc1c3067d40594416b9417df7fa7623fb4b6c47dc5a60cd",
+      "t": 6,
+      "events": 7,
+      "hull": 5,
+      "ammo": null,
+      "flares": null,
+      "broken": 0
+    },
+    {
+      "tick": 1200,
+      "hash": "35fff5713fea594a61fb51478fa306700cf7eb19856ede6c2b3776515520414e",
+      "t": 7,
+      "events": 10,
+      "hull": 5,
+      "ammo": null,
+      "flares": null,
+      "broken": 1
+    },
+    {
+      "tick": 1320,
+      "hash": "30d217043e32078d320ecbb6edabcadfd1cabf2cd151a5812c6f1c7aa3b9c746",
+      "t": 8,
+      "events": 3,
+      "hull": 5,
+      "ammo": null,
+      "flares": null,
+      "broken": 1
+    },
+    {
+      "tick": 1440,
+      "hash": "cc49b1045e8161b8e94cca74a4f58465a07fee2f31fdd77cafc004001fdf32c5",
+      "t": 9,
+      "events": 1,
+      "hull": 5,
+      "ammo": null,
+      "flares": null,
+      "broken": 1
+    },
+    {
+      "tick": 1560,
+      "hash": "5da2c4ecf1600b3dbb9a0e37bd47e77be66e7f1a808082a516ddf629cde03b30",
+      "t": 10,
+      "events": 0,
+      "hull": 5,
+      "ammo": null,
+      "flares": null,
+      "broken": 1
+    },
+    {
+      "tick": 1680,
+      "hash": "dbc379a2baa5a5bc39ca36620adcdcc180afc5db3f6034e3d4bff7d955a9c578",
+      "t": 11,
+      "events": 1,
+      "hull": 5,
+      "ammo": null,
+      "flares": null,
+      "broken": 1
+    },
+    {
+      "tick": 1800,
+      "hash": "769de71c3365eeaf5c7e9f6b4dfbefd807b7fcf5e13c9376888b88a5e813cc6a",
+      "t": 12,
+      "events": 2,
+      "hull": 5,
+      "ammo": null,
+      "flares": null,
+      "broken": 1
+    },
+    {
+      "tick": 1920,
+      "hash": "03ed9698b33f46272f2039d3c656108fa00ed20d12ceb65b72a5ecebaf9de25a",
+      "t": 13,
+      "events": 1,
+      "hull": 5,
+      "ammo": null,
+      "flares": null,
+      "broken": 1
+    },
+    {
+      "tick": 2040,
+      "hash": "6bcd4a416aafd42a751c6c539ac44262dd304f803818e73072a32c33d81f261d",
+      "t": 14,
+      "events": 0,
+      "hull": 5,
+      "ammo": null,
+      "flares": null,
+      "broken": 1
+    },
+    {
+      "tick": 2160,
+      "hash": "00ebcb77c54cd6337f1364072de003e5c46945d27dccabc4c1f076b3779fee99",
+      "t": 15,
+      "events": 2,
+      "hull": 5,
+      "ammo": null,
+      "flares": null,
+      "broken": 1
+    },
+    {
+      "tick": 2280,
+      "hash": "2e08e6cb614b51bb256e4378cd9bf0a2f06dee266645a267235ea4e7ee6b454d",
+      "t": 16,
+      "events": 9,
+      "hull": 5,
+      "ammo": null,
+      "flares": null,
+      "broken": 1
+    },
+    {
+      "tick": 2400,
+      "hash": "14d3a151f41c6d564f15125c4b9c4ef58b6dda5561fadd50d363180c8a4448cd",
+      "t": 17,
+      "events": 13,
+      "hull": 5,
+      "ammo": null,
+      "flares": null,
+      "broken": 1
+    },
+    {
+      "tick": 2520,
+      "hash": "3c079110954b954268c363e890ea5b0d27f2612126dcf7ba01f1310e2bef8ea6",
+      "t": 18,
+      "events": 12,
+      "hull": 5,
+      "ammo": null,
+      "flares": null,
+      "broken": 2
+    },
+    {
+      "tick": 2640,
+      "hash": "c83cd05ef41f78c2a8d968cb609f9a644cc8473a33361a7bf4278fa29819c9d1",
+      "t": 19,
+      "events": 10,
+      "hull": 5,
+      "ammo": null,
+      "flares": null,
+      "broken": 2
+    },
+    {
+      "tick": 2760,
+      "hash": "44f8b26982fbd98a51a630a44320a6d9c08526396ff80814efa900a60fdba519",
+      "t": 20,
+      "events": 9,
+      "hull": 5,
+      "ammo": null,
+      "flares": null,
+      "broken": 2
+    },
+    {
+      "tick": 2880,
+      "hash": "b9892dec51dd261df38e0f51e822f8e622268ae4aafefd1284b164f665c49d88",
+      "t": 21,
+      "events": 18,
+      "hull": 5,
+      "ammo": null,
+      "flares": null,
+      "broken": 2
+    },
+    {
+      "tick": 3000,
+      "hash": "65f501ba900e3844f26dce7ee332cbff2f45950aa78ff7546599bb5946dfac43",
+      "t": 22,
+      "events": 17,
+      "hull": 5,
+      "ammo": null,
+      "flares": null,
+      "broken": 2
+    },
+    {
+      "tick": 3120,
+      "hash": "fe3590204b9bb91e762eb6a8bcde102d49bbbce670b657b503cfbd6a4b5f04d1",
+      "t": 23,
+      "events": 7,
+      "hull": 4,
+      "ammo": null,
+      "flares": null,
+      "broken": 2
+    },
+    {
+      "tick": 3240,
+      "hash": "46b94410ebe236ccc6ca14b25da4b642afa3eb97fb1815997f9cb6e6391364da",
+      "t": 24,
+      "events": 9,
+      "hull": 4,
+      "ammo": null,
+      "flares": null,
+      "broken": 2
+    },
+    {
+      "tick": 3360,
+      "hash": "9f8f3ba212d6d1a6daf3d1941c81b7ead8f31b8249475f71ff616aa3ee4c3ca5",
+      "t": 25,
+      "events": 14,
+      "hull": 4,
+      "ammo": null,
+      "flares": null,
+      "broken": 2
+    },
+    {
+      "tick": 3480,
+      "hash": "f2eb83f7e1ee5faa934a500d6be8e1a3ae76a15c0c549d393640e0ab721b5ff7",
+      "t": 26,
+      "events": 0,
+      "hull": 4,
+      "ammo": null,
+      "flares": null,
+      "broken": 2
+    },
+    {
+      "tick": 3600,
+      "hash": "bfb9a15d2bbc44330d37952cc32267df2dd78e022fe360b41a2b3007845c57c7",
+      "t": 27,
+      "events": 1,
+      "hull": 4,
+      "ammo": null,
+      "flares": null,
+      "broken": 2
+    },
+    {
+      "tick": 3720,
+      "hash": "1d9e91edbca4cc634069331daaa2691a91b026d78ca7f98a1529dfffbe29cb56",
+      "t": 28,
+      "events": 9,
+      "hull": 4,
+      "ammo": null,
+      "flares": null,
+      "broken": 2
+    },
+    {
+      "tick": 3840,
+      "hash": "58051ad2d2e402d77efaad3286a10fd40fd11dec9fdd401275ba2539dfe2fad7",
+      "t": 29,
+      "events": 9,
+      "hull": 4,
+      "ammo": null,
+      "flares": null,
+      "broken": 2
+    },
+    {
+      "tick": 3960,
+      "hash": "ceadd4d4bd01cc94113ef890f0a8cb6467e6c9c9f1d821f6f721d9a82433ca02",
+      "t": 30,
+      "events": 18,
+      "hull": 4,
+      "ammo": null,
+      "flares": null,
+      "broken": 2
+    },
+    {
+      "tick": 4080,
+      "hash": "da78e21fab17121511719589b59711a65e56cd4ee8fe393babecf854d36a316f",
+      "t": 31,
+      "events": 3,
+      "hull": 4,
+      "ammo": null,
+      "flares": null,
+      "broken": 2
+    },
+    {
+      "tick": 4200,
+      "hash": "c60f4c7160688c88d4488cab47babb400c1841b7930756225140f487c44538ca",
+      "t": 32,
+      "events": 11,
+      "hull": 4,
+      "ammo": null,
+      "flares": null,
+      "broken": 2
+    },
+    {
+      "tick": 4320,
+      "hash": "f3ca26d7493abcbb3ddc96cb019ea67894654ce45fed883b27f6ae70d0e99e36",
+      "t": 33,
+      "events": 9,
+      "hull": 4,
+      "ammo": null,
+      "flares": null,
+      "broken": 2
+    },
+    {
+      "tick": 4440,
+      "hash": "99d0ae76edb2574a42b00435f7a984587c95e8c8e1c3bd46c6f71e474361b291",
+      "t": 34,
+      "events": 7,
+      "hull": 4,
+      "ammo": null,
+      "flares": null,
+      "broken": 2
+    },
+    {
+      "tick": 4560,
+      "hash": "2499b712616d13a77955601f5c1c52d70e6d69ce28f541b36bb458329bdc46f9",
+      "t": 35,
+      "events": 1,
+      "hull": 4,
+      "ammo": null,
+      "flares": null,
+      "broken": 2
+    },
+    {
+      "tick": 4680,
+      "hash": "a2a0bf6281f176f95df50c8c1d422c38c61269d5b66518dc231428aa737abea3",
+      "t": 36,
+      "events": 3,
+      "hull": 4,
+      "ammo": null,
+      "flares": null,
+      "broken": 2
+    },
+    {
+      "tick": 4800,
+      "hash": "c1b19fa591ea524e4d7366db136cc8350b612a4983c948ae78c95454bfe21c9e",
+      "t": 37,
+      "events": 0,
+      "hull": 4,
+      "ammo": null,
+      "flares": null,
+      "broken": 2
+    },
+    {
+      "tick": 4920,
+      "hash": "b3ccbb3709d4255c64c2337b80e28bd30a6ebe84e5cf02c5c80bcfdb6a268036",
+      "t": 38,
+      "events": 1,
+      "hull": 4,
+      "ammo": null,
+      "flares": null,
+      "broken": 2
+    },
+    {
+      "tick": 5040,
+      "hash": "d0a2e35763ba57cd87a0834525b83e68c308f328c738b9e703c0e2d128a50dbc",
+      "t": 39,
+      "events": 0,
+      "hull": 4,
+      "ammo": null,
+      "flares": null,
+      "broken": 2
+    },
+    {
+      "tick": 5160,
+      "hash": "6ff41eca8cf5b8bd004425944eac35ed37a00ab95cbd931bb3b9611a7654a147",
+      "t": 40,
+      "events": 3,
+      "hull": 4,
+      "ammo": null,
+      "flares": null,
+      "broken": 2
+    },
+    {
+      "tick": 5280,
+      "hash": "0202b3d248882ef0505d676e7c938bf3017fc7076b07a5b942876c4d3ddf9e39",
+      "t": 41,
+      "events": 0,
+      "hull": 4,
+      "ammo": null,
+      "flares": null,
+      "broken": 2
+    },
+    {
+      "tick": 5400,
+      "hash": "eed0cd466aaff96e57f2ef407a3f992555c904708f6dd0ba5af0ac11b8f4b86d",
+      "t": 42,
+      "events": 6,
+      "hull": 4,
+      "ammo": null,
+      "flares": null,
+      "broken": 2
+    },
+    {
+      "tick": 5520,
+      "hash": "c8529ef3a6c13ee34d79cb22ce27494547fb8d706503f1ad94263f372844a2dd",
+      "t": 43,
+      "events": 3,
+      "hull": 4,
+      "ammo": null,
+      "flares": null,
+      "broken": 3
+    },
+    {
+      "tick": 5640,
+      "hash": "8b49ed52671a6dc496735dbfff77cbdafad53508d40d0321af5b0d9ccbccb894",
+      "t": 44,
+      "events": 3,
+      "hull": 4,
+      "ammo": null,
+      "flares": null,
+      "broken": 3
+    },
+    {
+      "tick": 5760,
+      "hash": "ed25323cf3a1a36cb4b31af27826d98375b27ca9534af5449dba8c6fe304e646",
+      "t": 45,
+      "events": 0,
+      "hull": 4,
+      "ammo": null,
+      "flares": null,
+      "broken": 3
+    },
+    {
+      "tick": 5880,
+      "hash": "40f56f8825c26a1f02c337c0caaf5f2e7e71f32cb0715000a76c0f11d51f9381",
+      "t": 46,
+      "events": 1,
+      "hull": 4,
+      "ammo": null,
+      "flares": null,
+      "broken": 3
+    },
+    {
+      "tick": 6000,
+      "hash": "5c78a73621f337ef729fa924f61eed702df8e88df49ed21c1142a7fcc426b325",
+      "t": 47,
+      "events": 2,
+      "hull": 4,
+      "ammo": null,
+      "flares": null,
+      "broken": 3
+    },
+    {
+      "tick": 6120,
+      "hash": "e3dc7b28902a299b915410ddcfe9aee31734ac22317234e9d259417197e27964",
+      "t": 48,
+      "events": 1,
+      "hull": 4,
+      "ammo": null,
+      "flares": null,
+      "broken": 3
+    },
+    {
+      "tick": 6240,
+      "hash": "1340b0c3f9dc46e4a2c7afd08968b523cf9cbfeec8d3bafed0cea8f4f0861f69",
+      "t": 49,
+      "events": 0,
+      "hull": 4,
+      "ammo": null,
+      "flares": null,
+      "broken": 3
+    },
+    {
+      "tick": 6360,
+      "hash": "c14bb7d28916db2badbaa789befd3f40493adab1f7d4f52bcca840631722ec98",
+      "t": 50,
+      "events": 1,
+      "hull": 4,
+      "ammo": null,
+      "flares": null,
+      "broken": 3
+    },
+    {
+      "tick": 6480,
+      "hash": "948b71341e01b15a37490c10a1a6509943a156a50a2e31d71bc92ffba6f61d46",
+      "t": 51,
+      "events": 2,
+      "hull": 4,
+      "ammo": null,
+      "flares": null,
+      "broken": 3
+    },
+    {
+      "tick": 6600,
+      "hash": "5a08031ba87ada494a16645567babe80e98876e89bd3738a9d93815683d3f8e5",
+      "t": 52,
+      "events": 1,
+      "hull": 4,
+      "ammo": null,
+      "flares": null,
+      "broken": 3
+    },
+    {
+      "tick": 6720,
+      "hash": "ce85309e0fc8be094ac6654e92d06cbe0081994e4c13a54ce99e8e88bd8870b0",
+      "t": 53,
+      "events": 0,
+      "hull": 4,
+      "ammo": null,
+      "flares": null,
+      "broken": 3
+    },
+    {
+      "tick": 6840,
+      "hash": "b6b1d222c34f486455875ede4c05211303d716c02d9a96f0adbc105ce5bedc77",
+      "t": 54,
+      "events": 4,
+      "hull": 4,
+      "ammo": null,
+      "flares": null,
+      "broken": 3
+    },
+    {
+      "tick": 6960,
+      "hash": "e8f7973a7e796541a41e7c9963732fce606e050f5892404834ec686e3e5f0f55",
+      "t": 55,
+      "events": 13,
+      "hull": 4,
+      "ammo": null,
+      "flares": null,
+      "broken": 3
+    },
+    {
+      "tick": 7080,
+      "hash": "c9668ba9e17aecc6713e5fa49250c203587a22131ad5a3f4d1ee06418689216e",
+      "t": 56,
+      "events": 15,
+      "hull": 4,
+      "ammo": null,
+      "flares": null,
+      "broken": 4
+    },
+    {
+      "tick": 7200,
+      "hash": "29303625b193791ea0572bb626f0469f84a8dd788e5a3f45b95fc707a29750b3",
+      "t": 57,
+      "events": 0,
+      "hull": 4,
+      "ammo": null,
+      "flares": null,
+      "broken": 4
+    },
+    {
+      "tick": 7320,
+      "hash": "b3e6874e8ae206ba12c0f0f425b657a3143de160502e6454feae98af14b56dcd",
+      "t": 58,
+      "events": 3,
+      "hull": 4,
+      "ammo": null,
+      "flares": null,
+      "broken": 4
+    },
+    {
+      "tick": 7440,
+      "hash": "60072c556481c050c4f2d16648351ad589a82b356e1b91b4c8aa5250a57cb965",
+      "t": 59,
+      "events": 2,
+      "hull": 4,
+      "ammo": null,
+      "flares": null,
+      "broken": 4
+    },
+    {
+      "tick": 7560,
+      "hash": "4c55816fa104568e03a2cf29f59aa9dd73a23a9dc7cc52208145a2762b902843",
+      "t": 60,
+      "events": 7,
+      "hull": 4,
+      "ammo": null,
+      "flares": null,
+      "broken": 4
+    },
+    {
+      "tick": 7680,
+      "hash": "0192e9d270db5362e0c8ac5adfbe8363886019259f5765e11ab6e1fa74d7ba9c",
+      "t": 61,
+      "events": 0,
+      "hull": 4,
+      "ammo": null,
+      "flares": null,
+      "broken": 4
+    },
+    {
+      "tick": 7800,
+      "hash": "b6f1fd136f394dd68fcbd958bd2221969411e3635259ffad7755eadc6938a0c3",
+      "t": 62,
+      "events": 1,
+      "hull": 4,
+      "ammo": null,
+      "flares": null,
+      "broken": 4
+    },
+    {
+      "tick": 7920,
+      "hash": "427a0f941dae00b042850368d17b025fa0e7a29eff9e4aee746df9349e44a404",
+      "t": 63,
+      "events": 5,
+      "hull": 4,
+      "ammo": null,
+      "flares": null,
+      "broken": 4
+    },
+    {
+      "tick": 8040,
+      "hash": "5d8bfa31847c6513a8e2d190f4a9c23bfeab035bc07dc0e2dc1354134b69ac2e",
+      "t": 64,
+      "events": 2,
+      "hull": 4,
+      "ammo": null,
+      "flares": null,
+      "broken": 4
+    },
+    {
+      "tick": 8160,
+      "hash": "8c6d305a069d9444d6e32311d4e50cf4ec8472783d398f68abbea64433fa8cba",
+      "t": 65,
+      "events": 3,
+      "hull": 4,
+      "ammo": null,
+      "flares": null,
+      "broken": 4
+    },
+    {
+      "tick": 8280,
+      "hash": "2371089ef55251f018ad82182727f0105513d69ad12a45916238b7002d3cfffe",
+      "t": 66,
+      "events": 10,
+      "hull": 4,
+      "ammo": null,
+      "flares": null,
+      "broken": 4
+    },
+    {
+      "tick": 8400,
+      "hash": "e07e3cd84409dd762c1d88bbfde6e616ede7c9d11e32eb291a9a28037bd51fc0",
+      "t": 67,
+      "events": 11,
+      "hull": 4,
+      "ammo": null,
+      "flares": null,
+      "broken": 5
+    },
+    {
+      "tick": 8520,
+      "hash": "df63f5b134587d7948207480209cdcb4355963e500889f615befee95f2afbb51",
+      "t": 68,
+      "events": 3,
+      "hull": 4,
+      "ammo": null,
+      "flares": null,
+      "broken": 5
+    },
+    {
+      "tick": 8640,
+      "hash": "4f5f29041ea2d5470a83c655fd64312f905c9282e084571466d9c36532ac5ea2",
+      "t": 69,
+      "events": 0,
+      "hull": 4,
+      "ammo": null,
+      "flares": null,
+      "broken": 5
+    },
+    {
+      "tick": 8760,
+      "hash": "ef43d0f431d9e0beef71eb7e0f18f83d319f6eac90a65b6f9a95efcdcf2bf30b",
+      "t": 70,
+      "events": 1,
+      "hull": 4,
+      "ammo": null,
+      "flares": null,
+      "broken": 5
+    },
+    {
+      "tick": 8880,
+      "hash": "a2dc1dce0a9dee824b761c6bbec2f9e1151ce18d74e582236f4b12ae914a3349",
+      "t": 71,
+      "events": 11,
+      "hull": 4,
+      "ammo": null,
+      "flares": null,
+      "broken": 5
+    },
+    {
+      "tick": 9000,
+      "hash": "bd30da6b8705a14d232cec04d183da007d088ff4f2662cdfee02c1b03a78f471",
+      "t": 72,
+      "events": 16,
+      "hull": 4,
+      "ammo": null,
+      "flares": null,
+      "broken": 5
+    },
+    {
+      "tick": 9120,
+      "hash": "0ea83bfba31c0bd3d59cc89d6daba307b7bfdb284593819afedd2e9582b942fc",
+      "t": 73,
+      "events": 18,
+      "hull": 4,
+      "ammo": null,
+      "flares": null,
+      "broken": 5
+    },
+    {
+      "tick": 9240,
+      "hash": "ae1fb70caa4d84021df0b6763fd8f302835d6c779a3f4eedc274cc94bb107bcc",
+      "t": 74,
+      "events": 5,
+      "hull": 4,
+      "ammo": null,
+      "flares": null,
+      "broken": 5
+    },
+    {
+      "tick": 9360,
+      "hash": "8431f2930e7fa0bd385190619876c687d7beae436d82c086af32f3bc97d83964",
+      "t": 75,
+      "events": 14,
+      "hull": 4,
+      "ammo": null,
+      "flares": null,
+      "broken": 5
+    },
+    {
+      "tick": 9480,
+      "hash": "093173c83668eae93bc72944bf17e5a18ab23a1692577cf1a34883845a9501c0",
+      "t": 76,
+      "events": 16,
+      "hull": 4,
+      "ammo": null,
+      "flares": null,
+      "broken": 5
+    },
+    {
+      "tick": 9600,
+      "hash": "3a3f4f7cc0cb2f832c18cbb4a436de10a8cbae1aadca349723864b8a4e239356",
+      "t": 77,
+      "events": 0,
+      "hull": 4,
+      "ammo": null,
+      "flares": null,
+      "broken": 5
+    },
+    {
+      "tick": 9720,
+      "hash": "46e4c569ec64e384c0f9179f52c342ad3a8313b0de39567528402fe985333e7f",
+      "t": 78,
+      "events": 2,
+      "hull": 4,
+      "ammo": null,
+      "flares": null,
+      "broken": 5
+    },
+    {
+      "tick": 9840,
+      "hash": "b8aaa8bddf4aff76812516a458644c4a7bdc2fa22a0c69805a8e09bd7c31e1f4",
+      "t": 79,
+      "events": 14,
+      "hull": 4,
+      "ammo": null,
+      "flares": null,
+      "broken": 5
+    },
+    {
+      "tick": 9960,
+      "hash": "96360ee59811f791ab2e81fe5d21e9ce125b63ed8f3cd23d52a7e44e5900fd7b",
+      "t": 80,
+      "events": 2,
+      "hull": 4,
+      "ammo": null,
+      "flares": null,
+      "broken": 5
+    },
+    {
+      "tick": 10080,
+      "hash": "fee83dcf464edfb9c50fa0e53befff7e8f1864234f8e6214b89cfe8e9f921b8f",
+      "t": 81,
+      "events": 2,
+      "hull": 4,
+      "ammo": null,
+      "flares": null,
+      "broken": 5
+    },
+    {
+      "tick": 10200,
+      "hash": "f69ba905036f1af66595c5154651ce922507325ba48bd699ab5f7fb709b34bda",
+      "t": 82,
+      "events": 0,
+      "hull": 4,
+      "ammo": null,
+      "flares": null,
+      "broken": 5
+    },
+    {
+      "tick": 10320,
+      "hash": "7df4e72b17aec057e226f914875ed1fc1c19cf766ec9bf05baa27adeddc41909",
+      "t": 83,
+      "events": 9,
+      "hull": 4,
+      "ammo": null,
+      "flares": null,
+      "broken": 5
+    },
+    {
+      "tick": 10440,
+      "hash": "b24623c61d6c4384029f38105b4f52207a92a5429715931d395fe11954c9368e",
+      "t": 84,
+      "events": 9,
+      "hull": 4,
+      "ammo": null,
+      "flares": null,
+      "broken": 5
+    },
+    {
+      "tick": 10532,
+      "hash": "891a8ad09a199b6348d7919d471d856f831d270abb10535a64993a3324b84da3",
+      "t": 84.77,
+      "events": 10,
+      "hull": 4,
+      "ammo": null,
+      "flares": null,
+      "broken": 6
+    }
+  ],
+  "summary": {
+    "level": "dragon",
+    "difficulty": "normal",
+    "total": 6,
+    "saved": 6,
+    "lost": 0,
+    "won": true,
+    "hull": 4,
+    "taken": 1,
+    "time": 84.77,
+    "shots": 66,
+    "hits": 60,
+    "medal": "gold",
+    "finished": true
+  }
+}
