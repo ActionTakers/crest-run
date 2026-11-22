@@ -47,30 +47,30 @@
 // on the beach with nine lesson leaves a voyage; a Voyage tab in the menu; a film camera that travels with the boat.
 // 0.7.0 (the same day): each boat handles its own way (sim/boat-stats.mjs), a display inside the cockpit for the view from the
 // helm (view/dash.mjs), a fifth boat (the red catamaran without its lettering), and a ghost that remembers its boat.
-import { Stage, CAMS } from './view/stage.mjs?v=b016c49c';
-import { LIVERIES, LIVERY_KEYS } from './view/boats.mjs?v=b016c49c';
-import { OWNER, KING, JACK, crewFor } from './view/people.mjs?v=b016c49c';
-import { WORLDS } from './view/sky.mjs?v=b016c49c';
-import { getCourse, COURSE_DEFS, COURSE_KEYS, pointInto, wrapA, wrapS } from './sim/courses.mjs?v=b016c49c';
-import { Race, defaultSettings, DT, TUNES, TUNE_KEYS, BOOST, SIM_VERSION, encodeInputs, decodeInputs } from './sim/race-sim.mjs?v=b016c49c';
-import { Rescue, arenaCourse, rescueSettings, ARENA, RESCUE, S as SHARK } from './sim/rescue.mjs?v=b016c49c';
-import { Boss, dragonCourse, bossSettings, DRAGON, BOSS as FIGHT } from './sim/boss.mjs?v=b016c49c';
-import { Leviathan, leviCourse, leviSettings, LEVI, FIGHT as LFIGHT, PHASES } from './sim/leviathan.mjs?v=b016c49c';
-import { DeckFight, hawkCourse, hawkSettings, HAWK, DECK, HALVES, COASTAL_NAME } from './sim/deck.mjs?v=b016c49c';
-import { deckHudSnapshot, deckRange, passCountdown, acquireAim, hawkMarker } from './ui/deck-hud.mjs?v=b016c49c';
-import { makeVoyage, bayCourse, voyageSettings, voyageChoices, VOYAGES, VOYAGES_READY as VOYAGE_KEYS } from './sim/voyages.mjs?v=b016c49c';
+import { Stage, CAMS } from './view/stage.mjs?v=4881be4d';
+import { LIVERIES, LIVERY_KEYS } from './view/boats.mjs?v=4881be4d';
+import { OWNER, KING, JACK, crewFor } from './view/people.mjs?v=4881be4d';
+import { WORLDS } from './view/sky.mjs?v=4881be4d';
+import { getCourse, COURSE_DEFS, COURSE_KEYS, pointInto, wrapA, wrapS } from './sim/courses.mjs?v=4881be4d';
+import { Race, defaultSettings, DT, TUNES, TUNE_KEYS, BOOST, SIM_VERSION, encodeInputs, decodeInputs } from './sim/race-sim.mjs?v=4881be4d';
+import { Rescue, arenaCourse, rescueSettings, ARENA, RESCUE, S as SHARK } from './sim/rescue.mjs?v=4881be4d';
+import { Boss, dragonCourse, bossSettings, DRAGON, BOSS as FIGHT } from './sim/boss.mjs?v=4881be4d';
+import { Leviathan, leviCourse, leviSettings, LEVI, FIGHT as LFIGHT, PHASES } from './sim/leviathan.mjs?v=4881be4d';
+import { DeckFight, hawkCourse, hawkSettings, HAWK, DECK, HALVES, COASTAL_NAME } from './sim/deck.mjs?v=4881be4d';
+import { deckHudSnapshot, deckRange, passCountdown, acquireAim, hawkMarker } from './ui/deck-hud.mjs?v=4881be4d';
+import { makeVoyage, bayCourse, voyageSettings, voyageChoices, VOYAGES, VOYAGES_READY as VOYAGE_KEYS } from './sim/voyages.mjs?v=4881be4d';
 const VOYAGES_READY_ALL = VOYAGE_KEYS;
-import { FLEET, FLEET_KEYS, rivalBoats } from './view/fleet.mjs?v=b016c49c';
-import { BOAT_STATS, boatTweak } from './sim/boat-stats.mjs?v=b016c49c';
-import { Governor, RefreshWatch, measureRefresh } from './sim/governor.mjs?v=b016c49c';
-import * as PR from './sim/progress.mjs?v=b016c49c';
-import { Controls } from './ui/controls.mjs?v=b016c49c';
-import { Sound } from './ui/sound.mjs?v=b016c49c';
-import * as PF from './ui/platform.mjs?v=b016c49c';
-import { BAY_SAVE_KEY, BAY_JOURNEYS, makeBaySave, bayProgress } from './ui/bay-flow.mjs?v=b016c49c';
-import { makeSailingLesson, advanceSailingLesson } from './sim/sailing-lesson.mjs?v=b016c49c';
+import { FLEET, FLEET_KEYS, rivalBoats } from './view/fleet.mjs?v=4881be4d';
+import { BOAT_STATS, boatTweak } from './sim/boat-stats.mjs?v=4881be4d';
+import { Governor, RefreshWatch, measureRefresh } from './sim/governor.mjs?v=4881be4d';
+import * as PR from './sim/progress.mjs?v=4881be4d';
+import { Controls } from './ui/controls.mjs?v=4881be4d';
+import { Sound } from './ui/sound.mjs?v=4881be4d';
+import * as PF from './ui/platform.mjs?v=4881be4d';
+import { BAY_SAVE_KEY, BAY_JOURNEYS, makeBaySave, bayProgress } from './ui/bay-flow.mjs?v=4881be4d';
+import { makeSailingLesson, advanceSailingLesson } from './sim/sailing-lesson.mjs?v=4881be4d';
 
-export const VERSION = 'crest-run 0.16.0', BUILD = '2026-11-20 #b016c49c';
+export const VERSION = 'crest-run 0.17.0', BUILD = '2026-11-21 #4881be4d';
 const $ = (id) => document.getElementById(id);
 const Q = new URLSearchParams(location.search);
 const BAY_GAME = document.body.dataset.game === 'bay';
