@@ -98,6 +98,32 @@ export function stepLane(offset, target, halfWidth = HAWK.halfWidth, speed = HEL
 }
 // phone tilt, already in [-1, 1] from tilt-input. Level is the middle lane.
 export function tiltLane(value) { const v = Number(value); if (!Number.isFinite(v) || Math.abs(v) < HELM.tilt) return 0; return v > 0 ? 1 : -1; }
+// WebXR Gamepads Module, mapping "xr-standard": the thumbstick is axes[2] (X) and axes[3] (Y).
+// axes[0] and axes[1] are the touchpad. Quest Touch has no touchpad, so those two stay 0.
+// A pad with no thumbstick axes (shorter than 3, or axes[2] not a number) falls back to axes[0].
+export function thumbstickX(axes) {
+  if (!axes || typeof axes.length !== 'number' || axes.length < 1) return null;
+  if (axes.length >= 3) {
+    const stick = Number(axes[2]);
+    if (Number.isFinite(stick)) return stick;
+  }
+  const pad = Number(axes[0]);
+  return Number.isFinite(pad) ? pad : null;
+}
+// One sample of the sources a headset just reported. The strongest stick wins, and the lane moves once.
+export function xrStickStep(sources, armed, lane) {
+  let x = null;
+  for (const src of sources || []) {
+    const v = thumbstickX(src && src.gamepad && src.gamepad.axes);
+    if (v === null) continue;
+    if (x === null || Math.abs(v) > Math.abs(x)) x = v;
+  }
+  const held = Number.isFinite(Number(lane)) ? Math.max(-1, Math.min(1, Math.round(Number(lane)))) : 0;
+  if (x === null) return { lane: held, armed: !!armed, step: 0 };
+  const flick = stickFlick(x, armed);
+  const next = flick.step ? Math.max(-1, Math.min(1, held + flick.step)) : held;
+  return { lane: next, armed: flick.armed, step: flick.step };
+}
 // one thumbstick flick. A hold past the deadzone does not repeat. The stick must come back inside `stickRelease` first.
 export function stickFlick(axis, armed) {
   const x = Number(axis);
@@ -216,10 +242,19 @@ export class DeckFight {
     if (n) this.ev({ type: 'dRocket', n });
   }
   stepRockets() {
-    const b = this.me;
+    const b = this.me, lat = this.laneOff;
+    // the shown boat is the ring plus the helm offset. A lane of 0 keeps the old aim point, exactly.
+    let tx = b.x, tz = b.z;
+    if (lat) { tx += -Math.cos(b.h) * lat; tz += -Math.sin(b.h) * lat; }
     for (const q of this.rockets) { if (!q.on) continue; q.t += DT; const k = Math.min(1, q.t / q.T), s = Math.sin(Math.PI * k), a = b.h + this.th;
-      q.x = q.sx + (b.x - q.sx) * k - Math.cos(a) * q.w * s; q.z = q.sz + (b.z - q.sz) * k - Math.sin(a) * q.w * s; q.y = q.sy + (1.6 - q.sy) * k + q.lift * s;
-      if (k >= 1) { q.on = false; const hit = this.strike(1); this.ev({ type: 'dRocketHit', hit, hull: this.hull, x: q.x, z: q.z }); } }
+      q.x = q.sx + (tx - q.sx) * k - Math.cos(a) * q.w * s; q.z = q.sz + (tz - q.sz) * k - Math.sin(a) * q.w * s; q.y = q.sy + (1.6 - q.sy) * k + q.lift * s;
+      if (k >= 1) {
+        q.on = false;
+        // 12 m is the deck. An impact back on the ring, 80 m from a boat that has moved, is a miss.
+        const away = lat ? Math.hypot(q.x - tx, q.z - tz) : 0;
+        const hit = away > 12 ? false : this.strike(1);
+        this.ev({ type: 'dRocketHit', hit, hull: this.hull, x: q.x, z: q.z });
+      } }
   }
   strike(n) { const T = this.race.lapT; if (this.over || T < this.safeT) return false; this.safeT = T + DECK.graceS; this.hull -= n; this.taken += n; return true; }
   // the gun: a bullet flies straight and at once; the nearest thing on its line is hit

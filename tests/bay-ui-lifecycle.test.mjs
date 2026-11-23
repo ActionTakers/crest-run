@@ -112,7 +112,7 @@ async function createGame({ edition = 'bay', query = '', storage = new Map() } =
     Rescue: rescue.Rescue, arenaCourse: rescue.arenaCourse, rescueSettings: rescue.rescueSettings,
     ARENA: rescue.ARENA, RESCUE: rescue.RESCUE, SHARK: rescue.S,
     Boss: boss.Boss, dragonCourse: boss.dragonCourse, bossSettings: boss.bossSettings, DRAGON: boss.DRAGON, FIGHT: boss.BOSS,
-    DeckFight: deck.DeckFight, hawkCourse: deck.hawkCourse, hawkSettings: deck.hawkSettings, HAWK: deck.HAWK, DECK: deck.DECK, HALVES: deck.HALVES, COASTAL_NAME: deck.COASTAL_NAME, stickFlick: deck.stickFlick, tiltLane: deck.tiltLane, swipeStep: deck.swipeStep, deckHudSnapshot, deckRange, passCountdown, acquireAim, hawkMarker,
+    DeckFight: deck.DeckFight, hawkCourse: deck.hawkCourse, hawkSettings: deck.hawkSettings, HAWK: deck.HAWK, DECK: deck.DECK, HALVES: deck.HALVES, COASTAL_NAME: deck.COASTAL_NAME, stickFlick: deck.stickFlick, tiltLane: deck.tiltLane, swipeStep: deck.swipeStep, xrStickStep: deck.xrStickStep, deckHudSnapshot, deckRange, passCountdown, acquireAim, hawkMarker,
     Leviathan: levi.Leviathan, leviCourse: levi.leviCourse, leviSettings: levi.leviSettings, LEVI: levi.LEVI, LFIGHT: levi.FIGHT, PHASES: levi.PHASES,
     Stage, Sound, TiltInput, PR, PF, CAMS: {}, OWNER: 'f01', KING: 'king', JACK: 'jack', crewFor: () => [],
     FLEET: fleet, FLEET_KEYS: ['yacht', 'jukung'], rivalBoats: () => ['yacht', 'yacht', 'yacht'],

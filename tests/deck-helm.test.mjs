@@ -3,7 +3,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { DeckFight, hawkCourse, hawkSettings, HAWK, HELM, laneCentre, helmLane, stepLane, stickFlick, tiltLane, swipeStep } from '../src/sim/deck.mjs';
+import { DeckFight, hawkCourse, hawkSettings, HAWK, HELM, laneCentre, helmLane, stepLane, stickFlick, tiltLane, swipeStep, thumbstickX, xrStickStep } from '../src/sim/deck.mjs';
 import { DT, Race } from '../src/sim/race-sim.mjs';
 
 function fight() {
@@ -154,6 +154,57 @@ test('tilt and swipe pick a lane without a ramp and without stealing a vertical 
   const again = swipeStep(140, 8, true);
   assert.equal(again.step, 0);
   assert.equal(swipeStep(-70, 5, false).step, -1);
+});
+
+test('an xr-standard Quest stick on axes[2] changes one lane, and a short pad still uses axes[0]', () => {
+  const quest = (x, y = 0) => [{ gamepad: { mapping: 'xr-standard', axes: [0, 0, x, y] }, handedness: 'right' }];
+  assert.equal(thumbstickX([0, 0, 0.95, 0]), 0.95);
+  assert.equal(thumbstickX([0, 0, -0.95, 0]), -0.95);
+  // a centred stick must not be replaced by a touchpad value sitting in axes[0]
+  assert.equal(thumbstickX([0.95, 0, 0, 0]), 0);
+  let armed = true, lane = 0;
+  const step = (axes) => {
+    const r = xrStickStep([{ gamepad: { mapping: 'xr-standard', axes } }], armed, lane);
+    armed = r.armed; lane = r.lane; return r;
+  };
+  assert.equal(step([0, 0, 0.95, 0]).step, 1);
+  assert.equal(lane, 1);
+  assert.equal(step([0, 0, 0.95, 0]).step, 0);
+  assert.equal(lane, 1);
+  assert.equal(step([0, 0, 0, 0]).armed, true);
+  assert.equal(step([0, 0, -0.95, 0]).step, -1);
+  assert.equal(lane, 0);
+  const legacy = xrStickStep([{ gamepad: { axes: [0.95, 0.2] } }], true, 0);
+  assert.equal(legacy.step, 1);
+  assert.equal(legacy.lane, 1);
+  const quiet = xrStickStep(quest(0), true, 0);
+  assert.equal(quiet.step, 0);
+  assert.equal(quiet.lane, 0);
+});
+
+test('a rocket meets the shown boat in a side lane and does not hit the ring 80 m away', () => {
+  const { F } = fight();
+  F.laneOff = 80;
+  F.lane = 1;
+  const b = F.me;
+  const shownX = b.x - Math.cos(b.h) * F.laneOff;
+  const shownZ = b.z - Math.sin(b.h) * F.laneOff;
+  const q = F.rockets[0];
+  q.on = true; q.t = 0.5; q.T = 0.5 + DT / 2; q.w = 6; q.lift = 3;
+  q.sx = shownX - 30; q.sy = 18; q.sz = shownZ + 12; q.x = q.sx; q.y = q.sy; q.z = q.sz;
+  F.safeT = -1e9;
+  const hull = F.hull;
+  F.stepRockets();
+  const toBoat = Math.hypot(q.x - shownX, q.z - shownZ);
+  const toRing = Math.hypot(q.x - b.x, q.z - b.z);
+  const ev = F.race.events.find((e) => e.type === 'dRocketHit');
+  assert.ok(ev, 'the rocket arrives');
+  assert.ok(toBoat < 12, `impact is ${toBoat} m from the shown boat`);
+  assert.ok(toRing > 70, `impact is ${toRing} m from the ring`);
+  assert.equal(ev.hit, true);
+  assert.equal(F.hull, hull - 1);
+  assert.ok(Math.hypot(ev.x - shownX, ev.z - shownZ) < 12);
+  assert.ok(Math.hypot(ev.x - b.x, ev.z - b.z) > 70);
 });
 
 test('a middle lane leaves the gun where it was, and the headset rig does not roll', () => {

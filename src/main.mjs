@@ -56,7 +56,7 @@ import { Race, defaultSettings, DT, TUNES, TUNE_KEYS, BOOST, SIM_VERSION, encode
 import { Rescue, arenaCourse, rescueSettings, ARENA, RESCUE, S as SHARK } from './sim/rescue.mjs?v=4881be4d';
 import { Boss, dragonCourse, bossSettings, DRAGON, BOSS as FIGHT } from './sim/boss.mjs?v=4881be4d';
 import { Leviathan, leviCourse, leviSettings, LEVI, FIGHT as LFIGHT, PHASES } from './sim/leviathan.mjs?v=4881be4d';
-import { DeckFight, hawkCourse, hawkSettings, HAWK, DECK, HALVES, COASTAL_NAME, stickFlick, tiltLane, swipeStep } from './sim/deck.mjs?v=4881be4d';
+import { DeckFight, hawkCourse, hawkSettings, HAWK, DECK, HALVES, COASTAL_NAME, stickFlick, tiltLane, swipeStep, xrStickStep } from './sim/deck.mjs?v=4881be4d';
 import { deckHudSnapshot, deckRange, passCountdown, acquireAim, hawkMarker } from './ui/deck-hud.mjs?v=4881be4d';
 import { makeVoyage, bayCourse, voyageSettings, voyageChoices, VOYAGES, VOYAGES_READY as VOYAGE_KEYS } from './sim/voyages.mjs?v=4881be4d';
 const VOYAGES_READY_ALL = VOYAGE_KEYS;
@@ -614,14 +614,10 @@ function takeStick(axis) {
 }
 function pollDeckStick() {
   if (!XR.on || !deckOn()) return;
-  let x = null;
-  for (const src of xrSources()) {
-    const ax = src && src.gamepad && src.gamepad.axes;
-    if (!ax || !ax.length || !Number.isFinite(+ax[0])) continue;
-    const v = +ax[0];
-    if (x === null || Math.abs(v) > Math.abs(x)) x = v;
-  }
-  if (x !== null) takeStick(x);
+  // xr-standard thumbstick X is axes[2]. axes[0] is only the fallback for a short pad.
+  const r = xrStickStep(xrSources(), DK.stickArmed, DK.lane);
+  DK.stickArmed = r.armed;
+  if (r.step) DK.lane = r.lane;
 }
 // tilt owns the lane only while the phone is actually tipped. A level phone keeps a swipe. Coming back to level returns to the middle.
 function applyDeckLane(F) {
