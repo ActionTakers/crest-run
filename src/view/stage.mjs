@@ -383,6 +383,17 @@ export class Stage {
       this.ghostVis.setPose(b.px + (b.x - b.px) * alpha, b.py + (b.y - b.py) * alpha, b.pz + (b.z - b.pz) * alpha, b.ph + wrapA(b.h - b.ph) * alpha, b.pitch, b.roll, b.P.draft);
     }
     const me = R[this.focus], M = this.boats[this.focus];
+    // helm-dodge shifts the deck rig sideways. The route point is kept so the strafe lane can stay where it was announced.
+    // a zero offset does not move the boat, so the picture matches a fight with no lane input.
+    if (this.deck && M) {
+      M.routeX = M.x; M.routeZ = M.z;
+      const lat = this.deck.laneOff || 0;
+      if (lat) {
+        const rx = -Math.cos(M.h), rz = -Math.sin(M.h);
+        if (M.vis && M.vis.group) { M.vis.group.position.x += rx * lat; M.vis.group.position.z += rz * lat; }
+        M.x += rx * lat; M.z += rz * lat;
+      }
+    }
     this.placeCamera(me, M, dt);
     // a rival between the camera and the player's boat fades out instead of filling the screen
     for (let i = 0; i < R.length; i++) if (i !== this.focus) { const B = this.boats[i], d = Math.hypot(B.x - this.camera.position.x, B.z - this.camera.position.z); B.vis.setOpacity(this.cam.mode === 'orbit' ? 1 : smooth(3.5, 6.5, d)); }

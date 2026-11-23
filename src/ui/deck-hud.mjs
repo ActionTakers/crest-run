@@ -1,6 +1,6 @@
 // deck-hud.mjs: the Coastal Run: Iron Hawk display. The race HUD's place, gap, lap, speed and boost
 // are not reused here. The goal line stays until the fight state that asked for it has changed.
-import { COASTAL_NAME, DECK, HAWK, aimAt } from '../sim/deck.mjs?v=4881be4d';
+import { COASTAL_NAME, DECK, HAWK, aimAt, helmLane, laneName } from '../sim/deck.mjs?v=4881be4d';
 
 const FILLED = '\u25CF', EMPTY = '\u25CB', ARMOUR_ON = '\u25AE', ARMOUR_OFF = '\u25AF';
 const ARMOUR_CELLS = 4;
@@ -32,12 +32,27 @@ export function deckGoal(F) {
   return F.half === 2 ? 'KEEP THE GUN ON IT' : 'KEEP THE MAGAZINE FOR ITS LOW PASS';
 }
 
+// Which lane the boat is in, and, while a pass is lit, which lane that pass committed to.
+// The brackets are the boat. STRAFE names the lit lane. The two together say whether that lane is safe.
+export function deckLaneReadout(F) {
+  const half = F && F.race && F.race.c && F.race.c.halfWidth > 0 ? F.race.c.halfWidth : HAWK.halfWidth;
+  const lane = F ? helmLane(F.laneOff || 0, half) : 0;
+  const pass = F && (F.passLane === -1 || F.passLane === 1) ? F.passLane : 0;
+  const live = !!(F && !F.over && (F.st === 'aim' || (F.st === 'pass' && !F.struck && !F.broken)));
+  const safe = live && lane !== pass;
+  const hot = live && lane === pass;
+  const names = [-1, 0, 1].map((i) => (i === lane ? `[${laneName(i)}]` : laneName(i))).join('  ');
+  const text = live ? `${names}  ·  STRAFE ${laneName(pass)}` : names;
+  return { lane, pass, live, safe, hot, text };
+}
+
 // A plain snapshot of the deck HUD. Race fields (place, gap, lap, TAKEN, boost, speed) are absent.
 export function deckHudSnapshot(F) {
   const hullLeft = Math.max(0, Math.round(Number(F.hull) || 0));
   const ratio = F.hpMax > 0 ? Math.max(0, Math.min(1, F.hp / F.hpMax)) : 0;
   const ammoCount = Math.max(0, Math.round(Number(F.mag) || 0));
   const flaresCount = Math.max(0, Math.round(Number(F.flares) || 0));
+  const lanes = deckLaneReadout(F);
   return {
     title: COASTAL_NAME,
     mode: 'deck',
@@ -47,6 +62,9 @@ export function deckHudSnapshot(F) {
     armour: `HAWK ARMOUR ${armourMarks(ratio)}`,
     armourRatio: ratio,
     goal: deckGoal(F),
+    lane: lanes.text,
+    laneSafe: lanes.safe,
+    laneHot: lanes.hot,
     hullLeft,
     hullMax: DECK.hull,
     ammoCount,

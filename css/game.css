@@ -271,6 +271,9 @@ pre { text-align: left; white-space: pre-wrap; word-break: break-word; font-size
 #h-deck-armour-label { display: block; font-size: 13px; font-weight: 900; letter-spacing: 0.06em; line-height: 1.2; }
 #h-deck-armour-bar { display: block; position: relative; height: 10px; margin-top: 4px; border-radius: 6px; background: rgba(6, 18, 31, 0.6); border: 1px solid rgba(255, 255, 255, 0.45); overflow: hidden; }
 #h-deck-armour-fill { display: block; height: 100%; width: 100%; transform-origin: 0 50%; transform: scaleX(1); background: linear-gradient(90deg, #ff5a4a, #ffd36a); }
+#h-deck-lane { margin-top: 6px; font-size: 12px !important; letter-spacing: 0.08em; color: #9fd6ff; }
+#h-deck-lane.hot { color: #ffc24a; }
+#h-deck-lane.clear { color: #d6ecff; }
 #hud.deck #h-deck-goal { display: block; position: absolute; left: 50%; bottom: calc(148px + var(--sb)); transform: translateX(-50%); width: min(92vw, 720px); margin: 0;
   padding: 8px 14px; box-sizing: border-box; text-align: center; font-size: 16px; font-weight: 800; letter-spacing: 0.04em; line-height: 1.25; color: #fff;
   background: rgba(6, 18, 31, 0.82); border: 1px solid rgba(255, 194, 74, 0.45); border-radius: 999px; opacity: 1; }
