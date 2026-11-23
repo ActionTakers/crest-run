@@ -2,7 +2,7 @@
 // Friendly Fighters does not import this file. It calls feedback.mjs with its
 // own event names. The strings below are the deck fight's events only.
 
-import { bearingDir } from './feedback.mjs?v=4881be4d';
+import { bearingDir } from './feedback.mjs?v=03fa7436';
 
 // A weak-spot confirm replaces the shot pulse on that hand. pulse() would
 // overwrite the shot anyway, and hit outranks shot. A rocket the player shot

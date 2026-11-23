@@ -4,12 +4,12 @@
 // code except the palms (the scenery kit). The land lies toward low z (toward the mountain), the sea toward high z.
 // Written 2026-11-16 by the yacht project session (plan steps B0 to B2, PLAN-MONKEYKING.md).
 import * as THREE from 'three';
-import * as W from '../sim/waves.mjs?v=4881be4d';
-import { BAY, RULES, P as ST } from '../sim/voyage.mjs?v=4881be4d';
-import { WIND, B as BT } from '../sim/voyage2.mjs?v=4881be4d';
-import { NIGHT, CHAIN, Q as WHO } from '../sim/voyage3.mjs?v=4881be4d';
-import { Parts, at, bar, COL, makeJukung, HULL } from './jukung.mjs?v=4881be4d';
-import { crewClip, tick, SIT_HIP } from './people.mjs?v=4881be4d';
+import * as W from '../sim/waves.mjs?v=03fa7436';
+import { BAY, RULES, P as ST } from '../sim/voyage.mjs?v=03fa7436';
+import { WIND, B as BT } from '../sim/voyage2.mjs?v=03fa7436';
+import { NIGHT, CHAIN, Q as WHO } from '../sim/voyage3.mjs?v=03fa7436';
+import { Parts, at, bar, COL, makeJukung, HULL } from './jukung.mjs?v=03fa7436';
+import { crewClip, tick, SIT_HIP } from './people.mjs?v=03fa7436';
 
 const M4 = new THREE.Matrix4(), Q = new THREE.Quaternion(), V = new THREE.Vector3(), S1 = new THREE.Vector3(1, 1, 1), E = new THREE.Euler(), ZERO = new THREE.Matrix4().makeScale(0, 0, 0);
 function mulberry(seed) { let s = seed >>> 0; return () => { s = (s + 0x6d2b79f5) >>> 0; let t = s; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }

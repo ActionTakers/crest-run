@@ -6,7 +6,7 @@
 // How each boat handles is in sim/boat-stats.mjs (0.7.0).
 // The jukung (0.8.0) has no file: view/jukung.mjs makes it in code (make: 'jukung'); its seat's y is in metres.
 // Written 2026-11-16 by the yacht project session.
-import { JUKUNG_SPEC } from '../sim/jukung-spec.mjs?v=4881be4d';
+import { JUKUNG_SPEC } from '../sim/jukung-spec.mjs?v=03fa7436';
 
 export const FLEET = {
   yacht: { label: 'Yacht', file: 'yacht-b04.glb', length: 10.5, keel: 0.058, paint: true, seat: { y: 0.47, z: -0.02, drop: 0.44 } },

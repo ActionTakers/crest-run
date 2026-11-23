@@ -1,6 +1,6 @@
 // deck-hud.mjs: the Coastal Run: Iron Hawk display. The race HUD's place, gap, lap, speed and boost
 // are not reused here. The goal line stays until the fight state that asked for it has changed.
-import { COASTAL_NAME, DECK, HAWK, aimAt, helmLane, laneName } from '../sim/deck.mjs?v=4881be4d';
+import { COASTAL_NAME, DECK, HAWK, aimAt, helmLane, laneName } from '../sim/deck.mjs?v=03fa7436';
 
 const FILLED = '\u25CF', EMPTY = '\u25CB', ARMOUR_ON = '\u25AE', ARMOUR_OFF = '\u25AF';
 const ARMOUR_CELLS = 4;

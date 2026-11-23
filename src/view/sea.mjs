@@ -4,8 +4,8 @@
 // 2026-11-13 by the yacht project session: environment reflection instead of a sky formula per pixel, world colours, no per-frame
 // allocation. Browser only (imports 'three' through the page's import map).
 import * as THREE from 'three';
-import * as W from '../sim/waves.mjs?v=4881be4d';
-import { SKY_GLSL, makeNoiseTexture } from './sky.mjs?v=4881be4d';
+import * as W from '../sim/waves.mjs?v=03fa7436';
+import { SKY_GLSL, makeNoiseTexture } from './sky.mjs?v=03fa7436';
 
 function mulberry(seed) { let s = seed >>> 0; return () => { s = (s + 0x6d2b79f5) >>> 0; let t = s; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
 function makeNormalTexture(N = 256) {   // a tileable normal map from whole-number sine waves (repeats without a seam)
