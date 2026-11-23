@@ -67,6 +67,8 @@ import * as PR from './sim/progress.mjs?v=4881be4d';
 import { Controls } from './ui/controls.mjs?v=4881be4d';
 import { Sound } from './ui/sound.mjs?v=4881be4d';
 import * as PF from './ui/platform.mjs?v=4881be4d';
+import { createFeedback, showEdge } from './ui/feedback.mjs?v=4881be4d';
+import { deckHapticName, deckEdge, deckDirection } from './ui/crest-feedback.mjs?v=4881be4d';
 import { BAY_SAVE_KEY, BAY_JOURNEYS, makeBaySave, bayProgress } from './ui/bay-flow.mjs?v=4881be4d';
 import { makeSailingLesson, advanceSailingLesson } from './sim/sailing-lesson.mjs?v=4881be4d';
 
@@ -96,11 +98,13 @@ function bootFail(e, text) {
 }
 function makeStage() { try { return new Stage(canvas); } catch (e) { bootFail(e, 'This browser gave the game no 3D picture (WebGL 2). Close other tabs, or allow WebGL for this page (Lockdown Mode switches it off), then reload.'); throw e; } }
 const stage = makeStage(), controls = new Controls(), sound = new Sound();
+const feedback = createFeedback({ ios: () => PF.env.ios, iosTap: () => PF.haptic(), vibrate(pattern) { try { if (typeof navigator.vibrate === 'function') return navigator.vibrate(pattern) !== false; } catch (e) { /* no vibration API */ } return false; } });
 const gov = new Governor({ tier: 'mid', auto: true }), watch = new RefreshWatch();
 const G = window.__game = { version: VERSION, build: BUILD, game: BAY_GAME ? 'bay' : 'crest', stage, controls, sound, gov, watch, choices: {}, recalled: {}, save: BAY_GAME ? makeBaySave(PF.loadJSON(SAVE_KEY), PF.loadJSON(PR.SAVE_KEY)) : PR.migrate(PF.loadJSON(SAVE_KEY)), screen: 'boot', mode: 'demo', race: null, ghost: null, run: null,
   sel: null, paused: false, pausedBy: null, timeScale: 1, slowLeft: 0, slowArmed: false, auto: DEV && Q.get('auto') === '1', film: Q.get('film') === '1', frames: 0, errors: [], refresh: null,
   probe: { n: 0, deltas: [] }, probes: 0, lastRuns: [], storage: true, calT: 0, calTry: 0, calDone: 0, resultsAt: null, hudOn: Q.get('hud') !== '0', resumeLeft: 0, resumeShown: '', afterCal: null, dirty: true, filmT: 0, inputAt: performance.now(), draws: 0 };
 const settings = () => G.save.settings;
+G.feedback = feedback;
 const rememberedMode = ['trial', 'rescue', 'deck'].includes(G.save.last.mode) ? G.save.last.mode : 'race';
 G.sel = { mode: rememberedMode, course: COURSE_KEYS.includes(G.save.last.course) ? G.save.last.course : COURSE_KEYS[0],
   tune: G.save.unlocked.tunes.includes(G.save.last.tune) ? G.save.last.tune : 'cruise', livery: G.save.unlocked.liveries.includes(G.save.last.livery) ? G.save.last.livery : 'pearl', difficulty: settings().difficulty, level: rememberedMode === 'deck' ? HAWK.key : ARENA.key, boat: FLEET_KEYS.includes(settings().boat) ? settings().boat : 'jukung' };
@@ -124,7 +128,7 @@ window.addEventListener('unhandledrejection', (e) => { G.errors.push('rejection:
 // the elements the race display writes every frame, looked up once (T-10)
 const E = {};
 for (const [k, id] of Object.entries({ fill: 'h-boost-fill', boost: 'h-boost', btn: 'h-boostbtn', knob: 'h-knob', prog: 'h-prog', progMe: 'h-prog-me', count: 'h-count', msg: 'h-msg', warn: 'h-warn', arrow: 'h-arrow', place: 'h-place',
-  edge: 'h-edge', calWheel: 'cal-wheel', calNeedle: 'cal-needle', toast: 'toast', hud: 'hud', play: 'play', cross: 'deck-cross', flare: 'h-flare', nextCourse: 'b-nextcourse', retry: 'b-retry' })) E[k] = $(id);
+  edge: 'h-edge', comfort: 'h-comfort', calWheel: 'cal-wheel', calNeedle: 'cal-needle', toast: 'toast', hud: 'hud', play: 'play', cross: 'deck-cross', flare: 'h-flare', nextCourse: 'b-nextcourse', retry: 'b-retry' })) E[k] = $(id);
 
 // ---------- screens ----------
 const SCREENS = ['boot', 'title', 'cal', 'menu', 'bay', 'results', 'pause', 'settings', 'card', 'resume', 'sensors', 'rotate', 'kies', 'beach'];
@@ -142,10 +146,11 @@ function toast(text, ms = 2600) { const t = E.toast; t.textContent = text; t.cla
 function saveNow() { const ok = PF.saveJSON(SAVE_KEY, G.save); if (!ok && G.storage) toast(BAY_GAME ? 'This browser cannot keep your journal after the page closes.' : 'This browser does not let the game save: best times last until the page closes.', 5000); G.storage = ok; }
 function tap(id, fn) { $(id).addEventListener('click', (e) => { e.preventDefault(); sound.resume(); sound.sfx('click'); fn(e); }); }
 // restart a one-shot CSS animation on an element (a gate tick, a bump flash, a place change)
-function pulse(el, cls) { el.classList.remove(cls); void el.offsetWidth; el.classList.add(cls); }
+function pulse(el, cls) { if (el === E.edge) el.classList.remove('dir'); el.classList.remove(cls); void el.offsetWidth; el.classList.add(cls); }
 
 function applySettings() {
   const s = settings();
+  stage.feedback = feedback.configure(s);   // shake, flash, haptics, vignette. Camera motion stays full or calm. Game speed is not a setting here.
   stage.setCamera(controls.sailing ? (G.sailingCamera || 'chase') : s.camera, s.motion === 'full' ? 1 : 0.4);
   controls.setOptions({ maxDeg: s.maxDeg, invert: !!s.invert }); controls.prefer = s.steering;
   sound.setLevels({ sound: !!s.sound, music: !!s.music, volume: s.volume });
@@ -596,8 +601,30 @@ const DK = { ay: 0, ap: 0.12, fire: false, flare: false, id: null, x: 0, y: 0, t
 const deckOn = () => !!G.rescue && G.rescue.kind === 'deck' && G.mode === 'race';
 const DECK_KEYS = { ArrowLeft: 'left', KeyA: 'left', ArrowRight: 'right', KeyD: 'right', ArrowUp: 'up', KeyW: 'up', ArrowDown: 'down', KeyS: 'down', Space: 'fire' };
 function deckKey(code, down) { if (code === 'KeyF') { if (down) DK.flare = true; return true; } const k = DECK_KEYS[code]; if (!k) return false; if (down && k !== 'fire') DK.touched = true; DK.keys[k] = down; return true; }
+function xrSources() {
+  if (!XR.on || !XR.session) return [];
+  try { return XR.session.inputSources ? Array.from(XR.session.inputSources) : []; } catch (e) { return []; }
+}
+// iPhone's switch tap only works inside the gesture that fired or flared. Hits do not call this.
+function ownShotHaptic(kind) { feedback.play(kind === 'flare' ? 'flare' : 'shot', { gesture: true, iosOnly: true, now: performance.now() }); }
+function paintComfort(now = performance.now()) {
+  const el = E.comfort; if (!el) return;
+  const on = feedback.comfortActive(now);
+  el.classList.toggle('on', on);
+  if (on) el.style.setProperty('--comfort', String(feedback.comfortAmount()));
+}
+function deckFeel(e) {
+  const name = deckHapticName(e);
+  if (name) feedback.play(name, { xr: XR.on, sources: xrSources(), hand: stage.xrInput.hand, gesture: false, now: performance.now() });
+  if (!deckEdge(e)) return;
+  const F = G.rescue, me = F && F.me;
+  const pose = me ? { x: me.x, z: me.z, h: me.h, hawkX: F.x, hawkZ: F.z } : null;
+  showEdge(E.edge, deckDirection(e, pose));
+  feedback.comfort(e.type === 'dEnd' ? 0.72 : 0.48, performance.now());
+  paintComfort();
+}
 function deckPointer(kind, e) {
-  if (kind === 'down') { DK.touched = true; DK.id = e.pointerId; DK.x = e.clientX; DK.y = e.clientY; DK.fire = true; }
+  if (kind === 'down') { DK.touched = true; DK.id = e.pointerId; DK.x = e.clientX; DK.y = e.clientY; DK.fire = true; ownShotHaptic('shot'); }
   else if (kind === 'move' && e.pointerId === DK.id) { const k = 1.7 / Math.max(240, window.innerHeight); DK.ay = wrapA(DK.ay + (e.clientX - DK.x) * k); DK.ap = clamp(DK.ap - (e.clientY - DK.y) * k, HAWK.aim.down, HAWK.aim.up); DK.x = e.clientX; DK.y = e.clientY; }
   else if (kind === 'up' && e.pointerId === DK.id) { DK.id = null; DK.fire = false; }
 }
@@ -1040,6 +1067,7 @@ function paintRescue(race, run, dt, me, ready) {
 }
 // what the rescue level reports; true when the event was one of its own
 function onRescueEvent(e) {
+  if (G.rescue && G.rescue.kind === 'deck') deckFeel(e);
   switch (e.type) {
     case 'go': sound.sfx('go'); break;
     case 'wave': sound.sfx('lap'); hudMsg(e.n === 1 ? 'THE SHIP OPENS: GUARD THE SWIMMERS' : e.n === e.of ? 'LAST GROUP' : `GROUP ${e.n} OF ${e.of}`, 'cool', 4, e.n === 1); break;
@@ -1101,10 +1129,10 @@ function onRescueEvent(e) {
     case 'dLoaded': sound.sfx('click'); break;
     case 'dRocket': sound.sfx('launch'); G.run.toldRocket = true; break;
     case 'dRocketDown': sound.sfx('chip', 1); break;
-    case 'dRocketHit': if (e.hit) { sound.sfx('ram'); hudMsg(`A ROCKET HIT: HULL ${Math.max(0, e.hull)} OF ${DECK.hull}`, 'bad', 4); pulse(E.edge, 'hit'); } else sound.sfx('splash'); break;
+    case 'dRocketHit': if (e.hit) { sound.sfx('ram'); hudMsg(`A ROCKET HIT: HULL ${Math.max(0, e.hull)} OF ${DECK.hull}`, 'bad', 4); } else sound.sfx('splash'); break;
     case 'dAim': sound.sfx('count'); break;
     case 'dBroken': sound.sfx('perfect', 2); hudMsg('THE PASS IS BROKEN', 'good', 5); break;
-    case 'dStrafe': if (e.hit) { sound.sfx('ram'); hudMsg(`STRAFED: HULL ${Math.max(0, e.hull)} OF ${DECK.hull}`, 'bad', 5); pulse(E.edge, 'hit'); } break;
+    case 'dStrafe': if (e.hit) { sound.sfx('ram'); hudMsg(`STRAFED: HULL ${Math.max(0, e.hull)} OF ${DECK.hull}`, 'bad', 5); } break;
     case 'dStun': sound.sfx('land'); break;
     case 'dHalf': sound.sfx('final'); stage.setWorld(HAWK.world2); break;
     case 'dFlare': sound.sfx('launch'); hudMsg(e.ok ? 'THE FLARE IS ON IT: THE SEA ANSWERS' : G.rescue.low ? 'THE FLARE MISSED IT' : 'TOO HIGH: THE FLARE IS WASTED', e.ok ? 'good' : 'bad', 5, true); break;
@@ -1413,9 +1441,16 @@ function menuClick(e) {
 
 // ---------- settings and the test card ----------
 function paintSettings() {
-  const s = settings();
-  document.querySelectorAll('#set-grid [data-set]').forEach((box) => box.querySelectorAll('button').forEach((b) => b.classList.toggle('on', String(s[box.dataset.set]) === b.dataset.v)));
+  const s = settings(), comfort = feedback.configure(s);
+  document.querySelectorAll('#set-grid [data-set]').forEach((box) => box.querySelectorAll('button').forEach((b) => {
+    const cur = Object.prototype.hasOwnProperty.call(comfort, box.dataset.set) ? comfort[box.dataset.set] : s[box.dataset.set];
+    b.classList.toggle('on', String(cur) === b.dataset.v);
+  }));
   $('set-maxdeg').value = s.maxDeg; $('set-maxdeg-v').textContent = s.maxDeg;
+  const shakePct = String(Math.round(comfort.shakeStrength * 100)), hapPct = String(Math.round(comfort.hapticStrength * 100));
+  $('set-shake').value = shakePct; $('set-shake-v').textContent = shakePct;
+  $('set-flash').value = comfort.flash.toFixed(2); $('set-flash-v').textContent = comfort.flash.toFixed(2);
+  $('set-haptic').value = hapPct; $('set-haptic-v').textContent = hapPct;
 }
 function settingsClick(e) {
   const b = e.target.closest('button'), box = b && b.closest('[data-set]'); if (!box) return; sound.resume(); sound.sfx('click');
@@ -1430,7 +1465,7 @@ function cardText() {
   L.push(`Picture: tier ${stage.tierKey} (${s.quality}), render ${stage.renderSize()} at scale ${stage.scale}, bloom pipeline ${stage.post.enabled ? 'on' : 'off'} (half-float targets ${stage.post.hdr ? 'yes' : 'no'}) | refresh seen ${G.refresh ? (1000 / G.refresh.interval).toFixed(1) + ' Hz' + (G.refresh.snapped ? '' : ' (not a usual rate)') + (G.refresh.interval > 30 ? ': 30 Hz, Low Power Mode or a slow frame' : '') : '?'}, measured ${G.probes}x | draw calls ${stage.stats.calls}, triangles ${stage.stats.triangles} | GPU objects: ${mem.geometries} geometries, ${mem.textures} textures, ${stage.renderer.info.programs ? stage.renderer.info.programs.length : '?'} programs`);
   L.push(`Governor changes [s, scale, tier, why]: ${gov.changes.length ? gov.changes.map((c) => c.join(' ')).join('; ') : 'none'}`);
   L.push(`Steering: ${I.mode} (setting ${s.steering}) | permission ${I.perm ? `${I.perm.motion}/${I.perm.orientation}` : 'not asked'} | gyro ${I.tilt.gyro} | events/s motion ${I.rates.mot.toFixed(0)}, orientation ${I.rates.ori.toFixed(0)} | interval ${I.tilt.interval || '?'} | calibrations ${I.tilt.calOk} ok, ${I.tilt.calRejected} refused${I.tilt.cal ? ` (last: moved ${I.tilt.cal.spread} deg, tilted back ${I.tilt.cal.tiltBack} deg)` : ''} | recentres ${I.recentres} | full lock ${I.maxDeg} deg, reverse ${I.invert ? 'on' : 'off'}`);
-  L.push(`Sound: ${s.sound ? 'on' : 'off'}, music ${s.music ? 'on' : 'off'}, engine ${sound.state}, audio session ${sound.session}, effects played ${sound.tones} | screen lock ${PF.wake.state} (taken away by the phone ${PF.wake.releases}x, let go by the game ${PF.wake.given}x)${G.wakeTold ? ', the player was told to touch the screen' : ''} | storage ${G.storage ? 'ok' : 'FAILED'} | camera ${s.camera}, motion ${s.motion}`);
+  L.push(`Sound: ${s.sound ? 'on' : 'off'}, music ${s.music ? 'on' : 'off'}, engine ${sound.state}, audio session ${sound.session}, effects played ${sound.tones} | screen lock ${PF.wake.state} (taken away by the phone ${PF.wake.releases}x, let go by the game ${PF.wake.given}x)${G.wakeTold ? ', the player was told to touch the screen' : ''} | storage ${G.storage ? 'ok' : 'FAILED'} | camera ${s.camera}, motion ${s.motion} | shake ${feedback.settings.shake} ${Math.round(feedback.settings.shakeStrength * 100)}% ${feedback.settings.shakeStyle} | flash ${feedback.settings.flash.toFixed(2)} | vignette ${feedback.settings.vignette} | haptics ${feedback.settings.haptics} ${Math.round(feedback.settings.hapticStrength * 100)}%`);
   if (!G.lastRuns.length) L.push('Runs: none yet');
   G.lastRuns.forEach((r, i) => L.push((r.mode === 'deck' ? `Run ${i + 1} ${r.course} ${COASTAL_NAME} ${r.tune} (${r.steer}), fury ${r.difficulty}: ${r.why}, armour taken ${r.saved} %, half ${r.half}, hull ${r.hull}/${DECK.hull}, time ${r.time ?? '-'} s, shots ${r.hits}/${r.shots}, rockets down ${r.down}, passes broken ${r.breaks}/${r.passes}, stuns ${r.stuns}, bites ${r.bites}, flares wasted ${r.wasted}, left ${r.flares}`
     : r.mode === 'levi' ? `Run ${i + 1} ${r.course} boss ${r.tune} (${r.steer}), fury ${r.difficulty}: ${r.why}, health taken ${r.saved} %, phase ${r.phase}, hull ${r.hull}/${LFIGHT.hull}, time ${r.time ?? '-'} s, stuns ${r.stuns}, rams ${r.rams}, cannon hits ${r.hits}/${r.shots}, top ${r.topKmh} km/h, boost ${r.boostS} s`
@@ -1546,6 +1581,8 @@ function frame(ts) {
   if (G.testBusyMs > 0) { const e = performance.now() + G.testBusyMs; while (performance.now() < e) { /* test hook: a planted slow frame */ } }
   if (G.race) {
     simulate(dt);
+    feedback.tick(performance.now());
+    paintComfort();
     // a paused race is a still picture: nothing moves, and it is drawn only now and then (T-12)
     const still = G.paused;
     stage.update(G.acc / DT, still ? 0 : dt * (G.mode === 'race' ? G.timeScale : 1), G.race.t - (1 - G.acc / DT) * DT);
@@ -1595,6 +1632,10 @@ function wire() {
   $('set-grid').addEventListener('click', settingsClick);
   $('set-maxdeg').addEventListener('input', (e) => { settings().maxDeg = +e.target.value; $('set-maxdeg-v').textContent = e.target.value; controls.setOptions({ maxDeg: settings().maxDeg, invert: !!settings().invert }); });
   $('set-maxdeg').addEventListener('change', saveNow);
+  $('set-shake').addEventListener('input', (e) => { settings().shakeStrength = +e.target.value / 100; applySettings(); paintSettings(); });
+  $('set-flash').addEventListener('input', (e) => { settings().flash = +e.target.value; applySettings(); paintSettings(); });
+  $('set-haptic').addEventListener('input', (e) => { settings().hapticStrength = +e.target.value / 100; applySettings(); paintSettings(); });
+  for (const id of ['set-shake', 'set-flash', 'set-haptic']) $(id).addEventListener('change', saveNow);
   tap('b-go', () => { if (G.sel.mode === 'rescue' && VOYAGES[G.sel.level]) return openKies(); if (G.sel.mode !== 'sailing' && !PR.courseOpen(G.save, COURSE_KEYS, G.sel.course)) return; startRace(); });
   tap('b-kies-go', startRace); tap('b-kies-back', () => { if (harbourOn()) return returnToBay(); paintMenu(); show('menu'); });
   $('k-rows').addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b) return; sound.resume(); sound.sfx('click'); if (b.dataset.recall !== undefined) { if (b.dataset.recall === 'go') { G.kies.recall = null; G.recalled[G.sel.level] = true; } else G.kies.recall = +b.dataset.recall; return paintKies(); } const key = G.sel.level, C = G.choices[key] = voyageChoices(key, G.choices[key]); const row = VOYAGES[key].rows[+b.dataset.row]; C[row.key] = row.opts[+b.dataset.opt][0]; paintKies(); });
@@ -1624,7 +1665,7 @@ function wire() {
   play.addEventListener('pointerdown', (e) => { e.preventDefault(); try { play.setPointerCapture(e.pointerId); } catch (x) { /* older browsers */ } if (deckOn()) { deckPointer('down', e); return; } const k = controls.down(e.pointerId, e.clientX, window.innerWidth); if (k === 'boost') { PF.haptic(); boostPressed(); } });
   play.addEventListener('pointermove', (e) => { if (deckOn()) deckPointer('move', e); else controls.move(e.pointerId, e.clientX); });
   for (const ev of ['pointerup', 'pointercancel', 'lostpointercapture']) play.addEventListener(ev, (e) => { deckPointer('up', e); controls.up(e.pointerId); });
-  tap('h-flare', () => { if (deckOn()) { DK.flare = true; PF.haptic(); } });
+  tap('h-flare', () => { if (deckOn()) { DK.flare = true; ownShotHaptic('flare'); } });
   window.addEventListener('keydown', (e) => {
     const editing = e.target instanceof Element && e.target.closest('input, textarea, select, [contenteditable="true"]');
     // A focused slider keeps its native navigation keys; the sailing shortcuts still work after a drag.
@@ -1638,7 +1679,7 @@ function wire() {
     if (e.repeat) return;
     if (e.code === 'KeyC' && G.screen === 'race') { toggleView(); return; }
     if (e.code === 'Escape' || e.code === 'KeyP') { if (['pause', 'resume', 'sensors'].includes(G.screen)) resume(); else if (G.screen === 'race') pause('button'); return; }
-    if (deckOn() && deckKey(e.code, true)) { e.preventDefault(); return; }
+    if (deckOn() && deckKey(e.code, true)) { e.preventDefault(); if (e.code === 'Space' || e.code === 'KeyF') ownShotHaptic(e.code === 'KeyF' ? 'flare' : 'shot'); return; }
     if (controls.key(e.code, true)) { e.preventDefault(); if (controls.k.boost && (e.code === 'Space' || e.code === 'ArrowUp' || e.code === 'KeyW')) boostPressed(); }
   });
   window.addEventListener('keyup', (e) => { deckKey(e.code, false); controls.key(e.code, false); });

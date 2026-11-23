@@ -12,6 +12,7 @@ import * as THREE from 'three';
 import * as W from '../sim/waves.mjs?v=4881be4d';
 import { HAWK, DECK, aimDir } from '../sim/deck.mjs?v=4881be4d';
 import { deckRange, damageChip, laneLook, passCountdown, threatEdge, impactRing, HULL_NEUTRAL, HULL_NEUTRAL_DARK, DECK_EYE, STAGGER_LIFT, chipWorldScale } from '../ui/deck-hud.mjs?v=4881be4d';
+import { scaleFlash } from '../ui/feedback.mjs?v=4881be4d';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { Parts, at, bar } from './jukung.mjs?v=4881be4d';
 
@@ -157,6 +158,7 @@ export class DeckView {
     this.hand = null;                                      // in the headset: the controller that holds the gun (the stage sets it)
     this.motion = 1;                                       // camera motion: 1 full, 0.4 calm (stage.mjs)
     this.deck = null; this.built = false; this.t = 0; this.vay = 0; this.vap = 0.12; this.kick = 0; this.flashT = 0; this.hitT = -9; this.wave = -1; this.waveAt = [0, 0]; this.held = false;
+    this.impact = new THREE.Vector3();   // deck translation for a hit. The camera does not follow it.
     this._o = new THREE.Object3D(); this._v = new THREE.Vector3(); this._m = new THREE.Vector3(); this._q = new THREE.Quaternion(); this._s = new THREE.Vector3(); this._M = new THREE.Matrix4();
     this._fwd = new THREE.Vector3(); this._right = new THREE.Vector3(); this._up = new THREE.Vector3(); this.rangeText = ''; this.countN = 0;
   }
@@ -216,7 +218,7 @@ export class DeckView {
   }
   // the fight to show, or null
   // (the promise: its models have arrived)
-  setDeck(F) { this.deck = F || null; this.group.visible = !!this.deck; if (!this.deck) return Promise.resolve(); if (!this.built) this.build(F); this.t = 0; this.kick = 0; this.wave = -1; this.held = false; this.vay = F.input.ay; this.vap = F.input.ap; this.heli.visible = true; this.countN = 0; this.rangeText = ''; for (const q of this.tr) q.t = 9; for (const q of this.sp) q.t = 9; if (this.chips) for (const s of this.chips) { s.userData.t = 9; s.visible = false; } return this.load(); }
+  setDeck(F) { this.deck = F || null; this.group.visible = !!this.deck; this.impact.set(0, 0, 0); if (!this.deck) return Promise.resolve(); if (!this.built) this.build(F); this.t = 0; this.kick = 0; this.wave = -1; this.held = false; this.vay = F.input.ay; this.vap = F.input.ap; this.heli.visible = true; this.countN = 0; this.rangeText = ''; for (const q of this.tr) q.t = 9; for (const q of this.sp) q.t = 9; if (this.chips) for (const s of this.chips) { s.userData.t = 9; s.visible = false; } return this.load(); }
   seaY(wv, x, z, t) { const f = this.sea.fadeAt(x, z); return f > 0.01 ? W.heightFast(wv, x, z, t, 2) * f : 0; }
   muzzle(out) { this.gun.updateMatrixWorld(true); return out.copy(this.flash.position).applyMatrix4(this.gun.matrixWorld); }
   spark(x, y, z, s = 1, life = 0.14) { const q = this.sp.reduce((a, c) => (c.t > a.t ? c : a)); q.t = 0; q.life = life; q.s = s; q.p.set(x, y, z); }
@@ -261,8 +263,8 @@ export class DeckView {
     switch (e.type) {
       case 'dShot': this.line(e.x, e.y, e.z); this.kick = 1; this.flashT = 0.045; if (e.hit) { this.spark(e.x, e.y, e.z, e.hit === 'body' ? 0.4 : 0.75); this.chipAt(e); } break;
       case 'dRocketDown': this.spark(e.x, e.y, e.z, 3, 0.3); stage.fx.flash = Math.max(stage.fx.flash, 0.08); stage.fx.flashCol = [1, 0.8, 0.5]; break;
-      case 'dRocketHit': sp.emit(e.x, 0.3, e.z, 0, 0, 70, 9, 5, 0, 2); if (e.hit) { shake(0.9); stage.fx.flash = 0.25; stage.fx.flashCol = [1, 0.3, 0.2]; } break;
-      case 'dStrafe': shake(e.hit ? 1.1 : 0.3); if (e.hit) { stage.fx.flash = 0.3; stage.fx.flashCol = [1, 0.3, 0.2]; } break;
+      case 'dRocketHit': sp.emit(e.x, 0.3, e.z, 0, 0, 70, 9, 5, 0, 2); if (e.hit) { shake(0.9); stage.fx.flash = scaleFlash(stage.feedback && stage.feedback.flash); stage.fx.flashCol = [1, 0.3, 0.2]; } break;
+      case 'dStrafe': shake(e.hit ? 1.1 : 0.3); if (e.hit) { stage.fx.flash = scaleFlash(stage.feedback && stage.feedback.flash); stage.fx.flashCol = [1, 0.3, 0.2]; } break;
       case 'dBroken': stage.fx.bloomPulse = 1; stage.fx.flash = 0.2; stage.fx.flashCol = [1, 0.9, 0.5]; this.spark(F.x, F.y - 1.5, F.z, 2.2, 0.3); break;
       case 'dStun': stage.fx.bloomPulse = 1; shake(0.3); this.spark(F.x, F.y, F.z, 2.8, 0.35); break;
       case 'dHalf': stage.fx.bloomPulse = 1; stage.fx.flash = 0.22; stage.fx.flashCol = [0.5, 0.7, 1]; shake(0.6); break;
@@ -327,11 +329,12 @@ export class DeckView {
     this.kick = Math.max(0, this.kick - dt * 14); this.flashT -= dt; this.flash.visible = this.flashT > 0;
     const dip = F.reload > 0 ? Math.sin(Math.PI * clamp(1 - F.reload / F.gun.reloadS, 0, 1)) : 0, show = !F.over;
     this.gun.visible = show;
-    if (this.hand) {       // in the headset the gun is in the hand: along the controller, its grip at the hand
+    if (this.hand) {       // in the headset the gun stays in the hand. The deck under it is what shakes.
       this.hand.updateWorldMatrix(true, false); this.hand.matrixWorld.decompose(this.gun.position, this.gun.quaternion, this._s); this.gun.rotateY(Math.PI); this.gun.rotateX(0.4 * dip - 0.03 * this.kick); this.gun.translateZ(-0.12 - 0.04 * this.kick);
     } else {
       this.gun.quaternion.copy(camera.quaternion); this.gun.rotateY(Math.PI); this.gun.rotateX(0.55 * dip - 0.03 * this.kick);
       this._v.set(0.26, -0.3 - 0.12 * dip, -0.42 + 0.05 * this.kick).applyQuaternion(camera.quaternion); this.gun.position.copy(camera.position).add(this._v);
+      this.gun.position.add(this.impact);   // the gun moves with the deck; the camera, and so the horizon, does not
     }
     // the bullets' lines and the sparks where they land
     this.tr.forEach((L, i) => { L.t += dt; if (L.t >= L.life) { M.makeScale(0, 0, 0); this.tracers.setMatrixAt(i, M); return; } o.position.copy(L.a); o.lookAt(L.b); o.scale.set(L.w, L.w, L.a.distanceTo(L.b)); o.updateMatrix(); this.tracers.setMatrixAt(i, o.matrix); });
