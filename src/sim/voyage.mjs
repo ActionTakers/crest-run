@@ -10,9 +10,9 @@
 // with the stand-in driver below, never by a person. Tests: tests/voyage.test.mjs.
 // World and headings as in race-sim.mjs: forward f = (-sin h, cos h); +z is out to sea, the land lies at low z.
 // Written 2026-11-16 by the yacht project session.
-import { DT } from './race-sim.mjs?v=4881be4d';
-import { buildCourse, wrapA } from './courses.mjs?v=4881be4d';
-import { boatTweak } from './boat-stats.mjs?v=4881be4d';
+import { DT } from './race-sim.mjs?v=03fa7436';
+import { buildCourse, wrapA } from './courses.mjs?v=03fa7436';
+import { boatTweak } from './boat-stats.mjs?v=03fa7436';
 
 const clamp = (v, lo, hi) => (v < lo ? lo : v > hi ? hi : v);
 function mulberry(seed) { let s = seed >>> 0; return () => { s = (s + 0x6d2b79f5) >>> 0; let t = s; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }

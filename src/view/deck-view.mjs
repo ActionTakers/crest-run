@@ -9,12 +9,12 @@
 // eyes sit above the mast, the stagger bar clears the rotor, chips rise off the hull); the great moment is the leap (T25). NOT_ASSESSED on a phone or in a headset.
 // Written 2026-11-17 by the yacht project session.
 import * as THREE from 'three';
-import * as W from '../sim/waves.mjs?v=4881be4d';
-import { HAWK, DECK, aimDir, laneCentre } from '../sim/deck.mjs?v=4881be4d';
-import { deckRange, damageChip, laneLook, passCountdown, threatEdge, impactRing, HULL_NEUTRAL, HULL_NEUTRAL_DARK, DECK_EYE, STAGGER_LIFT, chipWorldScale } from '../ui/deck-hud.mjs?v=4881be4d';
-import { scaleFlash } from '../ui/feedback.mjs?v=4881be4d';
+import * as W from '../sim/waves.mjs?v=03fa7436';
+import { HAWK, DECK, aimDir, laneCentre } from '../sim/deck.mjs?v=03fa7436';
+import { deckRange, damageChip, laneLook, passCountdown, threatEdge, impactRing, HULL_NEUTRAL, HULL_NEUTRAL_DARK, DECK_EYE, STAGGER_LIFT, chipWorldScale } from '../ui/deck-hud.mjs?v=03fa7436';
+import { scaleFlash } from '../ui/feedback.mjs?v=03fa7436';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
-import { Parts, at, bar } from './jukung.mjs?v=4881be4d';
+import { Parts, at, bar } from './jukung.mjs?v=03fa7436';
 
 const C = { hull: HULL_NEUTRAL, hullD: HULL_NEUTRAL_DARK, glass: 0x9fd6ea, metal: 0x2a2e33, steel: 0x646c74, red: 0xb3262b, grey: 0x60717e, greyD: 0x43515d, belly: 0xe8edf0, gum: 0x7a2630, tooth: 0xf5f2e8, black: 0x0c0e10 };
 // the three models: the file of each, and how long it is made along its own z (the nose, the muzzle), metres
